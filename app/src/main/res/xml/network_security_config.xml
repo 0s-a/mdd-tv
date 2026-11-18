@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- خادم Jellyfin المعتمد حصرياً -->
+        <domain includeSubdomains="true">192.168.200.200</domain>
+        <!-- نطاقات الشبكات المحلية المعزولة (RFC 1918) -->
+        <domain includeSubdomains="true">192.168.0.0/16</domain>
+        <domain includeSubdomains="true">10.0.0.0/8</domain>
+        <domain includeSubdomains="true">172.16.0.0/12</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+    </domain-config>
+    <!-- حظر تام لحركة HTTP غير المشفرة خارج الشبكة المحلية -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>
