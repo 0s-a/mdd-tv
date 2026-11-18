@@ -13,8 +13,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,21 +41,22 @@ import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
- * FrostedSearchBar provides a glassmorphic search input with clear and voice search actions.
- * Strictly adheres to 05_SEARCH_AND_EXPLORE.md Section 2:
+ * FrostedSearchBar provides a glassmorphic search input with clear action and optional back navigation.
+ * Strictly adheres to docs/v2/05_SEARCH_AND_EXPLORE_V2.md:
  * - Glassmorphic capsule with 70% opacity and subtle 1dp cyan glass outline.
  * - Minimum 48dp touch targets on all interactive actions.
  * - Arabic TalkBack semantics.
+ * - Zero voice search distractions.
  */
 @Composable
 fun FrostedSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onClearClick: () -> Unit,
-    onVoiceClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onBackClick: (() -> Unit)? = null,
     autoFocus: Boolean = false,
-    placeholder: String = "ابحث عن فيلم، مسلسل، ممثل، أو مخرج..."
+    placeholder: String = "ابحث عن فيلم، مسلسل، ممثل..."
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -79,7 +80,29 @@ fun FrostedSearchBar(
             )
             .padding(horizontal = JellyfinDimens.SpaceMedium, vertical = 2.dp)
     ) {
-        // 1. Search Icon
+        // Optional Back Navigation Button
+        if (onBackClick != null) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .size(JellyfinDimens.MinTouchTarget)
+                    .clip(CircleShape)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "الرجوع"
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = null,
+                    tint = JellyfinColors.TextPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(JellyfinDimens.SpaceExtraSmall))
+        }
+
+        // Search Icon
         Icon(
             imageVector = Icons.Rounded.Search,
             contentDescription = null,
@@ -91,7 +114,7 @@ fun FrostedSearchBar(
 
         Spacer(modifier = Modifier.width(JellyfinDimens.SpaceSmall))
 
-        // 2. Input Field
+        // Input Field
         Box(
             modifier = Modifier.weight(1f),
             contentAlignment = Alignment.CenterStart
@@ -126,7 +149,7 @@ fun FrostedSearchBar(
             )
         }
 
-        // 3. Clear Query Button
+        // Clear Query Button
         if (query.isNotEmpty()) {
             IconButton(
                 onClick = onClearClick,
@@ -145,25 +168,6 @@ fun FrostedSearchBar(
                     modifier = Modifier.size(18.dp)
                 )
             }
-        }
-
-        // 4. Voice Search Button
-        IconButton(
-            onClick = onVoiceClick,
-            modifier = Modifier
-                .size(JellyfinDimens.MinTouchTarget)
-                .clip(CircleShape)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = "بدء البحث الصوتي"
-                }
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Mic,
-                contentDescription = null,
-                tint = JellyfinColors.PrimaryIndigo,
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }

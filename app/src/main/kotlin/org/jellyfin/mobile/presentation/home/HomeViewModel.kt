@@ -10,9 +10,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.data.mapper.toContinueWatchingItem
+import org.jellyfin.mobile.domain.model.ContinueWatchingItem
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.HomeRepository
+import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
 
 /**
@@ -22,7 +25,8 @@ import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
 class HomeViewModel(
     private val getHomeFeedUseCase: GetHomeFeedUseCase,
     private val handshakeRepository: HandshakeRepository,
-    private val homeRepository: HomeRepository
+    private val homeRepository: HomeRepository,
+    private val localProfileRepository: LocalProfileRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -58,21 +62,15 @@ class HomeViewModel(
             is HomeIntent.DismissFromContinueWatching -> {
                 removeContinueWatchingItem(intent.mediaId)
                 viewModelScope.launch {
+                    localProfileRepository?.dismissContinueWatching(intent.mediaId)
                     homeRepository.dismissContinueWatching(intent.mediaId)
-                        .onFailure {
-                            loadData(isRefresh = false)
-                        }
                 }
             }
             is HomeIntent.MarkItemWatched -> {
                 viewModelScope.launch {
+                    localProfileRepository?.markWatched(intent.mediaId)
                     homeRepository.markItemWatched(intent.mediaId)
-                        .onSuccess {
-                            _effects.send(HomeEffect.ShowToast("تم التحديد كمشاهد ✓"))
-                        }
-                        .onFailure {
-                            _effects.send(HomeEffect.ShowToast("فشل تحديث حالة المشاهدة على السيرفر"))
-                        }
+                    _effects.send(HomeEffect.ShowToast("تم التحديد كمشاهد ✓"))
                 }
             }
         }
@@ -105,13 +103,41 @@ class HomeViewModel(
                 .onSuccess { feed ->
                     val serverInfo = handshakeRepository.serverInfo.value
                     val userSession = handshakeRepository.currentSession.value
-                    val displayName = userSession?.userName ?: serverInfo?.name ?: "Jellyfin"
+                    val localProfile = localProfileRepository?.getProfile()
+                    val displayName = localProfile?.displayName ?: userSession?.userName ?: serverInfo?.name ?: "مشاهد مدد"
+                    val avatarKey = localProfile?.avatarKey ?: "avatar_1"
 
                     val heroList = feed.heroItems.ifEmpty {
                         feed.latestItems.take(5).toImmutableList()
                     }
 
-                    val continueWatching = feed.resumeItems.map { it.toContinueWatchingItem() }.toImmutableList()
+                    // Prioritize local continue watching to protect multi-device isolation
+                    val localContinue = localProfileRepository?.getContinueWatching() ?: emptyList()
+                    val baseServer = AppConfig.SERVER_URL.trimEnd('/')
+                    val continueWatching = if (localContinue.isNotEmpty()) {
+                        localContinue.map { p ->
+                            val durMs = p.durationTicks / 10_000L
+                            val posMs = p.positionTicks / 10_000L
+                            val progress = if (durMs > 0) (posMs.toFloat() / durMs.toFloat()).coerceIn(0f, 1f) else 0f
+                            val remainingMin = if (durMs > posMs) ((durMs - posMs) / 60_000L).toInt() else 0
+                            val imgUrl = "$baseServer/Items/${p.itemId}/Images/Primary?fillWidth=400&quality=80"
+                            ContinueWatchingItem(
+                                id = p.itemId,
+                                title = p.title,
+                                subtitle = null,
+                                seriesName = null,
+                                episodeTitle = null,
+                                backdropUrl = imgUrl,
+                                posterUrl = imgUrl,
+                                progressPercentage = progress,
+                                remainingMinutes = remainingMin,
+                                resumePositionMs = posMs,
+                                totalDurationMs = durMs
+                            )
+                        }.toImmutableList()
+                    } else {
+                        feed.resumeItems.map { it.toContinueWatchingItem() }.toImmutableList()
+                    }
 
                     _uiState.value = HomeUiState.Success(
                         heroItems = heroList,
@@ -120,6 +146,7 @@ class HomeViewModel(
                         continueWatchingItems = continueWatching,
                         recentlyAddedItems = feed.latestItems,
                         userDisplayName = displayName,
+                        userAvatarKey = avatarKey,
                         isRefreshing = false
                     )
                 }

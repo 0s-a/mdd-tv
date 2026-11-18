@@ -32,7 +32,9 @@ import org.jellyfin.mobile.presentation.details.MediaDetailsViewModel
 import org.jellyfin.mobile.presentation.downloads.DownloadsViewModel
 import org.jellyfin.mobile.presentation.home.HomeViewModel
 import org.jellyfin.mobile.presentation.library.LibraryViewModel
+import org.jellyfin.mobile.presentation.onboarding.OnboardingViewModel
 import org.jellyfin.mobile.presentation.player.PlayerViewModel
+import org.jellyfin.mobile.presentation.profile.ProfileViewModel
 import org.jellyfin.mobile.presentation.search.SearchViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -175,7 +177,8 @@ val viewModelModule = module {
         HomeViewModel(
             getHomeFeedUseCase = get(),
             handshakeRepository = get(),
-            homeRepository = get()
+            homeRepository = get(),
+            localProfileRepository = get()
         )
     }
 
@@ -215,7 +218,20 @@ val viewModelModule = module {
 
     viewModel {
         DownloadsViewModel(
-            downloadsRepository = get()
+            downloadsRepository = get(),
+            localProfileRepository = get()
+        )
+    }
+
+    viewModel {
+        OnboardingViewModel(
+            localProfileRepository = get()
+        )
+    }
+
+    viewModel {
+        ProfileViewModel(
+            localProfileRepository = get()
         )
     }
 }

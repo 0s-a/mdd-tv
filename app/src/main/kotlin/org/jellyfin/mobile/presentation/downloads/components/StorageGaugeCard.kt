@@ -53,7 +53,7 @@ fun StorageGaugeCard(
     val freeRatio = (storageInfo.freeGb / totalGb).toFloat().coerceIn(0f, 1f)
 
     val usedTotalGb = storageInfo.appUsedGb + storageInfo.otherUsedGb
-    val talkBackDesc = "مقياس التخزين: مساحة Jellyfin المستهلكة ${String.format("%.1f", storageInfo.appUsedGb)} جيجابايت، المساحة الفارغة ${String.format("%.1f", storageInfo.freeGb)} جيجابايت من إجمالي ${String.format("%.1f", storageInfo.totalGb)} جيجابايت"
+    val talkBackDesc = "مقياس التخزين: مساحة التنزيلات ${String.format("%.1f", storageInfo.appUsedGb)} جيجابايت، المساحة المتوفرة بالهاتف ${String.format("%.1f", storageInfo.freeGb)} جيجابايت من إجمالي ${String.format("%.1f", storageInfo.totalGb)} جيجابايت"
 
     Box(
         modifier = modifier
@@ -144,7 +144,7 @@ fun StorageGaugeCard(
             ) {
                 StorageLegendItem(
                     color = JellyfinColors.PrimaryIndigo,
-                    label = "Jellyfin",
+                    label = "مساحة التنزيلات",
                     value = String.format("%.1f GB", storageInfo.appUsedGb)
                 )
                 StorageLegendItem(
@@ -154,7 +154,7 @@ fun StorageGaugeCard(
                 )
                 StorageLegendItem(
                     color = JellyfinColors.TextMuted,
-                    label = "مساحة فارغة",
+                    label = "المساحة المتوفرة بالهاتف",
                     value = String.format("%.1f GB", storageInfo.freeGb)
                 )
             }

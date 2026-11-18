@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.DownloadsTab
 import org.jellyfin.mobile.domain.repository.DownloadsRepository
+import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 
 /**
  * DownloadsViewModel manages offline media vault states, storage metrics,
@@ -19,7 +20,8 @@ import org.jellyfin.mobile.domain.repository.DownloadsRepository
  * Strictly adheres to docs/screens/06_DOWNLOADS_OFFLINE.md.
  */
 class DownloadsViewModel(
-    private val downloadsRepository: DownloadsRepository
+    private val downloadsRepository: DownloadsRepository,
+    private val localProfileRepository: LocalProfileRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DownloadsUiState())
@@ -93,7 +95,10 @@ class DownloadsViewModel(
             is DownloadsIntent.DeleteDownloadedItem -> {
                 deleteItem(intent.mediaId)
             }
-            is DownloadsIntent.DeleteAllWatched, is DownloadsIntent.DeleteAllDownloads -> {
+            is DownloadsIntent.DeleteAllWatched -> {
+                deleteWatchedOnly()
+            }
+            is DownloadsIntent.DeleteAllDownloads -> {
                 deleteAll()
             }
             is DownloadsIntent.PlayOfflineMedia -> {
@@ -119,6 +124,30 @@ class DownloadsViewModel(
                 .onFailure {
                     _effects.send(DownloadsEffect.ShowToast("تعذر حذف الملف"))
                 }
+
+            refreshData()
+        }
+    }
+
+    private fun deleteWatchedOnly() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDeleting = true)
+            val allItems = _uiState.value.downloadedMovies + _uiState.value.downloadedSeries
+            var deletedCount = 0
+
+            for (item in allItems) {
+                val isWatched = localProfileRepository?.isWatched(item.id) ?: false
+                if (isWatched) {
+                    downloadsRepository.deleteDownloadedItem(item.id)
+                    deletedCount++
+                }
+            }
+
+            if (deletedCount > 0) {
+                _effects.send(DownloadsEffect.ShowToast("تم حذف $deletedCount من الأعمال المشاهدة وتوفير المساحة"))
+            } else {
+                _effects.send(DownloadsEffect.ShowToast("لا توجد أعمال مكتملة المشاهدة لحذفها"))
+            }
 
             refreshData()
         }

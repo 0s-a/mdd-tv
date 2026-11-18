@@ -15,8 +15,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -33,14 +37,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.mobile.AppConfig
+import org.jellyfin.mobile.domain.model.AvatarCatalog
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
 import org.jellyfin.mobile.presentation.core.components.rememberDominantColor
 import org.jellyfin.mobile.presentation.home.components.ContinueWatchingRow
@@ -67,6 +74,7 @@ fun HomeScreen(
     onLaunchPlayer: (String, Long) -> Unit,
     onNavigateToLibrary: (String, String) -> Unit,
     onNavigateToSearch: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -121,7 +129,9 @@ fun HomeScreen(
                     // Top App Header
                     item(key = "header") {
                         HomeTopBar(
+                            avatarEmoji = AvatarCatalog.getEmoji(state.userAvatarKey),
                             onSearchClick = onNavigateToSearch,
+                            onProfileClick = onNavigateToProfile,
                             modifier = Modifier.statusBarsPadding()
                         )
                     }
@@ -196,7 +206,9 @@ fun HomeScreen(
 
 @Composable
 private fun HomeTopBar(
+    avatarEmoji: String,
     onSearchClick: () -> Unit,
+    onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -209,11 +221,17 @@ private fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // App Title / Brand
+        // App Title / Brand with Drawer Placeholder
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
         ) {
+            Icon(
+                imageVector = Icons.Rounded.Menu,
+                contentDescription = "القائمة",
+                tint = JellyfinColors.TextSecondary,
+                modifier = Modifier.size(24.dp)
+            )
             Icon(
                 imageVector = Icons.Rounded.Movie,
                 contentDescription = null,
@@ -228,22 +246,46 @@ private fun HomeTopBar(
             )
         }
 
-        // Search Action Icon
-        IconButton(
-            onClick = onSearchClick,
-            modifier = Modifier
-                .size(JellyfinDimens.MinTouchTarget)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = "البحث في المكتبات"
-                }
+        // Search Action Icon & Local Profile Avatar
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Search,
-                contentDescription = null,
-                tint = JellyfinColors.TextPrimary,
-                modifier = Modifier.size(24.dp)
-            )
+            IconButton(
+                onClick = onSearchClick,
+                modifier = Modifier
+                    .size(JellyfinDimens.MinTouchTarget)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "البحث في المكتبات"
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = JellyfinColors.TextPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .border(1.5.dp, JellyfinColors.PrimaryIndigo, CircleShape)
+                    .background(JellyfinColors.SurfaceGlass)
+                    .clickable(onClick = onProfileClick)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "الملف الشخصي"
+                    }
+            ) {
+                Text(
+                    text = avatarEmoji,
+                    fontSize = 18.sp
+                )
+            }
         }
     }
 }

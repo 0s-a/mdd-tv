@@ -51,6 +51,7 @@ fun SearchScreen(
     viewModel: SearchViewModel,
     onNavigateToDetails: (String) -> Unit,
     onLaunchPlayer: (String) -> Unit,
+    onNavigateBack: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val query by viewModel.query.collectAsState()
@@ -88,9 +89,7 @@ fun SearchScreen(
                 onClearClick = {
                     viewModel.processIntent(SearchIntent.ClearQuery)
                 },
-                onVoiceClick = {
-                    // Voice recognition trigger
-                },
+                onBackClick = onNavigateBack,
                 modifier = Modifier
                     .padding(horizontal = JellyfinDimens.SpaceLarge)
                     .padding(top = JellyfinDimens.SpaceSmall, bottom = JellyfinDimens.SpaceMedium)

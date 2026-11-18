@@ -33,6 +33,7 @@ sealed interface HomeUiState {
         val continueWatchingItems: ImmutableList<ContinueWatchingItem>,
         val recentlyAddedItems: ImmutableList<MediaItemSummary>,
         val userDisplayName: String = "",
+        val userAvatarKey: String = "avatar_1",
         val isRefreshing: Boolean = false
     ) : HomeUiState
 

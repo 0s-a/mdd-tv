@@ -35,8 +35,12 @@ import org.jellyfin.mobile.presentation.home.HomeViewModel
 import org.jellyfin.mobile.presentation.library.LibraryScreen
 import org.jellyfin.mobile.presentation.library.LibraryViewModel
 import org.jellyfin.mobile.presentation.main.NavigationTab
+import org.jellyfin.mobile.presentation.onboarding.OnboardingScreen
+import org.jellyfin.mobile.presentation.onboarding.OnboardingViewModel
 import org.jellyfin.mobile.presentation.player.AdvancedPlayerScreen
 import org.jellyfin.mobile.presentation.player.PlayerViewModel
+import org.jellyfin.mobile.presentation.profile.ProfileScreen
+import org.jellyfin.mobile.presentation.profile.ProfileViewModel
 import org.jellyfin.mobile.presentation.search.SearchScreen
 import org.jellyfin.mobile.presentation.search.SearchViewModel
 import org.jellyfin.mobile.ui.components.GlassmorphicCard
@@ -46,6 +50,8 @@ import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
 import org.koin.androidx.compose.koinViewModel
 
 sealed class Screen(val route: String) {
+    data object Onboarding : Screen("onboarding")
+    data object Profile : Screen("profile")
     data object Home : Screen(NavigationTab.HOME.route)
     data object Library : Screen("library?libraryId={libraryId}&title={title}") {
         fun createRoute(libraryId: String? = null, title: String? = null): String {
@@ -63,7 +69,7 @@ sealed class Screen(val route: String) {
             }
         }
     }
-    data object Search : Screen(NavigationTab.SEARCH.route)
+    data object Search : Screen("search")
     data object Downloads : Screen(NavigationTab.DOWNLOADS.route)
     data object Details : Screen("details/{mediaId}") {
         fun createRoute(mediaId: String): String = "details/$mediaId"
@@ -80,13 +86,39 @@ sealed class Screen(val route: String) {
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
+    startDestination: String = Screen.Home.route,
     modifier: Modifier = Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.Onboarding.route) {
+            val onboardingViewModel: OnboardingViewModel = koinViewModel()
+            OnboardingScreen(
+                viewModel = onboardingViewModel,
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Profile.route) {
+            val profileViewModel: ProfileViewModel = koinViewModel()
+            ProfileScreen(
+                viewModel = profileViewModel,
+                onNavigateToDetails = { mediaId ->
+                    navController.navigate(Screen.Details.createRoute(mediaId))
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable(Screen.Home.route) {
             val homeViewModel: HomeViewModel = koinViewModel()
             HomeScreen(
@@ -102,6 +134,9 @@ fun MainNavGraph(
                 },
                 onNavigateToSearch = {
                     navController.navigate(Screen.Search.route)
+                },
+                onNavigateToProfile = {
+                    navController.navigate(Screen.Profile.route)
                 }
             )
         }
@@ -203,6 +238,9 @@ fun MainNavGraph(
                 },
                 onLaunchPlayer = { mediaId ->
                     navController.navigate(Screen.Player.createRoute(mediaId, 0L))
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }

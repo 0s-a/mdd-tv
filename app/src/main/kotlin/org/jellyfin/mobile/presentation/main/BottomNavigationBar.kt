@@ -15,11 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,12 +56,6 @@ enum class NavigationTab(
         title = "المكتبات",
         selectedIcon = Icons.Rounded.VideoLibrary,
         unselectedIcon = Icons.Outlined.VideoLibrary
-    ),
-    SEARCH(
-        route = "search",
-        title = "البحث",
-        selectedIcon = Icons.Rounded.Search,
-        unselectedIcon = Icons.Outlined.Search
     ),
     DOWNLOADS(
         route = "downloads",
