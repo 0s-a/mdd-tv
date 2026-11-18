@@ -47,7 +47,22 @@ import org.koin.androidx.compose.koinViewModel
 
 sealed class Screen(val route: String) {
     data object Home : Screen(NavigationTab.HOME.route)
-    data object Library : Screen(NavigationTab.LIBRARY.route)
+    data object Library : Screen("library?libraryId={libraryId}&title={title}") {
+        fun createRoute(libraryId: String? = null, title: String? = null): String {
+            return if (!libraryId.isNullOrBlank()) {
+                val encodedTitle = title?.let {
+                    try {
+                        java.net.URLEncoder.encode(it, "UTF-8")
+                    } catch (e: Exception) {
+                        it
+                    }
+                } ?: ""
+                "library?libraryId=$libraryId&title=$encodedTitle"
+            } else {
+                "library"
+            }
+        }
+    }
     data object Search : Screen(NavigationTab.SEARCH.route)
     data object Downloads : Screen(NavigationTab.DOWNLOADS.route)
     data object Details : Screen("details/{mediaId}") {
@@ -83,7 +98,7 @@ fun MainNavGraph(
                     navController.navigate(Screen.Player.createRoute(mediaId, positionMs))
                 },
                 onNavigateToLibrary = { libraryId, title ->
-                    navController.navigate(Screen.Library.route)
+                    navController.navigate(Screen.Library.createRoute(libraryId, title))
                 },
                 onNavigateToSearch = {
                     navController.navigate(Screen.Search.route)
@@ -91,8 +106,41 @@ fun MainNavGraph(
             )
         }
 
-        composable(Screen.Library.route) {
+        composable(
+            route = Screen.Library.route,
+            arguments = listOf(
+                navArgument("libraryId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("title") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val libraryId = backStackEntry.arguments?.getString("libraryId")
+            val rawTitle = backStackEntry.arguments?.getString("title")
+            val decodedTitle = rawTitle?.let {
+                try {
+                    java.net.URLDecoder.decode(it, "UTF-8")
+                } catch (e: Exception) {
+                    it
+                }
+            }
             val libraryViewModel: LibraryViewModel = koinViewModel()
+            androidx.compose.runtime.LaunchedEffect(libraryId, decodedTitle) {
+                if (!libraryId.isNullOrBlank()) {
+                    libraryViewModel.processIntent(
+                        org.jellyfin.mobile.presentation.library.LibraryIntent.SwitchLibrary(
+                            libraryId = libraryId,
+                            libraryName = decodedTitle.orEmpty()
+                        )
+                    )
+                }
+            }
             LibraryScreen(
                 viewModel = libraryViewModel,
                 onNavigateToDetails = { mediaId ->

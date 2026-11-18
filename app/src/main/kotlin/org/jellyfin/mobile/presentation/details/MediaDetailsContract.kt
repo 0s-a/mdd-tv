@@ -60,7 +60,6 @@ sealed interface MediaDetailsUiState {
 }
 
 sealed interface MediaDetailsEffect {
-    data class NavigateToPlayer(val mediaId: String, val resumePositionTicks: Long = 0L) : MediaDetailsEffect
     data class LaunchPlayer(val mediaId: String, val resumePositionMs: Long = 0L) : MediaDetailsEffect
     data class NavigateToDetails(val mediaId: String) : MediaDetailsEffect
     data class NavigateToActorFilmography(val personId: String, val name: String) : MediaDetailsEffect

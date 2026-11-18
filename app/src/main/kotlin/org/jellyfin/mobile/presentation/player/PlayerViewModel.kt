@@ -176,11 +176,12 @@ class PlayerViewModel(
             is PlayerIntent.EnterPictureInPicture -> {
                 viewModelScope.launch { _effects.send(PlayerEffect.EnterPictureInPicture) }
             }
-            is PlayerIntent.ReleasePlayer -> releasePlayer()
+            is PlayerIntent.ReleasePlayer -> stopPlayer()
         }
     }
 
     private fun initialize(mediaId: String, startPositionMs: Long) {
+        stopPlayer()
         _uiState.update {
             it.copy(
                 mediaId = mediaId,
@@ -653,15 +654,26 @@ class PlayerViewModel(
         }
     }
 
-    private fun releasePlayer() {
+    private fun stopPlayer() {
         progressTickerJob?.cancel()
         reportPlaybackStopped()
         try {
-            player.removeListener(playerListener)
+            player.pause()
             player.stop()
+            player.clearMediaItems()
+        } catch (e: Exception) {
+            Log.w(tag, "Error stopping ExoPlayer: ${e.message}")
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopPlayer()
+        try {
+            player.removeListener(playerListener)
             player.release()
         } catch (e: Exception) {
-            Log.w(tag, "Error releasing ExoPlayer: ${e.message}")
+            Log.w(tag, "Error releasing ExoPlayer in onCleared: ${e.message}")
         }
         try {
             loudnessEnhancer?.release()
@@ -669,10 +681,5 @@ class PlayerViewModel(
         } catch (e: Exception) {
             Log.w(tag, "Error releasing LoudnessEnhancer: ${e.message}")
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        releasePlayer()
     }
 }

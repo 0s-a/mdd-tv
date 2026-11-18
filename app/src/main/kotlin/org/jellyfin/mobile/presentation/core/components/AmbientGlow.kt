@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.palette.graphics.Palette
-import coil.ImageLoader
+import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import kotlinx.coroutines.Dispatchers
@@ -51,14 +51,13 @@ fun rememberDominantColor(
 
         withContext(Dispatchers.IO) {
             try {
-                val imageLoader = ImageLoader(context)
                 val request = ImageRequest.Builder(context)
                     .data(imageUrl)
                     .size(128) // Lightweight thumbnail size for rapid palette extraction
                     .allowHardware(false) // Must be non-hardware bitmap for Palette
                     .build()
 
-                val result = imageLoader.execute(request)
+                val result = context.imageLoader.execute(request)
                 if (result is SuccessResult) {
                     val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
                         ?: result.drawable.toBitmap()

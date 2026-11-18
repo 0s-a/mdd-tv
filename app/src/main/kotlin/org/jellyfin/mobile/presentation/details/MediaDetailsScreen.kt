@@ -105,7 +105,6 @@ fun MediaDetailsScreen(
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 is MediaDetailsEffect.LaunchPlayer -> onLaunchPlayer(effect.mediaId, effect.resumePositionMs)
-                is MediaDetailsEffect.NavigateToPlayer -> onLaunchPlayer(effect.mediaId, effect.resumePositionTicks / 10_000L)
                 is MediaDetailsEffect.NavigateToDetails -> { /* Sub-navigation */ }
                 is MediaDetailsEffect.ShowToast -> { /* Notification */ }
                 is MediaDetailsEffect.ShowSnackbar -> { /* Notification */ }

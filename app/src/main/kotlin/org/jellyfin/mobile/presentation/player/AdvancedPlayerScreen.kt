@@ -29,6 +29,9 @@ import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.jellyfin.mobile.presentation.player.components.ArabicSubtitleOverlay
 import org.jellyfin.mobile.presentation.player.components.PlayerGestureLayer
 import org.jellyfin.mobile.presentation.player.components.PlayerHudOverlay
@@ -74,6 +77,30 @@ fun AdvancedPlayerScreen(
 
         onDispose {
             componentActivity?.removeOnPictureInPictureModeChangedListener(pipListener)
+        }
+    }
+
+    // Pause playback when leaving screen/backgrounding without PiP
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                    val inPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        activity?.isInPictureInPictureMode == true
+                    } else {
+                        false
+                    }
+                    if (!inPip) {
+                        viewModel.dispatch(PlayerIntent.Pause)
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

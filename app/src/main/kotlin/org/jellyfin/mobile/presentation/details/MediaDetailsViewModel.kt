@@ -312,7 +312,6 @@ class MediaDetailsViewModel(
 
         viewModelScope.launch {
             _effects.send(MediaDetailsEffect.LaunchPlayer(mediaId = mediaId, resumePositionMs = resumeMs))
-            _effects.send(MediaDetailsEffect.NavigateToPlayer(mediaId = mediaId, resumePositionTicks = resumeTicks))
         }
     }
 
@@ -334,7 +333,6 @@ class MediaDetailsViewModel(
 
         viewModelScope.launch {
             _effects.send(MediaDetailsEffect.LaunchPlayer(mediaId = episodeId, resumePositionMs = resumeMs))
-            _effects.send(MediaDetailsEffect.NavigateToPlayer(mediaId = episodeId, resumePositionTicks = resumeTicks))
         }
     }
 

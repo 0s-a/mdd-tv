@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,8 @@ class LibraryViewModel(
     private var currentFilter = LibraryFilter()
     private var activeFilterChips: PersistentSet<LibraryFilterChip> = persistentSetOf()
     private var currentLetter: Char? = null
+    private var initialJob: Job? = null
+    private var loadJob: Job? = null
 
     init {
         loadInitialLibrary()
@@ -44,11 +47,13 @@ class LibraryViewModel(
     fun processIntent(intent: LibraryIntent) {
         when (intent) {
             is LibraryIntent.LoadLibrary -> {
+                initialJob?.cancel()
                 currentLibraryId = intent.parentId
                 if (intent.libraryName.isNotBlank()) currentLibraryName = intent.libraryName
                 loadItems()
             }
             is LibraryIntent.SwitchLibrary -> {
+                initialJob?.cancel()
                 currentLibraryId = intent.libraryId
                 if (intent.libraryName.isNotBlank()) currentLibraryName = intent.libraryName
                 currentLetter = null
@@ -134,13 +139,16 @@ class LibraryViewModel(
     }
 
     private fun loadInitialLibrary() {
-        viewModelScope.launch {
+        initialJob = viewModelScope.launch {
+            if (currentLibraryId.isNotBlank()) return@launch
             _uiState.value = LibraryUiState.Loading
 
             // Dynamically discover library folders from server
             val viewsResult = handshakeRepository.getUserViews()
             val libraries = viewsResult.getOrDefault(emptyList())
             val firstLibrary = libraries.firstOrNull()
+
+            if (currentLibraryId.isNotBlank()) return@launch
 
             if (firstLibrary != null) {
                 currentLibraryId = firstLibrary.id
@@ -155,7 +163,8 @@ class LibraryViewModel(
     private fun loadItems(isRefresh: Boolean = false) {
         if (currentLibraryId.isBlank()) return
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             if (!isRefresh && _uiState.value !is LibraryUiState.Success) {
                 _uiState.value = LibraryUiState.Loading
             } else if (isRefresh && _uiState.value is LibraryUiState.Success) {
