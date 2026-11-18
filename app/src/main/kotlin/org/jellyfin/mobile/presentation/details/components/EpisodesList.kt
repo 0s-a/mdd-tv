@@ -194,18 +194,20 @@ private fun EpisodeItemRow(
                 overflow = TextOverflow.Ellipsis
             )
 
-            if (!episode.runtimeFormatted.isNullOrBlank()) {
+            val runtimeFormatted = episode.runtimeFormatted
+            if (!runtimeFormatted.isNullOrBlank()) {
                 Text(
-                    text = episode.runtimeFormatted,
+                    text = runtimeFormatted,
                     style = MaterialTheme.typography.labelSmall,
                     color = JellyfinColors.TechSky
                 )
             }
 
-            if (episode.overview.isNotBlank()) {
+            val overview = episode.overview.orEmpty()
+            if (overview.isNotBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = episode.overview,
+                    text = overview,
                     style = MaterialTheme.typography.bodySmall,
                     color = JellyfinColors.TextSecondary,
                     maxLines = 2,

@@ -6,7 +6,6 @@ import org.jellyfin.mobile.domain.model.DownloadTaskProgress
 import org.jellyfin.mobile.domain.model.DownloadedMediaItem
 import org.jellyfin.mobile.domain.model.DownloadsTab
 import org.jellyfin.mobile.domain.model.StorageBreakdown
-import org.jellyfin.mobile.domain.model.StorageGaugeInfo
 
 /**
  * MVI Contract for Downloads & Offline Vault Screen.
@@ -31,13 +30,14 @@ data class DownloadsUiState(
     val activeDownloads: ImmutableList<DownloadTaskProgress> = persistentListOf(),
     val downloadedMovies: ImmutableList<DownloadedMediaItem> = persistentListOf(),
     val downloadedSeries: ImmutableList<DownloadedMediaItem> = persistentListOf(),
-    val storageInfo: StorageGaugeInfo = StorageGaugeInfo(0L, 0L, 0L),
     val storageBreakdown: StorageBreakdown = StorageBreakdown(0L, 0L, 0L, 0L),
     val selectedTab: DownloadsTab = DownloadsTab.All,
     val isWifiOnlyEnabled: Boolean = true,
     val isStorageLowWarning: Boolean = false,
     val isDeleting: Boolean = false
-)
+) {
+    val storageInfo: StorageBreakdown get() = storageBreakdown
+}
 
 sealed interface DownloadsEffect {
     data class LaunchPlayer(val mediaId: String, val positionMs: Long = 0L) : DownloadsEffect

@@ -11,10 +11,13 @@ import kotlinx.collections.immutable.persistentListOf
 data class MediaDetails(
     val id: String,
     val title: String,
+    val originalTitle: String? = null,
     val overview: String = "",
     val tagline: String? = null,
     val productionYear: Int? = null,
     val communityRating: Float? = null,
+    val criticRating: Float? = null,
+    val officialRating: String? = null,
     val genres: ImmutableList<String> = persistentListOf(),
     val runTimeTicks: Long? = null,
     val backdropUrl: String? = null,
@@ -26,7 +29,8 @@ data class MediaDetails(
     val episodes: ImmutableList<EpisodeSummary> = persistentListOf(),
     val similarItems: ImmutableList<MediaItemSummary> = persistentListOf(),
     val playbackPositionPercentage: Float = 0f,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val qualityBadges: ImmutableList<String> = persistentListOf()
 ) {
     val durationText: String?
         get() = runTimeTicks?.let { ticks ->
@@ -39,35 +43,26 @@ data class MediaDetails(
                 else -> null
             }
         }
+
+    val runtimeMs: Long get() = (runTimeTicks ?: 0L) / 10_000L
+    val totalDurationMs: Long get() = runtimeMs
+    val resumePositionMs: Long get() = (runtimeMs * (playbackPositionPercentage / 100.0)).toLong()
+    val isWatched: Boolean get() = playbackPositionPercentage >= 95f
+    val runtimeFormatted: String? get() = durationText
+    val contentType: ContentType get() = if (isMovie) ContentType.Movie else ContentType.Series
+    val videoCodec: String? get() = techBadges.videoCodec
+    val videoResolution: String? get() = techBadges.resolution
+    val audioCodec: String? get() = techBadges.audioCodec
+    val audioChannels: String? get() = techBadges.audioChannels
+    val container: String? get() = techBadges.container
+    val bitrateMbps: Float? get() = techBadges.bitrateMbps
+    val fileSizeBytes: Long? get() = techBadges.fileSizeBytes
+    val isDirectPlay: Boolean get() = techBadges.isDirectPlay
 }
 
+typealias MediaDetailDomainModel = MediaDetails
+
 /**
- * Extension bridge to MediaDetailDomainModel for existing UI components.
+ * Extension bridge returning self for unified domain model.
  */
-fun MediaDetails.toMediaDetailDomainModel(): MediaDetailDomainModel {
-    val totalMs = (runTimeTicks ?: 0L) / 10_000L
-    val resumeMs = (totalMs * (playbackPositionPercentage / 100.0)).toLong()
-    return MediaDetailDomainModel(
-        id = id,
-        title = title,
-        overview = overview,
-        tagline = tagline,
-        productionYear = productionYear,
-        communityRating = communityRating,
-        genres = genres,
-        backdropUrl = backdropUrl,
-        posterUrl = posterUrl,
-        runtimeMs = totalMs,
-        runtimeFormatted = durationText,
-        isFavorite = isFavorite,
-        isWatched = playbackPositionPercentage >= 95f,
-        resumePositionMs = resumeMs,
-        totalDurationMs = totalMs,
-        contentType = if (isMovie) ContentType.Movie else ContentType.Series,
-        videoCodec = techBadges.videoCodec,
-        videoResolution = techBadges.resolution,
-        audioCodec = techBadges.audioCodec,
-        audioChannels = techBadges.audioChannels,
-        isDirectPlay = techBadges.isDirectPlay
-    )
-}
+fun MediaDetails.toMediaDetailDomainModel(): MediaDetails = this

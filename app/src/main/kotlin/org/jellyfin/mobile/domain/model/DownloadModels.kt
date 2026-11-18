@@ -15,15 +15,15 @@ data class DownloadedMediaItem(
     val durationFormatted: String? = null,
     val qualityTag: String = "1080p",
     val totalSizeBytes: Long = 0L,
-    val fileSizeBytes: Long = totalSizeBytes,
-    val resolution: String = qualityTag,
     val audioTrack: String? = null,
     val posterUrl: String? = null,
     val isWatched: Boolean = false,
     val isSeries: Boolean = mediaType.equals("Series", ignoreCase = true) || mediaType.equals("Episode", ignoreCase = true)
 ) {
+    val fileSizeBytes: Long get() = totalSizeBytes
+    val resolution: String get() = qualityTag
     val fileSizeGb: Double
-        get() = (if (totalSizeBytes > 0L) totalSizeBytes else fileSizeBytes).toDouble() / (1024.0 * 1024.0 * 1024.0)
+        get() = totalSizeBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
 }
 
 enum class DownloadsTab(val title: String) {
@@ -38,18 +38,6 @@ enum class DownloadsTab(val title: String) {
         val SERIES = Series
         val STORAGE = Storage
     }
-}
-
-data class StorageGaugeInfo(
-    val appUsedBytes: Long,
-    val systemAndOtherUsedBytes: Long,
-    val freeBytes: Long
-) {
-    val totalBytes: Long get() = appUsedBytes + systemAndOtherUsedBytes + freeBytes
-    val appUsedGb: Double get() = appUsedBytes.toDouble() / (1024 * 1024 * 1024)
-    val otherUsedGb: Double get() = systemAndOtherUsedBytes.toDouble() / (1024 * 1024 * 1024)
-    val freeGb: Double get() = freeBytes.toDouble() / (1024 * 1024 * 1024)
-    val totalGb: Double get() = totalBytes.toDouble() / (1024 * 1024 * 1024)
 }
 
 data class DownloadTaskProgress(
@@ -81,6 +69,27 @@ data class StorageBreakdown(
     val jellyfinMediaBytes: Long,
     val otherAppsBytes: Long
 ) {
+    constructor(
+        appUsedBytes: Long,
+        systemAndOtherUsedBytes: Long,
+        freeBytes: Long
+    ) : this(
+        totalDeviceBytes = appUsedBytes + systemAndOtherUsedBytes + freeBytes,
+        freeDeviceBytes = freeBytes,
+        jellyfinMediaBytes = appUsedBytes,
+        otherAppsBytes = systemAndOtherUsedBytes
+    )
+
+    val appUsedBytes: Long get() = jellyfinMediaBytes
+    val systemAndOtherUsedBytes: Long get() = otherAppsBytes
+    val freeBytes: Long get() = freeDeviceBytes
+    val totalBytes: Long get() = totalDeviceBytes
+
+    val appUsedGb: Double get() = jellyfinMediaBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+    val otherUsedGb: Double get() = otherAppsBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+    val freeGb: Double get() = freeDeviceBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+    val totalGb: Double get() = totalDeviceBytes.toDouble() / (1024.0 * 1024.0 * 1024.0)
+
     val jellyfinMediaFormatted: String
         get() = formatBytes(jellyfinMediaBytes)
 
@@ -115,8 +124,6 @@ data class StorageBreakdown(
     }
 }
 
-fun StorageBreakdown.toStorageGaugeInfo(): StorageGaugeInfo = StorageGaugeInfo(
-    appUsedBytes = jellyfinMediaBytes,
-    systemAndOtherUsedBytes = otherAppsBytes,
-    freeBytes = freeDeviceBytes
-)
+typealias StorageGaugeInfo = StorageBreakdown
+
+fun StorageBreakdown.toStorageGaugeInfo(): StorageBreakdown = this

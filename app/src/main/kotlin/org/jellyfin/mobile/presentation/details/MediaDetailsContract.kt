@@ -3,12 +3,9 @@ package org.jellyfin.mobile.presentation.details
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.jellyfin.mobile.domain.model.CastMember
-import org.jellyfin.mobile.domain.model.EpisodeDomainModel
 import org.jellyfin.mobile.domain.model.EpisodeSummary
-import org.jellyfin.mobile.domain.model.MediaDetailDomainModel
 import org.jellyfin.mobile.domain.model.MediaDetails
-import org.jellyfin.mobile.domain.model.SeasonInfo
-import org.jellyfin.mobile.domain.model.toMediaDetailDomainModel
+import org.jellyfin.mobile.domain.model.SeasonSummary
 
 /**
  * MVI Contract for the Media Details Screen.
@@ -39,18 +36,18 @@ sealed interface MediaDetailsUiState {
 
     data class Success(
         val mediaDetails: MediaDetails,
-        val mediaItem: MediaDetailDomainModel = mediaDetails.toMediaDetailDomainModel(),
-        val nextUpEpisode: EpisodeDomainModel? = null,
-        val seasons: ImmutableList<SeasonInfo> = persistentListOf(),
+        val nextUpEpisode: EpisodeSummary? = null,
+        val seasons: ImmutableList<SeasonSummary> = persistentListOf(),
         val selectedSeasonNumber: Int = 1,
         val selectedSeasonId: String? = null,
-        val episodesForSeason: ImmutableList<EpisodeDomainModel> = persistentListOf(),
         val episodesForSelectedSeason: ImmutableList<EpisodeSummary> = persistentListOf(),
         val castList: ImmutableList<CastMember> = mediaDetails.castMembers,
         val isInspectorOpen: Boolean = false,
         val isFavorite: Boolean = mediaDetails.isFavorite,
         val isWatched: Boolean = false,
-        val isLoadingEpisodes: Boolean = false
+        val isLoadingEpisodes: Boolean = false,
+        val mediaItem: MediaDetails = mediaDetails,
+        val episodesForSeason: ImmutableList<EpisodeSummary> = episodesForSelectedSeason
     ) : MediaDetailsUiState
 
     data class Error(

@@ -274,7 +274,7 @@ class MediaDetailsViewModel(
         val targetWatched = !episode.isWatched
 
         val updatedModels = current.episodesForSeason.map {
-            if (it.id == episodeId) it.copy(isWatched = targetWatched) else it
+            if (it.id == episodeId) it.copy(isPlayed = targetWatched) else it
         }.toImmutableList()
 
         _uiState.value = current.copy(episodesForSeason = updatedModels)
@@ -288,7 +288,7 @@ class MediaDetailsViewModel(
                 .onFailure {
                     // Revert on error
                     val reverted = current.episodesForSeason.map {
-                        if (it.id == episodeId) it.copy(isWatched = !targetWatched) else it
+                        if (it.id == episodeId) it.copy(isPlayed = !targetWatched) else it
                     }.toImmutableList()
                     _uiState.value = current.copy(episodesForSeason = reverted)
                     _effects.send(MediaDetailsEffect.ShowToast("فشل تحديث حالة الحلقة"))

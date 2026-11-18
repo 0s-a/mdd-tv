@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.DownloadsTab
-import org.jellyfin.mobile.domain.model.toStorageGaugeInfo
 import org.jellyfin.mobile.domain.repository.DownloadsRepository
 
 /**
@@ -51,14 +50,12 @@ class DownloadsViewModel(
                         it.mediaType.equals("Episode", ignoreCase = true) || it.mediaType.equals("Series", ignoreCase = true)
                     }
 
-                    val gaugeInfo = storage.toStorageGaugeInfo()
-                    val isStorageLow = gaugeInfo.freeGb < 5.0
+                    val isStorageLow = storage.freeGb < 5.0
 
                     _uiState.value = _uiState.value.copy(
                         downloadedMovies = movies.toImmutableList(),
                         downloadedSeries = series.toImmutableList(),
                         storageBreakdown = storage,
-                        storageInfo = gaugeInfo,
                         isStorageLowWarning = isStorageLow,
                         isDeleting = false
                     )
@@ -146,11 +143,9 @@ class DownloadsViewModel(
     private fun refreshData() {
         viewModelScope.launch {
             val storage = downloadsRepository.getStorageBreakdown()
-            val gaugeInfo = storage.toStorageGaugeInfo()
             _uiState.value = _uiState.value.copy(
                 storageBreakdown = storage,
-                storageInfo = gaugeInfo,
-                isStorageLowWarning = gaugeInfo.freeGb < 5.0,
+                isStorageLowWarning = storage.freeGb < 5.0,
                 isDeleting = false
             )
         }

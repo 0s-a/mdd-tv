@@ -238,9 +238,10 @@ fun MediaDetailsScreen(
                                 Text(text = "•", color = JellyfinColors.TextSecondary)
                             }
 
-                            if (!media.runtimeFormatted.isNullOrBlank()) {
+                            val runtimeFormatted = media.runtimeFormatted
+                            if (!runtimeFormatted.isNullOrBlank()) {
                                 Text(
-                                    text = media.runtimeFormatted,
+                                    text = runtimeFormatted,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = JellyfinColors.TextSecondary
                                 )

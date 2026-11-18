@@ -171,10 +171,11 @@ fun NextUpCard(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    if (episode.overview.isNotBlank()) {
+                    val overview = episode.overview.orEmpty()
+                    if (overview.isNotBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = episode.overview,
+                            text = overview,
                             style = MaterialTheme.typography.bodySmall,
                             color = JellyfinColors.TextSecondary,
                             maxLines = 2,
