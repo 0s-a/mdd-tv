@@ -14,6 +14,7 @@ import org.jellyfin.mobile.domain.model.SeasonInfo
 import org.jellyfin.mobile.domain.model.toEpisodeDomainModel
 import org.jellyfin.mobile.domain.model.toMediaDetailDomainModel
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
+import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
 import org.jellyfin.mobile.domain.usecase.GetMediaDetailsUseCase
 
@@ -24,7 +25,8 @@ import org.jellyfin.mobile.domain.usecase.GetMediaDetailsUseCase
 class MediaDetailsViewModel(
     private val getMediaDetailsUseCase: GetMediaDetailsUseCase,
     private val mediaDetailsRepository: MediaDetailsRepository,
-    private val handshakeRepository: HandshakeRepository
+    private val handshakeRepository: HandshakeRepository,
+    private val localProfileRepository: LocalProfileRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MediaDetailsUiState>(MediaDetailsUiState.Loading)
@@ -138,6 +140,9 @@ class MediaDetailsViewModel(
                     val nextUp = episodesForSeasonModels.firstOrNull { !it.isWatched }
                         ?: episodesForSeasonModels.firstOrNull()
 
+                    val isFav = localProfileRepository?.isFavorite(mediaId) ?: details.isFavorite
+                    val isWat = localProfileRepository?.isWatched(mediaId) ?: (details.playbackPositionPercentage >= 95f)
+
                     _uiState.value = MediaDetailsUiState.Success(
                         mediaDetails = details,
                         mediaItem = details.toMediaDetailDomainModel(),
@@ -149,8 +154,8 @@ class MediaDetailsViewModel(
                         episodesForSelectedSeason = episodesForSeasonList.toImmutableList(),
                         castList = details.castMembers,
                         isInspectorOpen = false,
-                        isFavorite = details.isFavorite,
-                        isWatched = details.playbackPositionPercentage >= 95f
+                        isFavorite = isFav,
+                        isWatched = isWat
                     )
                 }
                 .onFailure { error ->
@@ -232,16 +237,19 @@ class MediaDetailsViewModel(
         _uiState.value = current.copy(isFavorite = targetState)
 
         viewModelScope.launch {
-            mediaDetailsRepository.toggleFavorite(mediaId, targetState)
-                .onSuccess {
-                    val msg = if (targetState) "تمت الإضافة إلى المفضلة ❤️" else "تمت الإزالة من المفضلة"
-                    _effects.send(MediaDetailsEffect.ShowToast(msg))
-                }
-                .onFailure {
-                    // Revert state on failure
-                    _uiState.value = current.copy(isFavorite = !targetState)
-                    _effects.send(MediaDetailsEffect.ShowToast("فشل تحديث المفضلة"))
-                }
+            if (localProfileRepository != null) {
+                localProfileRepository.toggleFavorite(
+                    itemId = mediaId,
+                    title = current.mediaDetails.title,
+                    mediaType = if (current.mediaDetails.isMovie) "Movie" else "Series",
+                    releaseYear = current.mediaDetails.productionYear?.toString().orEmpty(),
+                    communityRating = current.mediaDetails.communityRating?.toString().orEmpty()
+                )
+            } else {
+                mediaDetailsRepository.toggleFavorite(mediaId, targetState)
+            }
+            val msg = if (targetState) "تمت الإضافة إلى المفضلة ❤️" else "تمت الإزالة من المفضلة"
+            _effects.send(MediaDetailsEffect.ShowToast(msg))
         }
     }
 
@@ -254,15 +262,22 @@ class MediaDetailsViewModel(
         _uiState.value = current.copy(isWatched = targetState)
 
         viewModelScope.launch {
-            mediaDetailsRepository.markAsWatched(mediaId, targetState)
-                .onSuccess {
-                    val msg = if (targetState) "تم التحديد كمشاهد ✓" else "تمت إزالة علامة المشاهدة"
-                    _effects.send(MediaDetailsEffect.ShowToast(msg))
+            if (localProfileRepository != null) {
+                if (targetState) {
+                    localProfileRepository.addToArchive(
+                        itemId = mediaId,
+                        title = current.mediaDetails.title,
+                        mediaType = if (current.mediaDetails.isMovie) "Movie" else "Series"
+                    )
+                    localProfileRepository.markWatched(mediaId)
+                } else {
+                    localProfileRepository.removeFromArchive(mediaId)
                 }
-                .onFailure {
-                    _uiState.value = current.copy(isWatched = !targetState)
-                    _effects.send(MediaDetailsEffect.ShowToast("فشل تحديث حالة المشاهدة"))
-                }
+            } else {
+                mediaDetailsRepository.markAsWatched(mediaId, targetState)
+            }
+            val msg = if (targetState) "تم التحديد كمشاهد ✓" else "تمت إزالة علامة المشاهدة"
+            _effects.send(MediaDetailsEffect.ShowToast(msg))
         }
     }
 
@@ -301,9 +316,26 @@ class MediaDetailsViewModel(
         if (current !is MediaDetailsUiState.Success) return
         val mediaId = currentMediaId ?: return
 
-        val resumeTicks = if (!fromStart && current.mediaDetails.playbackPositionPercentage > 0f) {
-            val totalTicks = current.mediaDetails.runTimeTicks ?: 0L
-            (totalTicks * (current.mediaDetails.playbackPositionPercentage / 100.0)).toLong()
+        // If it is a series, resolve the playable episode instead of seriesId
+        val targetEpisode = if (!current.mediaDetails.isMovie) {
+            current.mediaDetails.episodes.firstOrNull { !it.isWatched }
+                ?: current.episodesForSelectedSeason.firstOrNull { !it.isWatched }
+                ?: current.mediaDetails.episodes.firstOrNull()
+                ?: current.episodesForSelectedSeason.firstOrNull()
+        } else null
+
+        val targetMediaId = targetEpisode?.id ?: mediaId
+
+        val resumeTicks = if (!fromStart) {
+            if (targetEpisode != null && targetEpisode.playbackPositionPercentage > 0f) {
+                val totalTicks = targetEpisode.runTimeTicks ?: 0L
+                (totalTicks * (targetEpisode.playbackPositionPercentage / 100.0)).toLong()
+            } else if (current.mediaDetails.playbackPositionPercentage > 0f) {
+                val totalTicks = current.mediaDetails.runTimeTicks ?: 0L
+                (totalTicks * (current.mediaDetails.playbackPositionPercentage / 100.0)).toLong()
+            } else {
+                0L
+            }
         } else {
             0L
         }
@@ -311,7 +343,7 @@ class MediaDetailsViewModel(
         val resumeMs = resumeTicks / 10_000L
 
         viewModelScope.launch {
-            _effects.send(MediaDetailsEffect.LaunchPlayer(mediaId = mediaId, resumePositionMs = resumeMs))
+            _effects.send(MediaDetailsEffect.LaunchPlayer(mediaId = targetMediaId, resumePositionMs = resumeMs))
         }
     }
 

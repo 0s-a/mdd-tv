@@ -55,12 +55,18 @@ fun InfuseTechBadgesRow(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val badges = mediaItem.qualityBadges.ifEmpty {
-        val fallback = mutableListOf<String>()
-        fallback.add(mediaItem.videoResolution ?: "4K UHD")
-        mediaItem.videoCodec?.let { fallback.add(it) }
-        mediaItem.audioCodec?.let { fallback.add(it) }
-        if (mediaItem.isDirectPlay) fallback.add("Direct Play 🟢")
-        fallback
+        val list = mutableListOf<String>()
+        val res = mediaItem.videoResolution ?: "4K UHD"
+        list.add(res)
+        if (res.contains("4K", ignoreCase = true)) {
+            list.add("HDR")
+        }
+        val aCodec = mediaItem.audioCodec.orEmpty()
+        val channels = mediaItem.audioChannels.orEmpty()
+        if (channels.contains("5.1") || channels.contains("7.1") || aCodec.contains("5.1") || aCodec.contains("Atmos", ignoreCase = true)) {
+            list.add("صوت محيطي")
+        }
+        list
     }
 
     Column(modifier = modifier.fillMaxWidth()) {

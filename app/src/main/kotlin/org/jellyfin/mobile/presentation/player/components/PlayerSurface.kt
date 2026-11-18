@@ -3,7 +3,7 @@ package org.jellyfin.mobile.presentation.player.components
 import android.view.SurfaceView
 import android.view.ViewGroup
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -58,12 +58,19 @@ fun PlayerSurface(
         if (videoHeight > 0) videoWidth.toFloat() / videoHeight.toFloat() else 16f / 9f
     }
 
-    Box(
+    BoxWithConstraints(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .fillMaxSize()
             .background(JellyfinColors.PureBlack)
     ) {
+        val screenAspect = if (maxHeight.value > 0) maxWidth.value / maxHeight.value else 16f / 9f
+        val fillScale = if (videoAspectRatio > 0f && screenAspect > 0f) {
+            maxOf(screenAspect / videoAspectRatio, videoAspectRatio / screenAspect)
+        } else {
+            1.2f
+        }
+
         val surfaceModifier = when (aspectRatioMode) {
             AspectRatioMode.Fit -> {
                 Modifier
@@ -73,7 +80,7 @@ fun PlayerSurface(
             AspectRatioMode.Fill -> {
                 Modifier
                     .fillMaxSize()
-                    .scale(1.25f)
+                    .scale(fillScale)
             }
             AspectRatioMode.Stretch -> {
                 Modifier.fillMaxSize()

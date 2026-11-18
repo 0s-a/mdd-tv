@@ -14,12 +14,14 @@ import org.jellyfin.mobile.data.repository.DownloadsRepositoryImpl
 import org.jellyfin.mobile.data.repository.HandshakeRepositoryImpl
 import org.jellyfin.mobile.data.repository.HomeRepositoryImpl
 import org.jellyfin.mobile.data.repository.LibraryRepositoryImpl
+import org.jellyfin.mobile.data.repository.LocalProfileRepositoryImpl
 import org.jellyfin.mobile.data.repository.MediaDetailsRepositoryImpl
 import org.jellyfin.mobile.data.repository.SearchRepositoryImpl
 import org.jellyfin.mobile.domain.repository.DownloadsRepository
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.HomeRepository
 import org.jellyfin.mobile.domain.repository.LibraryRepository
+import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
 import org.jellyfin.mobile.domain.repository.SearchRepository
 import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
@@ -134,6 +136,15 @@ val repositoryModule = module {
             dao = get()
         )
     }
+
+    single<LocalProfileRepository> {
+        LocalProfileRepositoryImpl(
+            userProfileDao = get(),
+            localFavoriteDao = get(),
+            watchedArchiveDao = get(),
+            localWatchProgressDao = get()
+        )
+    }
 }
 
 val databaseModule = module {
@@ -146,6 +157,10 @@ val databaseModule = module {
     }
 
     single { get<AppDatabase>().downloadedMediaDao() }
+    single { get<AppDatabase>().userProfileDao() }
+    single { get<AppDatabase>().localFavoriteDao() }
+    single { get<AppDatabase>().watchedArchiveDao() }
+    single { get<AppDatabase>().localWatchProgressDao() }
 }
 
 val useCaseModule = module {
@@ -175,7 +190,8 @@ val viewModelModule = module {
         MediaDetailsViewModel(
             getMediaDetailsUseCase = get(),
             mediaDetailsRepository = get(),
-            handshakeRepository = get()
+            handshakeRepository = get(),
+            localProfileRepository = get()
         )
     }
 
@@ -192,7 +208,8 @@ val viewModelModule = module {
             context = androidContext(),
             apiService = get(),
             sessionManager = get(),
-            handshakeRepository = get()
+            handshakeRepository = get(),
+            localProfileRepository = get()
         )
     }
 

@@ -33,10 +33,14 @@ import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.download.DownloadManagerProvider
 import org.jellyfin.mobile.core.network.SessionManager
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
+import org.jellyfin.mobile.data.remote.dto.MediaSourceDto
 import org.jellyfin.mobile.data.remote.dto.PlaybackProgressDto
 import org.jellyfin.mobile.data.remote.dto.PlaybackStartDto
 import org.jellyfin.mobile.data.remote.dto.PlaybackStopDto
+import android.net.Uri
+import androidx.media3.common.MimeTypes
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
+import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 
 /**
  * PlayerViewModel drives the immersive Media3 video playback engine.
@@ -50,7 +54,8 @@ class PlayerViewModel(
     private val context: Context,
     private val apiService: JellyfinApiService,
     private val sessionManager: SessionManager,
-    private val handshakeRepository: HandshakeRepository
+    private val handshakeRepository: HandshakeRepository,
+    private val localProfileRepository: LocalProfileRepository? = null
 ) : ViewModel() {
 
     private val tag = "PlayerViewModel"
@@ -208,6 +213,7 @@ class PlayerViewModel(
             // 2. Fetch rich media details for titles, streams, and resume point
             val userId = sessionManager.getUserId().orEmpty()
             var resumeMs = startPositionMs
+            var primarySource: MediaSourceDto? = null
 
             if (isOnline) {
                 try {
@@ -226,7 +232,7 @@ class PlayerViewModel(
                         item.productionYear?.toString().orEmpty()
                     }
 
-                    val primarySource = item.mediaSources?.firstOrNull()
+                    primarySource = item.mediaSources?.firstOrNull()
                     currentMediaSourceId = primarySource?.id
                     val videoStream = primarySource?.mediaStreams?.firstOrNull { it.type == "Video" }
                     val audioStream = primarySource?.mediaStreams?.firstOrNull { it.type == "Audio" }
@@ -275,9 +281,32 @@ class PlayerViewModel(
                 streamUrl.append("&api_key=$token")
             }
 
+            val subConfigs = mutableListOf<MediaItem.SubtitleConfiguration>()
+            if (isOnline && currentMediaSourceId != null) {
+                primarySource?.mediaStreams?.filter { it.type.equals("Subtitle", ignoreCase = true) }?.forEach { sub ->
+                    val idx = sub.index ?: return@forEach
+                    val subUrl = StringBuilder("$baseServer/Videos/$mediaId/$currentMediaSourceId/Subtitles/$idx/Stream.vtt")
+                    if (!token.isNullOrBlank()) {
+                        subUrl.append("?api_key=$token")
+                    }
+                    val lang = sub.language ?: "ar"
+                    val label = sub.displayTitle ?: if (lang == "ar") "العربية" else lang.uppercase()
+                    val isDefault = sub.isDefault == true || lang.equals("ar", ignoreCase = true)
+
+                    val config = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl.toString()))
+                        .setMimeType(MimeTypes.TEXT_VTT)
+                        .setLanguage(lang)
+                        .setLabel(label)
+                        .setSelectionFlags(if (isDefault) C.SELECTION_FLAG_DEFAULT else 0)
+                        .build()
+                    subConfigs.add(config)
+                }
+            }
+
             val mediaItem = MediaItem.Builder()
                 .setUri(streamUrl.toString())
                 .setMediaId(mediaId)
+                .setSubtitleConfigurations(subConfigs)
                 .build()
 
             player.setMediaItem(mediaItem)
@@ -548,17 +577,32 @@ class PlayerViewModel(
                         )
                     }
 
-                    // Watch completion threshold (90%)
+                    // Watch completion threshold (90%) - Saved locally to WatchedArchiveEntity
                     if (!hasMarkedPlayed && dur > 0 && pos.toDouble() / dur >= 0.90) {
                         hasMarkedPlayed = true
-                        markPlayedOnServer()
+                        val mId = _uiState.value.mediaId
+                        val title = _uiState.value.mediaTitle
+                        viewModelScope.launch {
+                            localProfileRepository?.addToArchive(mId, title, "Movie")
+                            localProfileRepository?.markWatched(mId)
+                        }
                     }
 
-                    // Periodic session report every 10 seconds
+                    // Periodic local watch progress every 10 seconds - Room DB LocalWatchProgressEntity
                     val now = System.currentTimeMillis()
                     if (now - lastReportTimeMs >= 10_000L) {
                         lastReportTimeMs = now
-                        reportPlaybackProgress("timeupdate")
+                        val mId = _uiState.value.mediaId
+                        val title = _uiState.value.mediaTitle
+                        viewModelScope.launch {
+                            localProfileRepository?.saveWatchProgress(
+                                itemId = mId,
+                                title = title,
+                                positionTicks = pos * 10_000L,
+                                durationTicks = dur * 10_000L,
+                                isPlayed = dur > 0 && pos.toDouble() / dur >= 0.90
+                            )
+                        }
                     }
                 }
             }

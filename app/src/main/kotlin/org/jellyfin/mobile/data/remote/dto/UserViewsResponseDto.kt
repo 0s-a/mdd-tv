@@ -76,8 +76,14 @@ data class MediaSourceDto(
 @Serializable
 data class MediaStreamDto(
     @SerialName("Type") val type: String? = null,
+    @SerialName("Index") val index: Int? = null,
     @SerialName("Codec") val codec: String? = null,
+    @SerialName("Language") val language: String? = null,
     @SerialName("DisplayTitle") val displayTitle: String? = null,
+    @SerialName("IsDefault") val isDefault: Boolean? = null,
+    @SerialName("IsForced") val isForced: Boolean? = null,
+    @SerialName("IsExternal") val isExternal: Boolean? = null,
+    @SerialName("DeliveryUrl") val deliveryUrl: String? = null,
     @SerialName("VideoRange") val videoRange: String? = null,
     @SerialName("VideoRangeType") val videoRangeType: String? = null,
     @SerialName("Width") val width: Int? = null,
