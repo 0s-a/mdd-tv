@@ -48,7 +48,10 @@ class LibraryRepositoryImpl(
                 LibrarySortBy.PREMIERE_DATE -> "PremiereDate,SortName" to "Descending"
             }
 
-            val filters = if (filter.isUnwatchedOnly) "IsUnplayed" else null
+            val filterList = mutableListOf<String>()
+            if (filter.isUnwatchedOnly) filterList.add("IsUnplayed")
+            if (filter.isFavoriteOnly) filterList.add("IsFavorite")
+            val filters = if (filterList.isNotEmpty()) filterList.joinToString(",") else null
             val nameStartsWith = letter?.toString()
 
             val response = apiService.getLibraryItems(
@@ -79,9 +82,15 @@ class LibraryRepositoryImpl(
                 }
             }
 
+            val totalCount = if (filter.is4kOnly || filter.minRating != null) {
+                domainItems.size
+            } else {
+                response.totalRecordCount ?: domainItems.size
+            }
+
             LibraryPage(
                 items = domainItems.toImmutableList(),
-                totalCount = response.totalRecordCount ?: domainItems.size,
+                totalCount = totalCount,
                 startIndex = response.startIndex ?: startIndex
             )
         }

@@ -159,7 +159,8 @@ val viewModelModule = module {
     viewModel {
         HomeViewModel(
             getHomeFeedUseCase = get(),
-            handshakeRepository = get()
+            handshakeRepository = get(),
+            homeRepository = get()
         )
     }
 

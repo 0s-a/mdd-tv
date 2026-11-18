@@ -51,6 +51,17 @@ interface JellyfinApiService {
     ): List<BaseItemDto>
 
     @GET("Users/{userId}/Items")
+    suspend fun getSpotlightItems(
+        @Path("userId") userId: String,
+        @Query("sortBy") sortBy: String = "Random",
+        @Query("includeItemTypes") includeItemTypes: String = "Movie,Series",
+        @Query("imageTypes") imageTypes: String = "Backdrop",
+        @Query("recursive") recursive: Boolean = true,
+        @Query("limit") limit: Int = 5,
+        @Query("fields") fields: String = "PrimaryImageAspectRatio,Overview,CommunityRating,MediaSources,Taglines,Genres"
+    ): ItemsResponseDto
+
+    @GET("Users/{userId}/Items")
     suspend fun getLibraryItems(
         @Path("userId") userId: String,
         @Query("parentId") parentId: String,

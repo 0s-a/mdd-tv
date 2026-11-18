@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.data.mapper.toContinueWatchingItem
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
+import org.jellyfin.mobile.domain.repository.HomeRepository
 import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
 
 /**
@@ -20,7 +21,8 @@ import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
  */
 class HomeViewModel(
     private val getHomeFeedUseCase: GetHomeFeedUseCase,
-    private val handshakeRepository: HandshakeRepository
+    private val handshakeRepository: HandshakeRepository,
+    private val homeRepository: HomeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
@@ -55,10 +57,22 @@ class HomeViewModel(
             }
             is HomeIntent.DismissFromContinueWatching -> {
                 removeContinueWatchingItem(intent.mediaId)
+                viewModelScope.launch {
+                    homeRepository.dismissContinueWatching(intent.mediaId)
+                        .onFailure {
+                            loadData(isRefresh = false)
+                        }
+                }
             }
             is HomeIntent.MarkItemWatched -> {
                 viewModelScope.launch {
-                    _effects.send(HomeEffect.ShowToast("تم التحديد كتمت المشاهدة"))
+                    homeRepository.markItemWatched(intent.mediaId)
+                        .onSuccess {
+                            _effects.send(HomeEffect.ShowToast("تم التحديد كمشاهد ✓"))
+                        }
+                        .onFailure {
+                            _effects.send(HomeEffect.ShowToast("فشل تحديث حالة المشاهدة على السيرفر"))
+                        }
                 }
             }
         }
@@ -93,8 +107,9 @@ class HomeViewModel(
                     val userSession = handshakeRepository.currentSession.value
                     val displayName = userSession?.userName ?: serverInfo?.name ?: "Jellyfin"
 
-                    val heroList = feed.heroItem?.let { persistentListOf(it) }
-                        ?: feed.latestItems.take(5).toImmutableList()
+                    val heroList = feed.heroItems.ifEmpty {
+                        feed.latestItems.take(5).toImmutableList()
+                    }
 
                     val continueWatching = feed.resumeItems.map { it.toContinueWatchingItem() }.toImmutableList()
 

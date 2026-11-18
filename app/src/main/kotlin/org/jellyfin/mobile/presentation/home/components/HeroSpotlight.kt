@@ -77,9 +77,6 @@ fun HeroSpotlight(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(16f / 10f)
-            .semantics(mergeDescendants = true) {
-                contentDescription = talkBackDesc
-            }
     ) {
         // 1. Backdrop Image
         AsyncImage(
@@ -282,19 +279,28 @@ fun HeroSpotlight(
                     repeat(heroItemsCount) { index ->
                         val isSelected = index == currentIndex
                         Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .padding(horizontal = 4.dp)
-                                .size(if (isSelected) 8.dp else 6.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (isSelected) JellyfinColors.PrimaryIndigo
-                                    else JellyfinColors.TextSecondary.copy(alpha = 0.4f)
-                                )
+                                .size(48.dp)
                                 .clickable(
                                     enabled = onSelectIndex != null,
                                     onClick = { onSelectIndex?.invoke(index) }
                                 )
-                        )
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = "الانتقال للعمل المميز رقم ${index + 1}"
+                                }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(if (isSelected) 8.dp else 6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) JellyfinColors.PrimaryIndigo
+                                        else JellyfinColors.TextSecondary.copy(alpha = 0.4f)
+                                    )
+                            )
+                        }
                     }
                 }
             }

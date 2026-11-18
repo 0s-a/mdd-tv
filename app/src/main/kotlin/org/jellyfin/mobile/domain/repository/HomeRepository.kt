@@ -28,4 +28,14 @@ interface HomeRepository {
      * Retrieves recently added items.
      */
     suspend fun getLatestItems(limit: Int = 16, parentId: String? = null): Result<List<MediaItemSummary>>
+
+    /**
+     * Marks an item as watched on the Jellyfin server.
+     */
+    suspend fun markItemWatched(itemId: String): Result<Unit>
+
+    /**
+     * Dismisses an item from Continue Watching by resetting its playback position on the server.
+     */
+    suspend fun dismissContinueWatching(itemId: String): Result<Unit>
 }

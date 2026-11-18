@@ -78,8 +78,22 @@ class LibraryViewModel(
                 loadItems()
             }
             is LibraryIntent.JumpToLetter -> {
-                currentLetter = intent.character
-                loadItems()
+                val current = _uiState.value
+                if (current is LibraryUiState.Success) {
+                    val targetIndex = current.items.indexOfFirst { item ->
+                        val firstChar = item.name.firstOrNull()?.uppercaseChar()
+                        if (intent.character == '#') {
+                            firstChar != null && !firstChar.isLetter()
+                        } else {
+                            firstChar == intent.character.uppercaseChar()
+                        }
+                    }
+                    if (targetIndex >= 0) {
+                        viewModelScope.launch {
+                            _effects.send(LibraryEffect.ScrollToIndex(targetIndex))
+                        }
+                    }
+                }
             }
             is LibraryIntent.ToggleFilter -> {
                 when (intent.filter) {
@@ -97,8 +111,9 @@ class LibraryViewModel(
                         updateChipState(LibraryFilterChip.HIGH_RATING, newMin != null)
                     }
                     LibraryFilterChip.FAVORITES -> {
-                        val isFavActive = activeFilterChips.contains(LibraryFilterChip.FAVORITES)
-                        updateChipState(LibraryFilterChip.FAVORITES, !isFavActive)
+                        val newFav = !currentFilter.isFavoriteOnly
+                        currentFilter = currentFilter.copy(isFavoriteOnly = newFav)
+                        updateChipState(LibraryFilterChip.FAVORITES, newFav)
                     }
                 }
                 loadItems()
@@ -177,7 +192,7 @@ class LibraryViewModel(
                 filter = currentFilter,
                 letter = currentLetter
             ).onSuccess { page ->
-                if (page.items.isEmpty()) {
+                if (page.items.isEmpty() && activeFilterChips.isEmpty() && currentLetter == null) {
                     _uiState.value = LibraryUiState.Empty("هذه المكتبة فارغة حالياً على الخادم")
                 } else {
                     _uiState.value = LibraryUiState.Success(

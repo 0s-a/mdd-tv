@@ -65,6 +65,14 @@ class HomeRepositoryImpl(
 
             coroutineScope {
                 val librariesDeferred = async { apiService.getUserViews(userId).toDomain() }
+                val spotlightDeferred = async {
+                    try {
+                        apiService.getSpotlightItems(userId = userId, limit = 5)
+                            .items?.map { it.toMediaItemSummary() } ?: emptyList()
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                }
                 val resumeDeferred = async {
                     apiService.getResumeItems(userId = userId, limit = 12).items?.map { it.toMediaItemSummary() } ?: emptyList()
                 }
@@ -75,16 +83,34 @@ class HomeRepositoryImpl(
                 val libraries = librariesDeferred.await()
                 val resumeItems = resumeDeferred.await()
                 val latestItems = latestDeferred.await()
-
-                val heroItem = resumeItems.firstOrNull() ?: latestItems.firstOrNull()
+                val spotlight = spotlightDeferred.await().ifEmpty {
+                    val fallback = resumeItems.take(5).ifEmpty { latestItems.take(5) }
+                    fallback
+                }
 
                 HomeFeed(
                     libraries = libraries.toImmutableList(),
-                    heroItem = heroItem,
+                    heroItems = spotlight.toImmutableList(),
                     resumeItems = resumeItems.toImmutableList(),
                     latestItems = latestItems.toImmutableList()
                 )
             }
+        }
+    }
+
+    override suspend fun markItemWatched(itemId: String): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            val userId = requireUserId()
+            apiService.markPlayed(userId = userId, itemId = itemId)
+            Unit
+        }
+    }
+
+    override suspend fun dismissContinueWatching(itemId: String): Result<Unit> = withContext(ioDispatcher) {
+        runCatching {
+            val userId = requireUserId()
+            apiService.markUnplayed(userId = userId, itemId = itemId)
+            Unit
         }
     }
 }

@@ -154,39 +154,66 @@ fun LibraryScreen(
 
                     // 3. Grid + Alphabet Scrubber Area
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            state = gridState,
-                            contentPadding = PaddingValues(
-                                start = JellyfinDimens.SpaceLarge,
-                                end = 36.dp, // Clearance for trailing AlphabetScrubber
-                                top = JellyfinDimens.SpaceSmall,
-                                bottom = 100.dp // Clearance for floating bottom bar
-                            ),
-                            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
-                            verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(
-                                items = state.items,
-                                key = { it.id }
-                            ) { item ->
-                                LibraryPosterCard(
-                                    item = item,
-                                    onClick = {
-                                        viewModel.processIntent(LibraryIntent.OpenMediaDetails(item.id))
-                                    }
+                        if (state.items.isEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "لا توجد أعمال تطابق الفلاتر المحددة",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = JellyfinColors.TextSecondary,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(
+                                    onClick = { viewModel.processIntent(LibraryIntent.ResetFilters) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = JellyfinColors.PrimaryIndigo,
+                                        contentColor = JellyfinColors.TextPrimary
+                                    )
+                                ) {
+                                    Text("إعادة ضبط الفلاتر")
+                                }
                             }
-                        }
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
+                                state = gridState,
+                                contentPadding = PaddingValues(
+                                    start = JellyfinDimens.SpaceLarge,
+                                    end = 36.dp, // Clearance for trailing AlphabetScrubber
+                                    top = JellyfinDimens.SpaceSmall,
+                                    bottom = 100.dp // Clearance for floating bottom bar
+                                ),
+                                horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
+                                verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(
+                                    items = state.items,
+                                    key = { it.id }
+                                ) { item ->
+                                    LibraryPosterCard(
+                                        item = item,
+                                        onClick = {
+                                            viewModel.processIntent(LibraryIntent.OpenMediaDetails(item.id))
+                                        }
+                                    )
+                                }
+                            }
 
-                        // Fast Alphabetical Scrubber along the trailing edge
-                        AlphabetScrubber(
-                            onLetterSelected = { char ->
-                                viewModel.processIntent(LibraryIntent.JumpToLetter(char))
-                            },
-                            modifier = Modifier.align(Alignment.CenterEnd)
-                        )
+                            // Fast Alphabetical Scrubber along the trailing edge
+                            AlphabetScrubber(
+                                onLetterSelected = { char ->
+                                    viewModel.processIntent(LibraryIntent.JumpToLetter(char))
+                                },
+                                modifier = Modifier.align(Alignment.CenterEnd)
+                            )
+                        }
                     }
                 }
             }

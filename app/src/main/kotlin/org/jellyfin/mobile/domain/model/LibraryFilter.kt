@@ -32,5 +32,6 @@ data class LibraryFilter(
     val sortBy: LibrarySortBy = LibrarySortBy.DATE_ADDED,
     val isUnwatchedOnly: Boolean = false,
     val is4kOnly: Boolean = false,
+    val isFavoriteOnly: Boolean = false,
     val minRating: Float? = null
 )

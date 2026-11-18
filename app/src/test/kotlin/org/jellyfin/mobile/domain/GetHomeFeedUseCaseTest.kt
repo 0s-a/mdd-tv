@@ -20,6 +20,8 @@ class GetHomeFeedUseCaseTest {
         override suspend fun getLibraries(): Result<List<LibraryFolder>> = Result.success(emptyList())
         override suspend fun getResumeItems(limit: Int): Result<List<MediaItemSummary>> = Result.success(emptyList())
         override suspend fun getLatestItems(limit: Int, parentId: String?): Result<List<MediaItemSummary>> = Result.success(emptyList())
+        override suspend fun markItemWatched(itemId: String): Result<Unit> = Result.success(Unit)
+        override suspend fun dismissContinueWatching(itemId: String): Result<Unit> = Result.success(Unit)
     }
 
     @Test
