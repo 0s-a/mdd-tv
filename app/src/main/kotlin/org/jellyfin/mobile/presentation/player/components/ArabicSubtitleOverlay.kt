@@ -27,11 +27,9 @@ import androidx.compose.ui.unit.sp
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
- * ArabicSubtitleOverlay provides crystal clear, cinematic Arabic subtitle rendering.
- * Strictly adheres to docs/screens/04_ADVANCED_PLAYER.md:
- * - High-contrast styling with sharp black shadow and translucent backing,
- *   preventing disappearing over bright or snow scenes.
- * - Dynamic height lift: automatically elevates above the HUD bottom capsule when HUD is visible.
+ * ArabicSubtitleOverlay provides cinema-grade Arabic subtitle rendering:
+ * - High-contrast styling with sharp black shadow and soft translucent backing.
+ * - Dynamic height lift: smoothly elevates above the bottom HUD when visible.
  * - Direct visual legibility complying with WCAG 2.1 AAA.
  */
 @Composable
@@ -42,7 +40,7 @@ fun ArabicSubtitleOverlay(
     modifier: Modifier = Modifier
 ) {
     val bottomPadding by animateDpAsState(
-        targetValue = if (isHudVisible) 130.dp else 36.dp,
+        targetValue = if (isHudVisible) 140.dp else 40.dp,
         animationSpec = tween(250),
         label = "subtitle_lift"
     )
@@ -61,21 +59,21 @@ fun ArabicSubtitleOverlay(
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(JellyfinDimens.RadiusSmall))
-                    .background(Color(0xCC000000))
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xB3000000))
                     .padding(horizontal = 16.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = subtitleText.orEmpty(),
                     style = TextStyle(
                         color = Color(0xFFFFFFFF),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        lineHeight = 28.sp,
+                        lineHeight = 30.sp,
                         shadow = Shadow(
                             color = Color(0xFF000000),
-                            offset = Offset(2f, 2f),
+                            offset = Offset(0f, 2f),
                             blurRadius = 6f
                         )
                     )

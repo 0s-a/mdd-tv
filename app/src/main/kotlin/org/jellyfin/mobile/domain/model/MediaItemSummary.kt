@@ -29,4 +29,8 @@ data class MediaItemSummary(
     val backdropUrl: String? get() = backdropImageUrl
     val posterUrl: String? get() = posterImageUrl
     val isWatched: Boolean get() = isPlayed
+    val isFolder: Boolean get() = type.equals("Folder", ignoreCase = true)
+    val isSeries: Boolean get() = type.equals("Series", ignoreCase = true)
+    val isMovie: Boolean get() = type.equals("Movie", ignoreCase = true)
+    val isAudio: Boolean get() = type.equals("Audio", ignoreCase = true)
 }

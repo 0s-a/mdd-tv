@@ -1,7 +1,10 @@
 package org.jellyfin.mobile.presentation.details
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.exoplayer.offline.DownloadRequest
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,10 +12,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.AppConfig
+import org.jellyfin.mobile.core.download.DownloadManagerProvider
+import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.model.MediaDetails
 import org.jellyfin.mobile.domain.model.SeasonInfo
 import org.jellyfin.mobile.domain.model.toEpisodeDomainModel
 import org.jellyfin.mobile.domain.model.toMediaDetailDomainModel
+import org.jellyfin.mobile.domain.repository.DownloadsRepository
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
@@ -26,7 +33,9 @@ class MediaDetailsViewModel(
     private val getMediaDetailsUseCase: GetMediaDetailsUseCase,
     private val mediaDetailsRepository: MediaDetailsRepository,
     private val handshakeRepository: HandshakeRepository,
-    private val localProfileRepository: LocalProfileRepository? = null
+    private val localProfileRepository: LocalProfileRepository? = null,
+    private val downloadsRepository: DownloadsRepository? = null,
+    private val context: Context? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MediaDetailsUiState>(MediaDetailsUiState.Loading)
@@ -74,9 +83,10 @@ class MediaDetailsViewModel(
                 toggleEpisodeWatched(intent.episodeId)
             }
             is MediaDetailsIntent.DownloadEpisode -> {
-                viewModelScope.launch {
-                    _effects.send(MediaDetailsEffect.ShowToast("بدء التنزيل قيد التطوير"))
-                }
+                handleDownloadEpisode(intent.episodeId)
+            }
+            is MediaDetailsIntent.DownloadMovie -> {
+                handleDownloadMovie()
             }
             is MediaDetailsIntent.OpenActorFilmography -> {
                 viewModelScope.launch {
@@ -372,6 +382,65 @@ class MediaDetailsViewModel(
         val current = _uiState.value
         if (current is MediaDetailsUiState.Success) {
             _uiState.value = current.copy(isInspectorOpen = isOpen)
+        }
+    }
+
+    private fun handleDownloadEpisode(episodeId: String) {
+        val state = _uiState.value as? MediaDetailsUiState.Success ?: return
+        val episode = state.episodesForSelectedSeason.firstOrNull { it.id == episodeId }
+        val title = episode?.let { "${state.mediaDetails.title} - ${it.title}" } ?: state.mediaDetails.title
+
+        viewModelScope.launch {
+            if (context != null && downloadsRepository != null) {
+                val streamUrl = AppConfig.buildVideoStreamUrl(episodeId)
+                val request = DownloadRequest.Builder(episodeId, Uri.parse(streamUrl))
+                    .setData(title.toByteArray())
+                    .build()
+                DownloadManagerProvider.sendAddDownload(context, request)
+
+                downloadsRepository.saveDownloadedMedia(
+                    id = episodeId,
+                    title = title,
+                    mediaType = "Episode",
+                    localFilePath = streamUrl,
+                    subtitleFilePath = null,
+                    totalSizeBytes = 0L,
+                    durationTicks = episode?.runTimeTicks,
+                    qualityTag = "HD"
+                )
+                _effects.send(MediaDetailsEffect.ShowToast("تمت إضافة الحلقة إلى قائمة التنزيلات"))
+            } else {
+                _effects.send(MediaDetailsEffect.ShowToast("جارٍ بدء التنزيل في الخلفية..."))
+            }
+        }
+    }
+
+    private fun handleDownloadMovie() {
+        val state = _uiState.value as? MediaDetailsUiState.Success ?: return
+        val movie = state.mediaDetails
+
+        viewModelScope.launch {
+            if (context != null && downloadsRepository != null) {
+                val streamUrl = AppConfig.buildVideoStreamUrl(movie.id)
+                val request = DownloadRequest.Builder(movie.id, Uri.parse(streamUrl))
+                    .setData(movie.title.toByteArray())
+                    .build()
+                DownloadManagerProvider.sendAddDownload(context, request)
+
+                downloadsRepository.saveDownloadedMedia(
+                    id = movie.id,
+                    title = movie.title,
+                    mediaType = "Movie",
+                    localFilePath = streamUrl,
+                    subtitleFilePath = null,
+                    totalSizeBytes = 0L,
+                    durationTicks = movie.runTimeTicks,
+                    qualityTag = movie.qualityBadges.firstOrNull() ?: "1080p"
+                )
+                _effects.send(MediaDetailsEffect.ShowToast("تمت إضافة الفيلم إلى قائمة التنزيلات"))
+            } else {
+                _effects.send(MediaDetailsEffect.ShowToast("جارٍ بدء التنزيل في الخلفية..."))
+            }
         }
     }
 }

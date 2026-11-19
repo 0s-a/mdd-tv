@@ -236,21 +236,24 @@ fun AdvancedPlayerScreen(
 
         // Hide gesture & HUD controls completely while inside Picture-in-Picture
         if (!isInPiP) {
-            // 3. Touch Gesture Engine Layer
+            // 3. Touch Gesture Engine Layer (MX Player Style)
             PlayerGestureLayer(
                 isControlsLocked = uiState.isControlsLocked,
                 isHudVisible = uiState.isHudVisible,
                 isPlaying = uiState.isPlaying,
                 currentVolume = uiState.volume,
                 currentBrightness = uiState.brightness,
+                currentPositionMs = uiState.currentPositionMs,
+                totalDurationMs = uiState.totalDurationMs,
                 onVolumeChange = { viewModel.dispatch(PlayerIntent.SetVolume(it)) },
                 onBrightnessChange = { viewModel.dispatch(PlayerIntent.SetBrightness(it)) },
                 onFastSeekBy = { viewModel.dispatch(PlayerIntent.FastSeekBy(it)) },
+                onSeekTo = { viewModel.dispatch(PlayerIntent.SeekTo(it)) },
                 onToggleHud = { viewModel.dispatch(PlayerIntent.ToggleHudVisibility) },
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 4. Floating Frosted Glass HUD Overlay
+            // 4. Floating Frosted Glass HUD Overlay (MX Player Pro Cinematic HUD)
             PlayerHudOverlay(
                 uiState = uiState.copy(isInPictureInPicture = isInPiP),
                 onNavigateBack = {
@@ -267,6 +270,9 @@ fun AdvancedPlayerScreen(
                 onSetPlaybackSpeed = { viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(it)) },
                 onSetAspectRatio = { viewModel.dispatch(PlayerIntent.SetAspectRatio(it)) },
                 onEnterPiP = { viewModel.dispatch(PlayerIntent.EnterPictureInPicture) },
+                onPlayNextEpisode = if (!uiState.nextEpisodeId.isNullOrBlank()) {
+                    { viewModel.dispatch(PlayerIntent.PlayNextEpisode) }
+                } else null,
                 modifier = Modifier.fillMaxSize()
             )
         }

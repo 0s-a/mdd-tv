@@ -51,6 +51,9 @@ object JellyfinColors {
 
     /** Muted contrast text for codecs, container sizes, and audio stream details (4.6:1, AA) */
     val TextMuted: Color = Color(0xFF8899AA)
+    val TextTertiary: Color = TextMuted
+    val GlassBorder: Color = BorderGlass
+    val SurfaceGlassActive: Color = Color(0xCC1E293B)
 
     // 4. Alert & Feedback States
     val Error: Color = Color(0xFFEF4444)
@@ -73,3 +76,6 @@ val WatchedEmerald = JellyfinColors.SuccessEmerald
 val TextPrimary = JellyfinColors.TextPrimary
 val TextSecondary = JellyfinColors.TextSecondary
 val TextMuted = JellyfinColors.TextMuted
+val TextTertiary = JellyfinColors.TextTertiary
+val GlassBorder = JellyfinColors.GlassBorder
+val SurfaceGlassActive = JellyfinColors.SurfaceGlassActive

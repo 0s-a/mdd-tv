@@ -1,5 +1,6 @@
 package org.jellyfin.mobile.presentation.downloads
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.collections.immutable.toImmutableList
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.core.download.DownloadManagerProvider
 import org.jellyfin.mobile.domain.model.DownloadsTab
 import org.jellyfin.mobile.domain.repository.DownloadsRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
@@ -21,7 +23,8 @@ import org.jellyfin.mobile.domain.repository.LocalProfileRepository
  */
 class DownloadsViewModel(
     private val downloadsRepository: DownloadsRepository,
-    private val localProfileRepository: LocalProfileRepository? = null
+    private val localProfileRepository: LocalProfileRepository? = null,
+    private val context: Context? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DownloadsUiState())
@@ -78,16 +81,19 @@ class DownloadsViewModel(
                 _uiState.value = _uiState.value.copy(isWifiOnlyEnabled = !current)
             }
             is DownloadsIntent.PauseDownload -> {
+                context?.let { DownloadManagerProvider.sendPauseDownloads(it) }
                 viewModelScope.launch {
                     _effects.send(DownloadsEffect.ShowToast("تم إيقاف التنزيل مؤقتاً"))
                 }
             }
             is DownloadsIntent.ResumeDownload -> {
+                context?.let { DownloadManagerProvider.sendResumeDownloads(it) }
                 viewModelScope.launch {
                     _effects.send(DownloadsEffect.ShowToast("جارٍ استئناف التنزيل..."))
                 }
             }
             is DownloadsIntent.CancelDownload -> {
+                context?.let { DownloadManagerProvider.sendRemoveDownload(it, intent.mediaId) }
                 viewModelScope.launch {
                     _effects.send(DownloadsEffect.ShowToast("تم إلغاء التنزيل"))
                 }

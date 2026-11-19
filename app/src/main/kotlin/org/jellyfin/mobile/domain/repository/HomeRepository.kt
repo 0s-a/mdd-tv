@@ -25,6 +25,11 @@ interface HomeRepository {
     suspend fun getResumeItems(limit: Int = 12): Result<List<MediaItemSummary>>
 
     /**
+     * Retrieves next up episodes for in-progress series.
+     */
+    suspend fun getNextUpItems(limit: Int = 16): Result<List<MediaItemSummary>> = Result.success(emptyList())
+
+    /**
      * Retrieves recently added items.
      */
     suspend fun getLatestItems(limit: Int = 16, parentId: String? = null): Result<List<MediaItemSummary>>

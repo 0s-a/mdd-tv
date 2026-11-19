@@ -4,6 +4,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
+import org.jellyfin.mobile.domain.model.BreadcrumbItem
 import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.jellyfin.mobile.domain.model.LibraryFilterChip
 import org.jellyfin.mobile.domain.model.LibraryFolder
@@ -29,6 +30,11 @@ sealed interface LibraryIntent {
     data class QuickPlayMedia(val mediaId: String) : LibraryIntent
     data object ResetFilters : LibraryIntent
     data object Refresh : LibraryIntent
+    data object LoadNextPage : LibraryIntent
+    data class NavigateIntoFolder(val folderId: String, val folderName: String) : LibraryIntent
+    data object NavigateBackInHierarchy : LibraryIntent
+    data class JumpToBreadcrumb(val targetIndex: Int) : LibraryIntent
+    data object ToggleViewMode : LibraryIntent
 }
 
 typealias LibraryBrowserIntent = LibraryIntent
@@ -48,9 +54,15 @@ sealed interface LibraryUiState {
         val isSortAscending: Boolean = false,
         val activeFilters: ImmutableSet<LibraryFilterChip> = persistentSetOf(),
         val selectedLetter: Char? = null,
-        val isRefreshing: Boolean = false
+        val isRefreshing: Boolean = false,
+        val isLoadingMore: Boolean = false,
+        val hasMoreItems: Boolean = true,
+        val breadcrumbs: ImmutableList<BreadcrumbItem> = persistentListOf(),
+        val isHierarchicalMode: Boolean = true
     ) : LibraryUiState {
         val totalItemCount: Int get() = totalCount
+        val isAtRoot: Boolean get() = breadcrumbs.size <= 1
+        val currentFolderTitle: String get() = breadcrumbs.lastOrNull()?.name ?: currentLibraryName
     }
 
     data class Error(

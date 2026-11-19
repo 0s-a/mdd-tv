@@ -36,7 +36,8 @@ class LibraryRepositoryImpl(
         filter: LibraryFilter,
         letter: Char?,
         startIndex: Int,
-        limit: Int
+        limit: Int,
+        isHierarchical: Boolean
     ): Result<LibraryPage> = withContext(ioDispatcher) {
         runCatching {
             val userId = requireUserId()
@@ -54,17 +55,28 @@ class LibraryRepositoryImpl(
             val filters = if (filterList.isNotEmpty()) filterList.joinToString(",") else null
             val nameStartsWith = letter?.toString()
 
+            // Smart Scoped Recursion:
+            // When quality or rating filters are active, recurse transparently within the current folder
+            val isScopedFilterActive = filter.is4kOnly || filter.minRating != null
+            val shouldRecurse = if (isScopedFilterActive) true else !isHierarchical
+
+            val itemTypes = if (shouldRecurse) {
+                "Movie,Series,Episode,Video,Audio"
+            } else {
+                "Folder,Series,Movie,Episode,Video,Audio"
+            }
+
             val response = apiService.getLibraryItems(
                 userId = userId,
                 parentId = parentId,
                 sortBy = sortBy,
                 sortOrder = sortOrder,
-                includeItemTypes = "Movie,Series",
+                includeItemTypes = itemTypes,
                 filters = filters,
                 startIndex = startIndex,
                 limit = limit,
                 nameStartsWith = nameStartsWith,
-                recursive = true
+                recursive = shouldRecurse
             )
 
             var domainItems = response.items?.map { it.toMediaItemSummary() } ?: emptyList()

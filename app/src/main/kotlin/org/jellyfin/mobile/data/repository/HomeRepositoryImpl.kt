@@ -51,6 +51,14 @@ class HomeRepositoryImpl(
         }
     }
 
+    override suspend fun getNextUpItems(limit: Int): Result<List<MediaItemSummary>> = withContext(ioDispatcher) {
+        runCatching {
+            val userId = requireUserId()
+            val response = apiService.getNextUpEpisodes(userId = userId, limit = limit)
+            response.items?.map { it.toMediaItemSummary() } ?: emptyList()
+        }
+    }
+
     override suspend fun getLatestItems(limit: Int, parentId: String?): Result<List<MediaItemSummary>> = withContext(ioDispatcher) {
         runCatching {
             val userId = requireUserId()
@@ -76,12 +84,21 @@ class HomeRepositoryImpl(
                 val resumeDeferred = async {
                     apiService.getResumeItems(userId = userId, limit = 12).items?.map { it.toMediaItemSummary() } ?: emptyList()
                 }
+                val nextUpDeferred = async {
+                    try {
+                        apiService.getNextUpEpisodes(userId = userId, limit = 16)
+                            .items?.map { it.toMediaItemSummary() } ?: emptyList()
+                    } catch (e: Exception) {
+                        emptyList()
+                    }
+                }
                 val latestDeferred = async {
                     apiService.getLatestItems(userId = userId, limit = 16).map { it.toMediaItemSummary() }
                 }
 
                 val libraries = librariesDeferred.await()
                 val resumeItems = resumeDeferred.await()
+                val nextUpItems = nextUpDeferred.await()
                 val latestItems = latestDeferred.await()
                 val spotlight = spotlightDeferred.await().ifEmpty {
                     val fallback = resumeItems.take(5).ifEmpty { latestItems.take(5) }
@@ -92,6 +109,7 @@ class HomeRepositoryImpl(
                     libraries = libraries.toImmutableList(),
                     heroItems = spotlight.toImmutableList(),
                     resumeItems = resumeItems.toImmutableList(),
+                    nextUpItems = nextUpItems.toImmutableList(),
                     latestItems = latestItems.toImmutableList()
                 )
             }

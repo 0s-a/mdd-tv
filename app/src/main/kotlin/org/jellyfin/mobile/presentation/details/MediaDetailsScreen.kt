@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.rounded.Check
@@ -323,6 +324,28 @@ fun MediaDetailsScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (state.isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary
                                 )
+                            }
+
+                            if (media.isMovie) {
+                                OutlinedButton(
+                                    onClick = { viewModel.processIntent(MediaDetailsIntent.DownloadMovie) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Download,
+                                        contentDescription = null,
+                                        tint = JellyfinColors.TechSky,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "تنزيل",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = JellyfinColors.TechSky
+                                    )
+                                }
                             }
                         }
 

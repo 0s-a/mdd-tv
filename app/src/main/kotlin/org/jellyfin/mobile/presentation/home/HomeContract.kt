@@ -31,6 +31,7 @@ sealed interface HomeUiState {
         val ambientColor: Color = Color.Unspecified,
         val libraries: ImmutableList<LibraryFolder>,
         val continueWatchingItems: ImmutableList<ContinueWatchingItem>,
+        val nextUpItems: ImmutableList<MediaItemSummary> = kotlinx.collections.immutable.persistentListOf(),
         val recentlyAddedItems: ImmutableList<MediaItemSummary>,
         val userDisplayName: String = "",
         val userAvatarKey: String = "avatar_1",

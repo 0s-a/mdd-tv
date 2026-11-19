@@ -15,14 +15,16 @@ class GetLibraryItemsUseCase(
         filter: LibraryFilter = LibraryFilter(),
         letter: Char? = null,
         startIndex: Int = 0,
-        limit: Int = 100
+        limit: Int = 100,
+        isHierarchical: Boolean = true
     ): Result<LibraryPage> {
         return libraryRepository.getLibraryItems(
             parentId = parentId,
             filter = filter,
             letter = letter,
             startIndex = startIndex,
-            limit = limit
+            limit = limit,
+            isHierarchical = isHierarchical
         )
     }
 }

@@ -178,6 +178,20 @@ fun HomeScreen(
                         }
                     }
 
+                    // Next Up Row (الحلقات التالية للمسلسلات)
+                    if (state.nextUpItems.isNotEmpty()) {
+                        item(key = "next_up_row") {
+                            Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
+                            RecentlyAddedRow(
+                                items = state.nextUpItems,
+                                title = "الحلقات التالية",
+                                onItemClick = { mediaId ->
+                                    viewModel.processIntent(HomeIntent.OpenMediaDetails(mediaId))
+                                }
+                            )
+                        }
+                    }
+
                     // Recently Added Row (2:3 posters)
                     if (state.recentlyAddedItems.isNotEmpty()) {
                         item(key = "recently_added_row") {

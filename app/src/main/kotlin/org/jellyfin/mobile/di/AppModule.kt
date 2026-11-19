@@ -36,6 +36,7 @@ import org.jellyfin.mobile.presentation.onboarding.OnboardingViewModel
 import org.jellyfin.mobile.presentation.player.PlayerViewModel
 import org.jellyfin.mobile.presentation.profile.ProfileViewModel
 import org.jellyfin.mobile.presentation.search.SearchViewModel
+import org.jellyfin.mobile.presentation.splash.SplashViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -195,7 +196,9 @@ val viewModelModule = module {
             getMediaDetailsUseCase = get(),
             mediaDetailsRepository = get(),
             handshakeRepository = get(),
-            localProfileRepository = get()
+            localProfileRepository = get(),
+            downloadsRepository = get(),
+            context = androidContext()
         )
     }
 
@@ -220,7 +223,8 @@ val viewModelModule = module {
     viewModel {
         DownloadsViewModel(
             downloadsRepository = get(),
-            localProfileRepository = get()
+            localProfileRepository = get(),
+            context = androidContext()
         )
     }
 
@@ -232,6 +236,13 @@ val viewModelModule = module {
 
     viewModel {
         ProfileViewModel(
+            localProfileRepository = get()
+        )
+    }
+
+    viewModel {
+        SplashViewModel(
+            handshakeRepository = get(),
             localProfileRepository = get()
         )
     }

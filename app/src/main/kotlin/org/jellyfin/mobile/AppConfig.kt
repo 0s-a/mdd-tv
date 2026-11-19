@@ -20,4 +20,6 @@ object AppConfig {
     // 3. خيارات مشغل الفيديو العتادي (Hardware Player Engine)
     const val FORCE_HARDWARE_DECODE = true
     const val ENABLE_DIRECT_PLAY = true
+
+    fun buildVideoStreamUrl(mediaId: String): String = "${SERVER_URL.trimEnd('/')}/Videos/$mediaId/stream?static=true"
 }

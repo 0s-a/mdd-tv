@@ -47,9 +47,12 @@ import org.jellyfin.mobile.ui.components.GlassmorphicCard
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
+import org.jellyfin.mobile.presentation.splash.SplashScreen
+import org.jellyfin.mobile.presentation.splash.SplashViewModel
 import org.koin.androidx.compose.koinViewModel
 
 sealed class Screen(val route: String) {
+    data object Splash : Screen("splash")
     data object Onboarding : Screen("onboarding")
     data object Profile : Screen("profile")
     data object Home : Screen(NavigationTab.HOME.route)
@@ -86,7 +89,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun MainNavGraph(
     navController: NavHostController,
-    startDestination: String = Screen.Home.route,
+    startDestination: String = Screen.Splash.route,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -94,6 +97,28 @@ fun MainNavGraph(
         startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Screen.Splash.route) {
+            val splashViewModel: SplashViewModel = koinViewModel()
+            SplashScreen(
+                viewModel = splashViewModel,
+                onNavigateToHome = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToOnboarding = {
+                    navController.navigate(Screen.Onboarding.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                },
+                onNavigateToDownloads = {
+                    navController.navigate(Screen.Downloads.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Screen.Onboarding.route) {
             val onboardingViewModel: OnboardingViewModel = koinViewModel()
             OnboardingScreen(

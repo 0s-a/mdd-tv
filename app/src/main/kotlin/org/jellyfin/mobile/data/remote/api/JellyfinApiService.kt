@@ -50,6 +50,13 @@ interface JellyfinApiService {
         @Query("fields") fields: String = "PrimaryImageAspectRatio,Overview,CommunityRating"
     ): List<BaseItemDto>
 
+    @GET("Shows/NextUp")
+    suspend fun getNextUpEpisodes(
+        @Query("userId") userId: String,
+        @Query("limit") limit: Int = 16,
+        @Query("fields") fields: String = "PrimaryImageAspectRatio,SeriesInfo,DateCreated,MediaStreams,Overview"
+    ): ItemsResponseDto
+
     @GET("Users/{userId}/Items")
     suspend fun getSpotlightItems(
         @Path("userId") userId: String,

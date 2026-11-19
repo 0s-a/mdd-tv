@@ -24,6 +24,7 @@ sealed interface MediaDetailsIntent {
     data class PlayEpisode(val episodeId: String) : MediaDetailsIntent
     data class ToggleEpisodeWatched(val episodeId: String) : MediaDetailsIntent
     data class DownloadEpisode(val episodeId: String) : MediaDetailsIntent
+    data object DownloadMovie : MediaDetailsIntent
     data class OpenActorFilmography(val personId: String, val personName: String) : MediaDetailsIntent
     data object OpenTechInspector : MediaDetailsIntent
     data object DismissTechInspector : MediaDetailsIntent

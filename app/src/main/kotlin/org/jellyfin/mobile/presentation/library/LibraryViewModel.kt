@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.domain.model.BreadcrumbItem
 import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.jellyfin.mobile.domain.model.LibraryFilterChip
 import org.jellyfin.mobile.domain.model.LibraryFolder
@@ -40,8 +41,11 @@ class LibraryViewModel(
     val effects = _effects.receiveAsFlow()
 
     private var currentLibraryId: String = ""
+    private var activeParentId: String = ""
     private var currentLibraryName: String = "المكتبة"
     private var cachedLibraries: ImmutableList<LibraryFolder> = persistentListOf()
+    private var breadcrumbTrail = persistentListOf<BreadcrumbItem>()
+    private var isHierarchicalMode: Boolean = true
     private var currentFilter = LibraryFilter()
     private var activeFilterChips: PersistentSet<LibraryFilterChip> = persistentSetOf()
     private var currentLetter: Char? = null
@@ -57,14 +61,52 @@ class LibraryViewModel(
             is LibraryIntent.LoadLibrary -> {
                 initialJob?.cancel()
                 currentLibraryId = intent.parentId
+                activeParentId = intent.parentId
                 if (intent.libraryName.isNotBlank()) currentLibraryName = intent.libraryName
+                breadcrumbTrail = persistentListOf(
+                    BreadcrumbItem(id = intent.parentId, name = currentLibraryName, level = 0)
+                )
                 loadItems()
             }
             is LibraryIntent.SwitchLibrary -> {
                 initialJob?.cancel()
                 currentLibraryId = intent.libraryId
-                if (intent.libraryName.isNotBlank()) currentLibraryName = intent.libraryName
+                activeParentId = intent.libraryId
+                currentLibraryName = if (intent.libraryName.isNotBlank()) intent.libraryName else "المكتبة"
+                breadcrumbTrail = persistentListOf(
+                    BreadcrumbItem(id = intent.libraryId, name = currentLibraryName, level = 0)
+                )
                 currentLetter = null
+                loadItems()
+            }
+            is LibraryIntent.NavigateIntoFolder -> {
+                activeParentId = intent.folderId
+                breadcrumbTrail = (breadcrumbTrail + BreadcrumbItem(
+                    id = intent.folderId,
+                    name = intent.folderName,
+                    level = breadcrumbTrail.size
+                )).toPersistentList()
+                currentLetter = null
+                loadItems()
+            }
+            is LibraryIntent.NavigateBackInHierarchy -> {
+                if (breadcrumbTrail.size > 1) {
+                    breadcrumbTrail = breadcrumbTrail.dropLast(1).toPersistentList()
+                    activeParentId = breadcrumbTrail.last().id
+                    currentLetter = null
+                    loadItems()
+                }
+            }
+            is LibraryIntent.JumpToBreadcrumb -> {
+                if (intent.targetIndex in 0 until breadcrumbTrail.size) {
+                    breadcrumbTrail = breadcrumbTrail.take(intent.targetIndex + 1).toPersistentList()
+                    activeParentId = breadcrumbTrail.last().id
+                    currentLetter = null
+                    loadItems()
+                }
+            }
+            is LibraryIntent.ToggleViewMode -> {
+                isHierarchicalMode = !isHierarchicalMode
                 loadItems()
             }
             is LibraryIntent.ChangeSort -> {
@@ -135,6 +177,9 @@ class LibraryViewModel(
             is LibraryIntent.Refresh -> {
                 loadItems(isRefresh = true)
             }
+            is LibraryIntent.LoadNextPage -> {
+                loadNextPage()
+            }
             is LibraryIntent.OpenMediaDetails -> {
                 viewModelScope.launch {
                     _effects.send(LibraryEffect.NavigateToDetails(intent.mediaId))
@@ -176,7 +221,11 @@ class LibraryViewModel(
 
             if (firstLibrary != null) {
                 currentLibraryId = firstLibrary.id
-                currentLibraryName = "المكتبة"
+                activeParentId = firstLibrary.id
+                currentLibraryName = firstLibrary.name
+                breadcrumbTrail = persistentListOf(
+                    BreadcrumbItem(id = firstLibrary.id, name = firstLibrary.name, level = 0)
+                )
                 loadItems()
             } else {
                 _uiState.value = LibraryUiState.Empty("لا توجد مكتبات وسائط متوفرة على السيرفر")
@@ -186,6 +235,8 @@ class LibraryViewModel(
 
     private fun loadItems(isRefresh: Boolean = false) {
         if (currentLibraryId.isBlank()) return
+
+        val queryParentId = if (isHierarchicalMode) activeParentId.ifBlank { currentLibraryId } else currentLibraryId
 
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
@@ -197,9 +248,12 @@ class LibraryViewModel(
             }
 
             getLibraryItemsUseCase(
-                parentId = currentLibraryId,
+                parentId = queryParentId,
                 filter = currentFilter,
-                letter = currentLetter
+                letter = currentLetter,
+                startIndex = 0,
+                limit = 60,
+                isHierarchical = isHierarchicalMode
             ).onSuccess { page ->
                 val filteredItems = if (currentFilter.isFavoriteOnly && localProfileRepository != null) {
                     page.items.filter { localProfileRepository.isFavorite(it.id) }.toImmutableList()
@@ -208,20 +262,24 @@ class LibraryViewModel(
                 }
 
                 if (filteredItems.isEmpty() && activeFilterChips.isEmpty() && currentLetter == null) {
-                    _uiState.value = LibraryUiState.Empty("المكتبة فارغة حالياً على الخادم")
+                    _uiState.value = LibraryUiState.Empty("هذا القسم فارغ حالياً على الخادم")
                 } else {
                     _uiState.value = LibraryUiState.Success(
                         items = filteredItems,
-                        totalCount = filteredItems.size,
+                        totalCount = page.totalCount,
                         activeFilter = currentFilter,
                         currentLibraryId = currentLibraryId,
-                        currentLibraryName = "المكتبة",
+                        currentLibraryName = currentLibraryName,
                         availableLibraries = cachedLibraries,
                         selectedLibraryId = currentLibraryId,
                         selectedSort = currentFilter.sortBy,
                         activeFilters = activeFilterChips,
                         selectedLetter = currentLetter,
-                        isRefreshing = false
+                        isRefreshing = false,
+                        isLoadingMore = false,
+                        hasMoreItems = filteredItems.size < page.totalCount && filteredItems.isNotEmpty(),
+                        breadcrumbs = breadcrumbTrail,
+                        isHierarchicalMode = isHierarchicalMode
                     )
                 }
             }.onFailure { error ->
@@ -229,6 +287,54 @@ class LibraryViewModel(
                     message = error.localizedMessage ?: "حدث خطأ أثناء تحميل محتوى المكتبة"
                 )
             }
+        }
+    }
+
+    private var isPaginating = false
+
+    private fun loadNextPage() {
+        val currentState = _uiState.value as? LibraryUiState.Success ?: return
+        if (isPaginating || !currentState.hasMoreItems || currentState.isLoadingMore) return
+        if (currentLibraryId.isBlank()) return
+
+        val queryParentId = if (isHierarchicalMode) activeParentId.ifBlank { currentLibraryId } else currentLibraryId
+        val currentItems = currentState.items
+        val startIndex = currentItems.size
+
+        isPaginating = true
+        _uiState.value = currentState.copy(isLoadingMore = true)
+
+        viewModelScope.launch {
+            getLibraryItemsUseCase(
+                parentId = queryParentId,
+                filter = currentFilter,
+                letter = currentLetter,
+                startIndex = startIndex,
+                limit = 60,
+                isHierarchical = isHierarchicalMode
+            ).onSuccess { page ->
+                val newItems = if (currentFilter.isFavoriteOnly && localProfileRepository != null) {
+                    page.items.filter { localProfileRepository.isFavorite(it.id) }
+                } else {
+                    page.items
+                }
+
+                val existingIds = currentItems.map { it.id }.toSet()
+                val distinctNew = newItems.filter { it.id !in existingIds }
+                val combined = (currentItems + distinctNew).toImmutableList()
+
+                _uiState.value = currentState.copy(
+                    items = combined,
+                    totalCount = page.totalCount,
+                    isLoadingMore = false,
+                    hasMoreItems = distinctNew.isNotEmpty() && combined.size < page.totalCount,
+                    breadcrumbs = breadcrumbTrail,
+                    isHierarchicalMode = isHierarchicalMode
+                )
+            }.onFailure {
+                _uiState.value = currentState.copy(isLoadingMore = false)
+            }
+            isPaginating = false
         }
     }
 }

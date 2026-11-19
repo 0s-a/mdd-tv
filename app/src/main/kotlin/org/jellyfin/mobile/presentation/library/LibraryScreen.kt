@@ -1,5 +1,6 @@
 package org.jellyfin.mobile.presentation.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -42,7 +44,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,7 +60,9 @@ import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
 import org.jellyfin.mobile.presentation.library.components.AlphabetScrubber
+import org.jellyfin.mobile.presentation.library.components.BreadcrumbsBar
 import org.jellyfin.mobile.presentation.library.components.FilterChipsRow
+import org.jellyfin.mobile.presentation.library.components.FolderCard
 import org.jellyfin.mobile.presentation.library.components.LibraryPosterCard
 import org.jellyfin.mobile.ui.components.GlassmorphicCard
 import org.jellyfin.mobile.ui.theme.JellyfinColors
@@ -95,6 +101,28 @@ fun LibraryScreen(
                     gridState.animateScrollToItem(effect.index)
                 }
                 is LibraryEffect.ShowToast -> { /* Toast notification */ }
+            }
+        }
+    }
+
+    if (uiState is LibraryUiState.Success) {
+        val successState = uiState as LibraryUiState.Success
+
+        // Intercept Android hardware & gesture back button for hierarchical navigation
+        BackHandler(enabled = !successState.isAtRoot) {
+            viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
+        }
+
+        val shouldLoadMore by remember {
+            derivedStateOf {
+                val totalItems = gridState.layoutInfo.totalItemsCount
+                val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                totalItems > 0 && lastVisible >= totalItems - 9
+            }
+        }
+        LaunchedEffect(shouldLoadMore, successState.hasMoreItems, successState.isLoadingMore) {
+            if (shouldLoadMore && successState.hasMoreItems && !successState.isLoadingMore) {
+                viewModel.processIntent(LibraryIntent.LoadNextPage)
             }
         }
     }
@@ -154,6 +182,21 @@ fun LibraryScreen(
                             modifier = Modifier.padding(vertical = JellyfinDimens.SpaceExtraSmall)
                         )
                     }
+
+                    // 1.5. Breadcrumbs Bar (مسار المجلدات والتبديل المزدوج)
+                    BreadcrumbsBar(
+                        breadcrumbs = state.breadcrumbs,
+                        isHierarchicalMode = state.isHierarchicalMode,
+                        onBreadcrumbClick = { index ->
+                            viewModel.processIntent(LibraryIntent.JumpToBreadcrumb(index))
+                        },
+                        onBackClick = {
+                            viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
+                        },
+                        onToggleViewMode = {
+                            viewModel.processIntent(LibraryIntent.ToggleViewMode)
+                        }
+                    )
 
                     // 2. Horizontal Filter Chips Row
                     FilterChipsRow(
@@ -218,30 +261,62 @@ fun LibraryScreen(
                                     items = state.items,
                                     key = { it.id }
                                 ) { item ->
-                                    LibraryPosterCard(
-                                        item = item,
-                                        onClick = {
-                                            viewModel.processIntent(LibraryIntent.OpenMediaDetails(item.id))
+                                    if (item.isFolder) {
+                                        FolderCard(
+                                            item = item,
+                                            onClick = {
+                                                viewModel.processIntent(LibraryIntent.NavigateIntoFolder(item.id, item.name))
+                                            }
+                                        )
+                                    } else {
+                                        LibraryPosterCard(
+                                            item = item,
+                                            onClick = {
+                                                viewModel.processIntent(LibraryIntent.OpenMediaDetails(item.id))
+                                            }
+                                        )
+                                    }
+                                }
+
+                                if (state.isLoadingMore) {
+                                    item(span = { GridItemSpan(3) }) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(JellyfinDimens.SpaceMedium),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                color = JellyfinColors.PrimaryIndigo,
+                                                modifier = Modifier.size(28.dp),
+                                                strokeWidth = 2.5.dp
+                                            )
                                         }
-                                    )
+                                    }
                                 }
                             }
 
-                            // Fast Alphabetical Scrubber along the trailing edge
-                            AlphabetScrubber(
-                                onLetterSelected = { char ->
-                                    viewModel.processIntent(LibraryIntent.JumpToLetter(char))
-                                },
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                            )
+                            // Fast Alphabetical Scrubber along the trailing edge (Only shown if items >= 25 and contains media)
+                            val showScrubber = state.items.size >= 25 && state.items.any { !it.isFolder }
+                            if (showScrubber) {
+                                AlphabetScrubber(
+                                    onLetterSelected = { char ->
+                                        viewModel.processIntent(LibraryIntent.JumpToLetter(char))
+                                    },
+                                    modifier = Modifier.align(Alignment.CenterEnd)
+                                )
+                            }
                         }
                     }
                 }
 
                 // 4. Floating Frosted Top Bar (Detached / بشكل غير متصل)
                 LibraryFloatingTopBar(
+                    title = state.currentFolderTitle,
                     totalCount = state.totalItemCount,
-                    onBackClick = onNavigateBack,
+                    onBackClick = if (!state.isAtRoot) {
+                        { viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy) }
+                    } else onNavigateBack,
                     onSearchClick = onNavigateToSearch,
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
@@ -252,6 +327,7 @@ fun LibraryScreen(
 
 @Composable
 private fun LibraryFloatingTopBar(
+    title: String,
     totalCount: Int,
     onBackClick: (() -> Unit)?,
     onSearchClick: (() -> Unit)?,
@@ -289,7 +365,7 @@ private fun LibraryFloatingTopBar(
             }
 
             Text(
-                text = "المكتبة",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = JellyfinColors.TextPrimary

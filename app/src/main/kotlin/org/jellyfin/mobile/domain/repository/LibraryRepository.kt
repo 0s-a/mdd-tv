@@ -25,6 +25,7 @@ interface LibraryRepository {
         filter: LibraryFilter = LibraryFilter(),
         letter: Char? = null,
         startIndex: Int = 0,
-        limit: Int = 100
+        limit: Int = 100,
+        isHierarchical: Boolean = true
     ): Result<LibraryPage>
 }

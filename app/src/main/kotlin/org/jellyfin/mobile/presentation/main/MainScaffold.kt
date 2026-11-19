@@ -39,30 +39,12 @@ import org.koin.compose.koinInject
 fun MainScaffold(
     modifier: Modifier = Modifier
 ) {
-    val localProfileRepository: LocalProfileRepository = koinInject()
-    var startDestination by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        val hasProfile = localProfileRepository.hasProfile()
-        startDestination = if (hasProfile) Screen.Home.route else Screen.Onboarding.route
-    }
-
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
 
-    val resolvedStart = startDestination
-    if (resolvedStart == null) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(backgroundColor)
-        )
-        return
-    }
-
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: resolvedStart
+    val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Splash.route
 
     Box(
         modifier = modifier
@@ -71,7 +53,7 @@ fun MainScaffold(
     ) {
         MainNavGraph(
             navController = navController,
-            startDestination = resolvedStart,
+            startDestination = Screen.Splash.route,
             modifier = Modifier.fillMaxSize()
         )
 

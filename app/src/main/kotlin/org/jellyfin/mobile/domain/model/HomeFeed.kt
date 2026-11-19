@@ -10,8 +10,23 @@ data class HomeFeed(
     val libraries: ImmutableList<LibraryFolder>,
     val heroItems: ImmutableList<MediaItemSummary>,
     val resumeItems: ImmutableList<MediaItemSummary>,
+    val nextUpItems: ImmutableList<MediaItemSummary> = persistentListOf(),
     val latestItems: ImmutableList<MediaItemSummary>
 ) {
+    constructor(
+        libraries: ImmutableList<LibraryFolder>,
+        heroItem: MediaItemSummary?,
+        resumeItems: ImmutableList<MediaItemSummary>,
+        nextUpItems: ImmutableList<MediaItemSummary> = persistentListOf(),
+        latestItems: ImmutableList<MediaItemSummary>
+    ) : this(
+        libraries = libraries,
+        heroItems = heroItem?.let { persistentListOf(it) } ?: persistentListOf(),
+        resumeItems = resumeItems,
+        nextUpItems = nextUpItems,
+        latestItems = latestItems
+    )
+
     constructor(
         libraries: ImmutableList<LibraryFolder>,
         heroItem: MediaItemSummary?,
@@ -21,6 +36,7 @@ data class HomeFeed(
         libraries = libraries,
         heroItems = heroItem?.let { persistentListOf(it) } ?: persistentListOf(),
         resumeItems = resumeItems,
+        nextUpItems = persistentListOf(),
         latestItems = latestItems
     )
 

@@ -144,6 +144,7 @@ class HomeViewModel(
                         currentHeroIndex = 0,
                         libraries = feed.libraries,
                         continueWatchingItems = continueWatching,
+                        nextUpItems = feed.nextUpItems,
                         recentlyAddedItems = feed.latestItems,
                         userDisplayName = displayName,
                         userAvatarKey = avatarKey,
