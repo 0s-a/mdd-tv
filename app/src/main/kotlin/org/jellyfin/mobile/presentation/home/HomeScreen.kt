@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -49,6 +50,7 @@ import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.domain.model.AvatarCatalog
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
+import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
 import org.jellyfin.mobile.presentation.core.components.rememberDominantColor
 import org.jellyfin.mobile.presentation.home.components.ContinueWatchingRow
 import org.jellyfin.mobile.presentation.home.components.HeroSpotlight
@@ -124,18 +126,8 @@ fun HomeScreen(
                 // 2. Main Scrollable Dashboard Content
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 100.dp) // Clearance for floating bottom bar
+                    contentPadding = PaddingValues(top = 76.dp, bottom = 100.dp) // Clearance for floating top & bottom bars
                 ) {
-                    // Top App Header
-                    item(key = "header") {
-                        HomeTopBar(
-                            avatarEmoji = AvatarCatalog.getEmoji(state.userAvatarKey),
-                            onSearchClick = onNavigateToSearch,
-                            onProfileClick = onNavigateToProfile,
-                            modifier = Modifier.statusBarsPadding()
-                        )
-                    }
-
                     // Hero Spotlight Carousel
                     if (currentHeroItem != null) {
                         item(key = "hero_spotlight") {
@@ -199,54 +191,49 @@ fun HomeScreen(
                         }
                     }
                 }
+
+                // 3. Floating Frosted Top Bar (Detached / بشكل غير متصل)
+                HomeFloatingTopBar(
+                    avatarEmoji = AvatarCatalog.getEmoji(state.userAvatarKey),
+                    onSearchClick = onNavigateToSearch,
+                    onProfileClick = onNavigateToProfile,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun HomeTopBar(
+private fun HomeFloatingTopBar(
     avatarEmoji: String,
     onSearchClick: () -> Unit,
     onProfileClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = JellyfinDimens.SpaceLarge,
-                vertical = JellyfinDimens.SpaceSmall
-            ),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // App Title / Brand with Drawer Placeholder
+    FloatingFrostedTopBar(modifier = modifier) {
+        // App Title & Brand
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
         ) {
             Icon(
-                imageVector = Icons.Rounded.Menu,
-                contentDescription = "القائمة",
-                tint = JellyfinColors.TextSecondary,
-                modifier = Modifier.size(24.dp)
-            )
-            Icon(
                 imageVector = Icons.Rounded.Movie,
                 contentDescription = null,
                 tint = JellyfinColors.PrimaryIndigo,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(24.dp)
             )
             Text(
                 text = AppConfig.APP_NAME,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = JellyfinColors.TextPrimary
             )
         }
 
-        // Search Action Icon & Local Profile Avatar
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Actions: Search & Local Profile Avatar
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
@@ -254,7 +241,7 @@ private fun HomeTopBar(
             IconButton(
                 onClick = onSearchClick,
                 modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
+                    .size(36.dp)
                     .semantics {
                         role = Role.Button
                         contentDescription = "البحث في المكتبات"
@@ -264,14 +251,14 @@ private fun HomeTopBar(
                     imageVector = Icons.Rounded.Search,
                     contentDescription = null,
                     tint = JellyfinColors.TextPrimary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .border(1.5.dp, JellyfinColors.PrimaryIndigo, CircleShape)
                     .background(JellyfinColors.SurfaceGlass)
@@ -283,7 +270,7 @@ private fun HomeTopBar(
             ) {
                 Text(
                     text = avatarEmoji,
-                    fontSize = 18.sp
+                    fontSize = 17.sp
                 )
             }
         }

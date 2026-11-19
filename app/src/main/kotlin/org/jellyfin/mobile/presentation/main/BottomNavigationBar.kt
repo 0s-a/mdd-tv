@@ -53,7 +53,7 @@ enum class NavigationTab(
     ),
     LIBRARY(
         route = "library",
-        title = "المكتبات",
+        title = "المكتبة",
         selectedIcon = Icons.Rounded.VideoLibrary,
         unselectedIcon = Icons.Outlined.VideoLibrary
     ),

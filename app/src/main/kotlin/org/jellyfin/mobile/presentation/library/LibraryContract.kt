@@ -6,6 +6,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.jellyfin.mobile.domain.model.LibraryFilterChip
+import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.domain.model.LibrarySortBy
 import org.jellyfin.mobile.domain.model.MediaItemSummary
 
@@ -41,6 +42,8 @@ sealed interface LibraryUiState {
         val activeFilter: LibraryFilter = LibraryFilter(),
         val currentLibraryId: String = "",
         val currentLibraryName: String = "المكتبة",
+        val availableLibraries: ImmutableList<LibraryFolder> = persistentListOf(),
+        val selectedLibraryId: String? = null,
         val selectedSort: LibrarySortBy = LibrarySortBy.DATE_ADDED,
         val isSortAscending: Boolean = false,
         val activeFilters: ImmutableSet<LibraryFilterChip> = persistentSetOf(),

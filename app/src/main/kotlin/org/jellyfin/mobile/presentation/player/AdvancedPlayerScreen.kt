@@ -62,6 +62,34 @@ fun AdvancedPlayerScreen(
 
     var isInPiP by remember { mutableStateOf(activity?.isInPictureInPictureMode ?: false) }
 
+    // Dynamic Video Size tracking for PiP aspect ratio
+    var videoWidth by remember { mutableStateOf(viewModel.player.videoSize.width) }
+    var videoHeight by remember { mutableStateOf(viewModel.player.videoSize.height) }
+
+    DisposableEffect(viewModel.player) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    videoWidth = videoSize.width
+                    videoHeight = videoSize.height
+                }
+            }
+        }
+        viewModel.player.addListener(listener)
+        onDispose {
+            viewModel.player.removeListener(listener)
+        }
+    }
+
+    val dynamicPipRational = remember(videoWidth, videoHeight) {
+        if (videoWidth > 0 && videoHeight > 0) {
+            val aspect = (videoWidth.toFloat() / videoHeight.toFloat()).coerceIn(0.42f, 2.38f)
+            Rational((aspect * 1000).toInt(), 1000)
+        } else {
+            Rational(16, 9)
+        }
+    }
+
     // Initialize player with media ID and starting position
     LaunchedEffect(mediaId) {
         viewModel.dispatch(PlayerIntent.InitializePlayer(mediaId, startPositionMs))
@@ -104,12 +132,12 @@ fun AdvancedPlayerScreen(
         }
     }
 
-    // Configure PiP auto-enter on Android 12+ (API 31+)
-    LaunchedEffect(activity) {
+    // Configure PiP auto-enter on Android 12+ (API 31+) with dynamic aspect ratio
+    LaunchedEffect(activity, dynamicPipRational) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && activity != null) {
             val pipParams = PictureInPictureParams.Builder()
                 .setAutoEnterEnabled(true)
-                .setAspectRatio(Rational(16, 9))
+                .setAspectRatio(dynamicPipRational)
                 .build()
             activity.setPictureInPictureParams(pipParams)
         }
@@ -167,7 +195,7 @@ fun AdvancedPlayerScreen(
                 PlayerEffect.EnterPictureInPicture -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity != null) {
                         val params = PictureInPictureParams.Builder()
-                            .setAspectRatio(Rational(16, 9))
+                            .setAspectRatio(dynamicPipRational)
                             .build()
                         activity.enterPictureInPictureMode(params)
                     }

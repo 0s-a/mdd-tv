@@ -56,6 +56,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
+import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
@@ -84,16 +85,10 @@ fun ProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Top Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = JellyfinDimens.SpaceLarge, vertical = JellyfinDimens.SpaceSmall),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // Floating Frosted Top Bar
+            FloatingFrostedTopBar {
                 IconButton(
                     onClick = onNavigateBack,
                     modifier = Modifier
@@ -112,7 +107,7 @@ fun ProfileScreen(
 
                 Text(
                     text = "الملف الشخصي",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = JellyfinColors.TextPrimary,
                     modifier = Modifier.padding(start = JellyfinDimens.SpaceSmall)

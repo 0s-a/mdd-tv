@@ -4,11 +4,14 @@ import android.content.Context
 import android.media.audiofx.LoudnessEnhancer
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
@@ -18,6 +21,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.session.MediaSession
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -34,20 +38,19 @@ import org.jellyfin.mobile.core.download.DownloadManagerProvider
 import org.jellyfin.mobile.core.network.SessionManager
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.data.remote.dto.MediaSourceDto
-import org.jellyfin.mobile.data.remote.dto.PlaybackProgressDto
-import org.jellyfin.mobile.data.remote.dto.PlaybackStartDto
-import org.jellyfin.mobile.data.remote.dto.PlaybackStopDto
-import android.net.Uri
-import androidx.media3.common.MimeTypes
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
+import java.util.Collections
 
 /**
  * PlayerViewModel drives the immersive Media3 video playback engine.
- * Strictly adheres to docs/screens/04_ADVANCED_PLAYER.md and docs/NON_FUNCTIONAL_REQUIREMENTS.md:
+ * Strictly adheres to docs/v2/04_ADVANCED_PLAYER_V2.md and project architectural rules:
  * - Direct Play first with hardware decoding preference.
+ * - Deep Android integration: MediaSession (Bluetooth / LockScreen) + Audio Focus management.
  * - Software audio boost up to 200% via LoudnessEnhancer.
- * - Periodic progress sync and Jellyfin session telemetry.
+ * - Strict Local-Only persistence in Room DB (LocalWatchProgressEntity / WatchedArchiveEntity).
+ * - Real-time Subtitle Offset synchronization (±100ms).
+ * - Series Next Episode automatic discovery.
  * - TalkBack accessibility and zero memory leaks.
  */
 class PlayerViewModel(
@@ -81,11 +84,17 @@ class PlayerViewModel(
         )
         .build()
 
+    private var mediaSession: MediaSession? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private var progressTickerJob: Job? = null
     private var lastReportTimeMs: Long = 0L
     private var hasMarkedPlayed: Boolean = false
     private var currentMediaSourceId: String? = null
+
+    // Subtitle synchronization state
+    private data class CueSnapshot(val positionMs: Long, val text: String?)
+    private val cueHistory = Collections.synchronizedList(mutableListOf<CueSnapshot>())
+    private var rawSubtitleText: String? = null
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -111,7 +120,6 @@ class PlayerViewModel(
                             currentPositionMs = it.totalDurationMs
                         )
                     }
-                    reportPlaybackStopped()
                 }
                 Player.STATE_IDLE -> Unit
             }
@@ -121,9 +129,6 @@ class PlayerViewModel(
             _uiState.update { it.copy(isPlaying = isPlaying) }
             if (isPlaying) {
                 startProgressTicker()
-                reportPlaybackProgress("unpause")
-            } else {
-                reportPlaybackProgress("pause")
             }
         }
 
@@ -137,7 +142,15 @@ class PlayerViewModel(
                 .joinToString("\n") { it.toString().trim() }
                 .takeIf { it.isNotBlank() }
 
-            _uiState.update { it.copy(currentSubtitleText = text) }
+            rawSubtitleText = text
+            val currentPos = player.currentPosition.coerceAtLeast(0L)
+            synchronized(cueHistory) {
+                cueHistory.add(CueSnapshot(currentPos, text))
+                if (cueHistory.size > 80) {
+                    cueHistory.subList(0, 40).clear()
+                }
+            }
+            applySubtitleOffset()
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -155,7 +168,21 @@ class PlayerViewModel(
     }
 
     init {
+        // 1. Configure AudioAttributes with Audio Focus handling for phone calls and navigation
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .setUsage(C.USAGE_MEDIA)
+            .build()
+        player.setAudioAttributes(audioAttributes, true)
+
         player.addListener(playerListener)
+
+        // 2. Initialize MediaSession for Bluetooth remotes, lockscreen, and system notifications
+        try {
+            mediaSession = MediaSession.Builder(context, player).build()
+        } catch (e: Exception) {
+            Log.w(tag, "MediaSession initialization fallback: ${e.message}")
+        }
     }
 
     fun dispatch(intent: PlayerIntent) {
@@ -191,9 +218,15 @@ class PlayerViewModel(
             it.copy(
                 mediaId = mediaId,
                 isBuffering = true,
-                errorMessage = null
+                errorMessage = null,
+                subtitleOffsetMs = 0L,
+                currentSubtitleText = null,
+                nextEpisodeId = null
             )
         }
+        cueHistory.clear()
+        rawSubtitleText = null
+        hasMarkedPlayed = false
 
         val isDownloaded = DownloadManagerProvider.isMediaDownloadedById(context, mediaId)
         val isOnline = isNetworkAvailable(context)
@@ -210,9 +243,20 @@ class PlayerViewModel(
                 }
             }
 
-            // 2. Fetch rich media details for titles, streams, and resume point
-            val userId = sessionManager.getUserId().orEmpty()
+            // 2. Resolve resume position: Priority to local Room DB profile (Strict Local-Only)
             var resumeMs = startPositionMs
+            if (resumeMs == 0L && localProfileRepository != null) {
+                try {
+                    val localProgress = localProfileRepository.getProgress(mediaId)
+                    if (localProgress != null && localProgress.positionTicks > 0) {
+                        resumeMs = localProgress.positionTicks / 10_000L
+                    }
+                } catch (e: Exception) {
+                    Log.w(tag, "Error reading local watch progress: ${e.message}")
+                }
+            }
+
+            val userId = sessionManager.getUserId().orEmpty()
             var primarySource: MediaSourceDto? = null
 
             if (isOnline) {
@@ -240,6 +284,7 @@ class PlayerViewModel(
                     val vCodec = videoStream?.codec?.uppercase()?.let { "$it ${videoStream.height ?: 1080}p" } ?: "HEVC 4K"
                     val aCodec = audioStream?.codec?.uppercase()?.let { "$it ${audioStream.channelLayout ?: "Stereo"}" } ?: "TrueHD 7.1"
 
+                    // If local resume wasn't found, fallback to item userData
                     if (resumeMs == 0L && item.userData?.playbackPositionTicks != null) {
                         resumeMs = item.userData.playbackPositionTicks / 10_000L
                     }
@@ -253,12 +298,31 @@ class PlayerViewModel(
                             playbackMethod = PlaybackMethod.DirectPlay
                         )
                     }
+
+                    // 3. Resolve next episode automatically for series
+                    if (isEpisode && !item.seriesId.isNullOrBlank()) {
+                        try {
+                            val episodesResponse = apiService.getEpisodes(
+                                seriesId = item.seriesId,
+                                userId = userId,
+                                seasonId = item.seasonId
+                            )
+                            val episodeList = episodesResponse.items.orEmpty()
+                            val currentIndex = episodeList.indexOfFirst { it.id == mediaId }
+                            if (currentIndex != -1 && currentIndex + 1 < episodeList.size) {
+                                val nextEp = episodeList[currentIndex + 1]
+                                _uiState.update { it.copy(nextEpisodeId = nextEp.id) }
+                            }
+                        } catch (e: Exception) {
+                            Log.w(tag, "Failed fetching next episode: ${e.message}")
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.w(tag, "Failed fetching media details: ${e.message}")
                     _uiState.update {
                         it.copy(
                             mediaTitle = AppConfig.APP_NAME,
-                            mediaSubtitle = if (isDownloaded) "🟢 تشغيل أوفلاين من الذاكرة" else "بث مباشر عتادي"
+                            mediaSubtitle = if (isDownloaded) "🟢 تشغيل أوفلاين من الذاكرة" else "مشاهدة مباشرة"
                         )
                     }
                 }
@@ -273,7 +337,7 @@ class PlayerViewModel(
                 }
             }
 
-            // 3. Construct stream URL (Media3 CacheDataSource automatically plays from cache with zero network calls)
+            // 4. Construct stream URL (Media3 CacheDataSource automatically plays from cache with zero network calls)
             val token = sessionManager.getToken()
             val baseServer = AppConfig.SERVER_URL.trimEnd('/')
             val streamUrl = StringBuilder("$baseServer/Videos/$mediaId/stream?static=true")
@@ -316,11 +380,6 @@ class PlayerViewModel(
                 player.seekTo(resumeMs)
             }
             player.playWhenReady = true
-
-            // 4. Report initial playback telemetry if online
-            if (isOnline) {
-                reportPlaybackStart(resumeMs)
-            }
         }
     }
 
@@ -329,7 +388,7 @@ class PlayerViewModel(
         val targetMs = positionMs.coerceIn(0L, duration)
         player.seekTo(targetMs)
         _uiState.update { it.copy(currentPositionMs = targetMs) }
-        reportPlaybackProgress("seek")
+        applySubtitleOffset()
     }
 
     private fun fastSeekBy(deltaMs: Long) {
@@ -338,10 +397,10 @@ class PlayerViewModel(
         val target = (current + deltaMs).coerceIn(0L, duration)
         player.seekTo(target)
         _uiState.update { it.copy(currentPositionMs = target) }
+        applySubtitleOffset()
         viewModelScope.launch {
             _effects.send(PlayerEffect.TriggerHapticTick)
         }
-        reportPlaybackProgress("seek")
     }
 
     private fun setVolume(newVolume: Float) {
@@ -413,6 +472,7 @@ class PlayerViewModel(
         val builder = player.trackSelectionParameters.buildUpon()
         if (option == null) {
             builder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            rawSubtitleText = null
             _uiState.update {
                 it.copy(
                     selectedSubtitle = null,
@@ -437,11 +497,36 @@ class PlayerViewModel(
     }
 
     private fun adjustSubtitleOffset(offsetMs: Long) {
-        _uiState.update {
-            it.copy(subtitleOffsetMs = (it.subtitleOffsetMs + offsetMs).coerceIn(-5000L, 5000L))
-        }
+        val newOffset = (_uiState.value.subtitleOffsetMs + offsetMs).coerceIn(-5000L, 5000L)
+        _uiState.update { it.copy(subtitleOffsetMs = newOffset) }
+        applySubtitleOffset()
         viewModelScope.launch {
             _effects.send(PlayerEffect.TriggerHapticTick)
+        }
+    }
+
+    private fun applySubtitleOffset() {
+        val offset = _uiState.value.subtitleOffsetMs
+        if (offset == 0L) {
+            _uiState.update { it.copy(currentSubtitleText = rawSubtitleText) }
+            return
+        }
+
+        val targetPos = (player.currentPosition + offset).coerceAtLeast(0L)
+        synchronized(cueHistory) {
+            val closestCue = cueHistory.minByOrNull { kotlin.math.abs(it.positionMs - targetPos) }
+            if (closestCue != null && kotlin.math.abs(closestCue.positionMs - targetPos) < 2500L) {
+                _uiState.update { it.copy(currentSubtitleText = closestCue.text) }
+            } else if (offset > 0) {
+                viewModelScope.launch {
+                    delay(offset)
+                    if (_uiState.value.subtitleOffsetMs == offset) {
+                        _uiState.update { it.copy(currentSubtitleText = rawSubtitleText) }
+                    }
+                }
+            } else {
+                _uiState.update { it.copy(currentSubtitleText = rawSubtitleText) }
+            }
         }
     }
 
@@ -521,7 +606,7 @@ class PlayerViewModel(
             for (trackIdx in 0 until group.length) {
                 val format = group.getTrackFormat(trackIdx)
                 val lang = format.language ?: "ar"
-                val name = format.label ?: "${lang.uppercase()} (${format.sampleMimeType?.substringAfter('/') ?: "Stereo"})"
+                val name = format.label ?: lang.uppercase()
                 val isSelected = group.isTrackSelected(trackIdx)
                 val option = AudioOption(
                     index = audioCounter++,
@@ -577,7 +662,11 @@ class PlayerViewModel(
                         )
                     }
 
-                    // Watch completion threshold (90%) - Saved locally to WatchedArchiveEntity
+                    if (_uiState.value.subtitleOffsetMs != 0L) {
+                        applySubtitleOffset()
+                    }
+
+                    // Watch completion threshold (90%) - Saved locally to WatchedArchiveEntity (Strict Local-Only)
                     if (!hasMarkedPlayed && dur > 0 && pos.toDouble() / dur >= 0.90) {
                         hasMarkedPlayed = true
                         val mId = _uiState.value.mediaId
@@ -588,7 +677,7 @@ class PlayerViewModel(
                         }
                     }
 
-                    // Periodic local watch progress every 10 seconds - Room DB LocalWatchProgressEntity
+                    // Periodic local watch progress every 10 seconds - Room DB LocalWatchProgressEntity (Strict Local-Only)
                     val now = System.currentTimeMillis()
                     if (now - lastReportTimeMs >= 10_000L) {
                         lastReportTimeMs = now
@@ -616,91 +705,8 @@ class PlayerViewModel(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun reportPlaybackStart(startPositionMs: Long) {
-        val mediaId = _uiState.value.mediaId
-        if (mediaId.isBlank() || !isNetworkAvailable(context)) return
-
-        viewModelScope.launch {
-            try {
-                apiService.reportPlaybackStart(
-                    PlaybackStartDto(
-                        itemId = mediaId,
-                        positionTicks = startPositionMs * 10_000L,
-                        mediaSourceId = currentMediaSourceId,
-                        playMethod = "DirectPlay",
-                        canSeek = true,
-                        isPaused = false
-                    )
-                )
-            } catch (e: Exception) {
-                Log.w(tag, "Failed to report playback start: ${e.message}")
-            }
-        }
-    }
-
-    private fun reportPlaybackProgress(eventName: String) {
-        val mediaId = _uiState.value.mediaId
-        if (mediaId.isBlank() || !isNetworkAvailable(context)) return
-
-        val currentTicks = player.currentPosition.coerceAtLeast(0L) * 10_000L
-        val isPaused = !player.isPlaying
-
-        viewModelScope.launch {
-            try {
-                apiService.reportPlaybackProgress(
-                    PlaybackProgressDto(
-                        itemId = mediaId,
-                        positionTicks = currentTicks,
-                        isPaused = isPaused,
-                        canSeek = true,
-                        playMethod = "DirectPlay",
-                        eventName = eventName,
-                        mediaSourceId = currentMediaSourceId
-                    )
-                )
-            } catch (e: Exception) {
-                Log.w(tag, "Failed to report playback progress: ${e.message}")
-            }
-        }
-    }
-
-    private fun reportPlaybackStopped() {
-        val mediaId = _uiState.value.mediaId
-        if (mediaId.isBlank() || !isNetworkAvailable(context)) return
-
-        val finalTicks = player.currentPosition.coerceAtLeast(0L) * 10_000L
-        viewModelScope.launch {
-            try {
-                apiService.reportPlaybackStopped(
-                    PlaybackStopDto(
-                        itemId = mediaId,
-                        positionTicks = finalTicks,
-                        mediaSourceId = currentMediaSourceId
-                    )
-                )
-            } catch (e: Exception) {
-                Log.w(tag, "Failed to report playback stopped: ${e.message}")
-            }
-        }
-    }
-
-    private fun markPlayedOnServer() {
-        val mediaId = _uiState.value.mediaId
-        val userId = sessionManager.getUserId().orEmpty()
-        if (mediaId.isBlank() || userId.isBlank() || !isNetworkAvailable(context)) return
-
-        viewModelScope.launch {
-            try {
-                apiService.markPlayed(userId = userId, itemId = mediaId)
-            } catch (e: Exception) {
-                Log.w(tag, "Failed to mark item played: ${e.message}")
-            }
-        }
-    }
-
     private fun stopPlayer() {
         progressTickerJob?.cancel()
-        reportPlaybackStopped()
         try {
             player.pause()
             player.stop()
@@ -713,6 +719,12 @@ class PlayerViewModel(
     override fun onCleared() {
         super.onCleared()
         stopPlayer()
+        try {
+            mediaSession?.release()
+            mediaSession = null
+        } catch (e: Exception) {
+            Log.w(tag, "Error releasing MediaSession in onCleared: ${e.message}")
+        }
         try {
             player.removeListener(playerListener)
             player.release()

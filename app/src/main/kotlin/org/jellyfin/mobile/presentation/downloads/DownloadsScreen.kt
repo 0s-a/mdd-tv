@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.WifiOff
@@ -42,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.collectLatest
+import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
 import org.jellyfin.mobile.presentation.downloads.components.ActiveDownloadsList
 import org.jellyfin.mobile.presentation.downloads.components.DownloadedMediaTabs
 import org.jellyfin.mobile.presentation.downloads.components.StorageGaugeCard
@@ -101,169 +103,173 @@ fun DownloadsScreen(
         containerColor = backgroundColor,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding(),
-                bottom = 110.dp // Prevent bottom navigation bar overlap
-            ),
-            verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceLarge),
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // 1. Header Section
-            item(key = "downloads_header") {
-                DownloadsHeader(
-                    isWifiOnly = uiState.isWifiOnlyEnabled,
-                    onToggleWifiOnly = { viewModel.handleIntent(DownloadsIntent.ToggleWifiOnly) },
-                    modifier = Modifier.padding(horizontal = JellyfinDimens.SpaceLarge)
-                )
-            }
-
-            // 2. Storage Gauge Card
-            item(key = "storage_gauge") {
-                StorageGaugeCard(
-                    storageInfo = uiState.storageInfo,
-                    modifier = Modifier.padding(horizontal = JellyfinDimens.SpaceLarge)
-                )
-            }
-
-            // 3. Storage Low Warning (if applicable)
-            if (uiState.isStorageLowWarning || uiState.storageInfo.freeGb < 5.0) {
-                item(key = "storage_low_warning") {
-                    StorageLowWarningBanner(
-                        freeGb = uiState.storageInfo.freeGb,
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(
+                    top = 76.dp,
+                    bottom = 110.dp // Prevent bottom navigation bar overlap
+                ),
+                verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceLarge),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // 1. Storage Gauge Card
+                item(key = "storage_gauge") {
+                    StorageGaugeCard(
+                        storageInfo = uiState.storageInfo,
                         modifier = Modifier.padding(horizontal = JellyfinDimens.SpaceLarge)
                     )
                 }
-            }
 
-            // 4. Active Downloads List (Foreground Queue)
-            if (uiState.activeDownloads.isNotEmpty()) {
-                item(key = "active_downloads_section") {
-                    ActiveDownloadsList(
-                        tasks = uiState.activeDownloads,
-                        onPauseClick = { mediaId ->
-                            viewModel.handleIntent(DownloadsIntent.PauseDownload(mediaId))
-                        },
-                        onResumeClick = { mediaId ->
-                            viewModel.handleIntent(DownloadsIntent.ResumeDownload(mediaId))
-                        },
-                        onCancelClick = { mediaId ->
-                            viewModel.handleIntent(DownloadsIntent.CancelDownload(mediaId))
-                        },
-                        modifier = Modifier.padding(horizontal = JellyfinDimens.SpaceLarge)
-                    )
-                }
-            }
-
-            // 5. Downloaded Media Tabs & Items
-            item(key = "downloaded_media_tabs") {
-                val allDownloadedItems = remember(uiState.downloadedMovies, uiState.downloadedSeries) {
-                    (uiState.downloadedMovies + uiState.downloadedSeries).toImmutableList()
-                }
-
-                DownloadedMediaTabs(
-                    selectedTab = uiState.selectedTab,
-                    onTabSelected = { tab ->
-                        viewModel.handleIntent(DownloadsIntent.SetFilterTab(tab))
-                    },
-                    items = allDownloadedItems,
-                    onPlayOfflineClick = { mediaId ->
-                        viewModel.handleIntent(DownloadsIntent.PlayOfflineMedia(mediaId))
-                    },
-                    onDeleteItemClick = { mediaId ->
-                        viewModel.handleIntent(DownloadsIntent.DeleteDownloadedItem(mediaId))
-                    },
-                    onDeleteAllWatchedClick = {
-                        viewModel.handleIntent(DownloadsIntent.DeleteAllWatched)
+                // 2. Storage Low Warning (if applicable)
+                if (uiState.isStorageLowWarning || uiState.storageInfo.freeGb < 5.0) {
+                    item(key = "storage_low_warning") {
+                        StorageLowWarningBanner(
+                            freeGb = uiState.storageInfo.freeGb,
+                            modifier = Modifier.padding(horizontal = JellyfinDimens.SpaceLarge)
+                        )
                     }
-                )
+                }
+
+                // 3. Active Downloads List (Foreground Queue)
+                if (uiState.activeDownloads.isNotEmpty()) {
+                    item(key = "active_downloads_section") {
+                        ActiveDownloadsList(
+                            tasks = uiState.activeDownloads,
+                            onPauseClick = { mediaId ->
+                                viewModel.handleIntent(DownloadsIntent.PauseDownload(mediaId))
+                            },
+                            onResumeClick = { mediaId ->
+                                viewModel.handleIntent(DownloadsIntent.ResumeDownload(mediaId))
+                            },
+                            onCancelClick = { mediaId ->
+                                viewModel.handleIntent(DownloadsIntent.CancelDownload(mediaId))
+                            },
+                            modifier = Modifier.padding(horizontal = JellyfinDimens.SpaceLarge)
+                        )
+                    }
+                }
+
+                // 4. Downloaded Media Tabs & Items
+                item(key = "downloaded_media_tabs") {
+                    val allDownloadedItems = remember(uiState.downloadedMovies, uiState.downloadedSeries) {
+                        (uiState.downloadedMovies + uiState.downloadedSeries).toImmutableList()
+                    }
+
+                    DownloadedMediaTabs(
+                        selectedTab = uiState.selectedTab,
+                        onTabSelected = { tab ->
+                            viewModel.handleIntent(DownloadsIntent.SetFilterTab(tab))
+                        },
+                        items = allDownloadedItems,
+                        onPlayOfflineClick = { mediaId ->
+                            viewModel.handleIntent(DownloadsIntent.PlayOfflineMedia(mediaId))
+                        },
+                        onDeleteItemClick = { mediaId ->
+                            viewModel.handleIntent(DownloadsIntent.DeleteDownloadedItem(mediaId))
+                        },
+                        onDeleteAllWatchedClick = {
+                            viewModel.handleIntent(DownloadsIntent.DeleteAllWatched)
+                        }
+                    )
+                }
             }
+
+            // Floating Frosted Top Bar (Detached / بشكل غير متصل)
+            DownloadsFloatingTopBar(
+                isWifiOnly = uiState.isWifiOnlyEnabled,
+                onToggleWifiOnly = { viewModel.handleIntent(DownloadsIntent.ToggleWifiOnly) },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 }
 
 /**
- * DownloadsHeader provides top screen branding and the Wi-Fi Only network toggle.
+ * DownloadsFloatingTopBar provides a detached glassmorphic top header matching the bottom navigation pill.
  */
 @Composable
-private fun DownloadsHeader(
+private fun DownloadsFloatingTopBar(
     isWifiOnly: Boolean,
     onToggleWifiOnly: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = "التنزيلات والأوفلاين",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = JellyfinColors.TextPrimary
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "الخزنة المحلية للمشاهدة بدون اتصال",
-                style = MaterialTheme.typography.labelMedium,
-                color = JellyfinColors.TextSecondary
-            )
-        }
-
-        // Wi-Fi Only Guard Chip
-        val wifiDesc = if (isWifiOnly) {
-            "وضع التنزيل عبر الواي فاي فقط مفعل، اضغط للتبديل"
-        } else {
-            "وضع التنزيل عبر شبكة البيانات مفعل، اضغط للتبديل"
-        }
-
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget, minWidth = JellyfinDimens.MinTouchTarget)
-                .glassmorphism(
-                    backgroundColor = if (isWifiOnly) {
-                        JellyfinColors.PrimaryIndigo.copy(alpha = 0.2f)
-                    } else {
-                        JellyfinColors.SurfaceGlass
-                    },
-                    borderColor = if (isWifiOnly) {
-                        JellyfinColors.PrimaryIndigo
-                    } else {
-                        JellyfinColors.BorderGlass
-                    },
-                    cornerRadius = JellyfinDimens.RadiusPill
-                )
-                .clickable(
-                    role = Role.Switch,
-                    onClick = onToggleWifiOnly
-                )
-                .padding(horizontal = JellyfinDimens.SpaceMedium, vertical = JellyfinDimens.SpaceSmall)
-                .semantics(mergeDescendants = true) {
-                    role = Role.Switch
-                    contentDescription = wifiDesc
-                }
+    FloatingFrostedTopBar(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
             ) {
                 Icon(
-                    imageVector = if (isWifiOnly) Icons.Rounded.Wifi else Icons.Rounded.WifiOff,
+                    imageVector = Icons.Rounded.FileDownload,
                     contentDescription = null,
-                    tint = if (isWifiOnly) JellyfinColors.TechSky else JellyfinColors.TextMuted,
-                    modifier = Modifier.size(18.dp)
+                    tint = JellyfinColors.PrimaryIndigo,
+                    modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = if (isWifiOnly) "الواي فاي فقط" else "أي شبكة",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isWifiOnly) JellyfinColors.TechSky else JellyfinColors.TextMuted
+                    text = "التنزيلات",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = JellyfinColors.TextPrimary
                 )
+            }
+
+            // Wi-Fi Only Guard Chip
+            val wifiDesc = if (isWifiOnly) {
+                "وضع التنزيل عبر الواي فاي فقط مفعل، اضغط للتبديل"
+            } else {
+                "وضع التنزيل عبر شبكة البيانات مفعل، اضغط للتبديل"
+            }
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .glassmorphism(
+                        backgroundColor = if (isWifiOnly) {
+                            JellyfinColors.PrimaryIndigo.copy(alpha = 0.25f)
+                        } else {
+                            JellyfinColors.SurfaceGlass
+                        },
+                        borderColor = if (isWifiOnly) {
+                            JellyfinColors.TechSky
+                        } else {
+                            JellyfinColors.BorderGlass
+                        },
+                        cornerRadius = JellyfinDimens.RadiusPill
+                    )
+                    .clickable(
+                        role = Role.Switch,
+                        onClick = onToggleWifiOnly
+                    )
+                    .padding(horizontal = JellyfinDimens.SpaceMedium, vertical = JellyfinDimens.SpaceExtraSmall)
+                    .semantics(mergeDescendants = true) {
+                        role = Role.Switch
+                        contentDescription = wifiDesc
+                    }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
+                ) {
+                    Icon(
+                        imageVector = if (isWifiOnly) Icons.Rounded.Wifi else Icons.Rounded.WifiOff,
+                        contentDescription = null,
+                        tint = if (isWifiOnly) JellyfinColors.TechSky else JellyfinColors.TextMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (isWifiOnly) "الواي فاي فقط" else "أي شبكة",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isWifiOnly) JellyfinColors.TechSky else JellyfinColors.TextMuted
+                    )
+                }
             }
         }
     }

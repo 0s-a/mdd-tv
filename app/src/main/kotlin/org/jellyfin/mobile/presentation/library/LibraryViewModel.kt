@@ -2,8 +2,12 @@ package org.jellyfin.mobile.presentation.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,8 +17,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.jellyfin.mobile.domain.model.LibraryFilterChip
+import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.domain.model.LibrarySortBy
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
+import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.usecase.GetLibraryItemsUseCase
 
 /**
@@ -23,7 +29,8 @@ import org.jellyfin.mobile.domain.usecase.GetLibraryItemsUseCase
  */
 class LibraryViewModel(
     private val getLibraryItemsUseCase: GetLibraryItemsUseCase,
-    private val handshakeRepository: HandshakeRepository
+    private val handshakeRepository: HandshakeRepository,
+    private val localProfileRepository: LocalProfileRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Loading)
@@ -34,6 +41,7 @@ class LibraryViewModel(
 
     private var currentLibraryId: String = ""
     private var currentLibraryName: String = "المكتبة"
+    private var cachedLibraries: ImmutableList<LibraryFolder> = persistentListOf()
     private var currentFilter = LibraryFilter()
     private var activeFilterChips: PersistentSet<LibraryFilterChip> = persistentSetOf()
     private var currentLetter: Char? = null
@@ -161,13 +169,14 @@ class LibraryViewModel(
             // Dynamically discover library folders from server
             val viewsResult = handshakeRepository.getUserViews()
             val libraries = viewsResult.getOrDefault(emptyList())
+            cachedLibraries = libraries.toImmutableList()
             val firstLibrary = libraries.firstOrNull()
 
             if (currentLibraryId.isNotBlank()) return@launch
 
             if (firstLibrary != null) {
                 currentLibraryId = firstLibrary.id
-                currentLibraryName = firstLibrary.name
+                currentLibraryName = "المكتبة"
                 loadItems()
             } else {
                 _uiState.value = LibraryUiState.Empty("لا توجد مكتبات وسائط متوفرة على السيرفر")
@@ -192,15 +201,23 @@ class LibraryViewModel(
                 filter = currentFilter,
                 letter = currentLetter
             ).onSuccess { page ->
-                if (page.items.isEmpty() && activeFilterChips.isEmpty() && currentLetter == null) {
-                    _uiState.value = LibraryUiState.Empty("هذه المكتبة فارغة حالياً على الخادم")
+                val filteredItems = if (currentFilter.isFavoriteOnly && localProfileRepository != null) {
+                    page.items.filter { localProfileRepository.isFavorite(it.id) }.toImmutableList()
+                } else {
+                    page.items
+                }
+
+                if (filteredItems.isEmpty() && activeFilterChips.isEmpty() && currentLetter == null) {
+                    _uiState.value = LibraryUiState.Empty("المكتبة فارغة حالياً على الخادم")
                 } else {
                     _uiState.value = LibraryUiState.Success(
-                        items = page.items,
-                        totalCount = page.totalCount,
+                        items = filteredItems,
+                        totalCount = filteredItems.size,
                         activeFilter = currentFilter,
                         currentLibraryId = currentLibraryId,
-                        currentLibraryName = currentLibraryName,
+                        currentLibraryName = "المكتبة",
+                        availableLibraries = cachedLibraries,
+                        selectedLibraryId = currentLibraryId,
                         selectedSort = currentFilter.sortBy,
                         activeFilters = activeFilterChips,
                         selectedLetter = currentLetter,

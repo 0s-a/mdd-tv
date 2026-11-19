@@ -187,51 +187,15 @@ fun PlayerHudOverlay(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Direct Play Badge
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0x3310B981))
-                                .border(1.dp, Color(0x6610B981), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "🟢 Direct Play",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = JellyfinColors.SuccessEmerald
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        // Video Codec Badge
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0x3338BDF8))
-                                .border(1.dp, Color(0x6638BDF8), RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = uiState.videoCodecInfo,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = JellyfinColors.TechSky
-                            )
-                        }
-
-                        if (uiState.mediaSubtitle.isNotBlank()) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = uiState.mediaSubtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = JellyfinColors.TextSecondary,
-                                maxLines = 1
-                            )
-                        }
+                    if (uiState.mediaSubtitle.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = uiState.mediaSubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = JellyfinColors.TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
@@ -396,18 +360,14 @@ fun PlayerHudOverlay(
                             onClick = { showSpeedDialog = true }
                         )
 
-                        // Aspect Ratio Chip
+                        // Aspect Ratio Chip (Toggle between Fit and Fill as per V2)
+                        val isFill = uiState.aspectRatioMode == AspectRatioMode.Fill
                         QuickChip(
                             icon = Icons.Rounded.AspectRatio,
-                            label = uiState.aspectRatioMode.name,
-                            isActive = uiState.aspectRatioMode != AspectRatioMode.Fit,
+                            label = if (isFill) "ملء الشاشة" else "العرض الأصلي",
+                            isActive = isFill,
                             onClick = {
-                                val nextMode = when (uiState.aspectRatioMode) {
-                                    AspectRatioMode.Fit -> AspectRatioMode.Fill
-                                    AspectRatioMode.Fill -> AspectRatioMode.Stretch
-                                    AspectRatioMode.Stretch -> AspectRatioMode.Fit
-                                    AspectRatioMode.Original -> AspectRatioMode.Fit
-                                }
+                                val nextMode = if (isFill) AspectRatioMode.Fit else AspectRatioMode.Fill
                                 onSetAspectRatio(nextMode)
                             }
                         )

@@ -185,7 +185,8 @@ val viewModelModule = module {
     viewModel {
         LibraryViewModel(
             getLibraryItemsUseCase = get(),
-            handshakeRepository = get()
+            handshakeRepository = get(),
+            localProfileRepository = get()
         )
     }
 
