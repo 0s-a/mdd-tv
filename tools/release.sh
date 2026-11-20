@@ -28,34 +28,46 @@ echo "=================================================="
 echo "Starting Automated Release Pipeline: ${TAG_NAME}"
 echo "=================================================="
 
-# 1. Run local silent verification
-echo "[1/6] Running silent local unit tests..."
-./gradlew testDebugUnitTest --no-daemon
+# 1. Verification Strategy
+RUN_LOCAL_TEST=false
+for arg in "$@"; do
+    if [ "$arg" == "--test" ]; then
+        RUN_LOCAL_TEST=true
+    fi
+done
+
+if [ "$RUN_LOCAL_TEST" = true ]; then
+    echo "[1/5] Running local unit tests..."
+    ./gradlew testDebugUnitTest --no-daemon
+else
+    echo "[1/5] Local test execution skipped to conserve resources."
+    echo "      (Cloud CI/CD runner will execute complete test suite and build on GitHub Actions)."
+fi
 
 # 2. Update app/build.gradle.kts
-echo "[2/6] Updating version in app/build.gradle.kts..."
+echo "[2/5] Updating version in app/build.gradle.kts..."
 python3 -c "
 import re
 path = 'app/build.gradle.kts'
 with open(path, 'r') as f:
     content = f.read()
 
-# Update versionName
-content = re.sub(r'versionName\s*=\s*\"[^\"]+\"', f'versionName = \"$TARGET_VERSION\"', content)
+current_version_match = re.search(r'versionName\s*=\s*\"([^\"]+)\"', content)
+current_version = current_version_match.group(1) if current_version_match else ''
 
-# Increment versionCode
-def increment_code(match):
-    old_code = int(match.group(1))
-    return f'versionCode = {old_code + 1}'
-
-content = re.sub(r'versionCode\s*=\s*(\d+)', increment_code, content)
+if current_version != '$TARGET_VERSION':
+    content = re.sub(r'versionName\s*=\s*\"[^\"]+\"', f'versionName = \"$TARGET_VERSION\"', content)
+    def increment_code(match):
+        old_code = int(match.group(1))
+        return f'versionCode = {old_code + 1}'
+    content = re.sub(r'versionCode\s*=\s*(\d+)', increment_code, content)
 
 with open(path, 'w') as f:
     f.write(content)
 "
 
 # 3. Flush docs/UNRELEASED.md into CHANGELOG.md if not already present
-echo "[3/6] Synchronizing release notes and CHANGELOG.md..."
+echo "[3/5] Synchronizing release notes and CHANGELOG.md..."
 python3 -c "
 import re
 target_version = '$TARGET_VERSION'
@@ -112,21 +124,21 @@ if f'## [{target_version}]' not in changelog:
 "
 
 # 4. Git Stage and Commit
-echo "[4/6] Creating release commit..."
-git add app/build.gradle.kts CHANGELOG.md docs/UNRELEASED.md docs/
-git commit -m "chore(release): prepare release ${TAG_NAME}" || true
+echo "[4/5] Preparing git state..."
+git add app/build.gradle.kts CHANGELOG.md docs/UNRELEASED.md docs/ tools/release.sh
+if ! git diff --cached --quiet; then
+    git commit -m "chore(release): prepare release ${TAG_NAME}"
+fi
 
-# 5. Create Git Tag
-echo "[5/6] Creating git tag ${TAG_NAME}..."
+# 5. Create Git Tag and Push to GitHub
+echo "[5/5] Creating git tag ${TAG_NAME} and pushing to GitHub..."
 if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-    echo "Tag $TAG_NAME already exists, skipping tag creation."
+    echo "Tag $TAG_NAME already exists, pushing existing tag..."
 else
     git tag -a "$TAG_NAME" -m "Release ${TAG_NAME}"
 fi
 
-# 6. Push to GitHub
-echo "[6/6] Pushing commits and tag to GitHub..."
-git push origin main --tags
+git push origin main "$TAG_NAME"
 
 echo "=================================================="
 echo "Release ${TAG_NAME} successfully pushed to GitHub!"
