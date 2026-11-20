@@ -18,7 +18,9 @@ class SearchMediaUseCaseTest {
     private class FakeSearchRepository(
         private val searchResult: Result<SearchResultSummary>
     ) : SearchRepository {
-        override suspend fun search(query: String): Result<SearchResultSummary> = searchResult
+        override suspend fun search(query: String, genres: Set<String>): Result<SearchResultSummary> = searchResult
+        override suspend fun getAvailableGenres(): Result<List<String>> = Result.success(emptyList())
+        override suspend fun getRandomSpotlight(): Result<MediaItemSummary?> = Result.success(null)
         override suspend fun getItemsByGenre(genreName: String): Result<List<MediaItemSummary>> = Result.success(emptyList())
         override fun getRecentQueries(): Flow<List<String>> = emptyFlow()
         override suspend fun addRecentQuery(query: String) {}
@@ -49,6 +51,28 @@ class SearchMediaUseCaseTest {
         assertEquals("Batman", data?.query)
         assertEquals("The Batman", data?.topMatch?.name)
         assertEquals(2, data?.totalCount)
+    }
+
+    @Test
+    fun searchMediaUseCase_withMultiGenreFilter_returnsFilteredResults() = runTest {
+        val expected = SearchResultSummary(
+            query = "Interstellar",
+            topMatch = MediaItemSummary(id = "m-1", name = "Interstellar", type = "Movie"),
+            mediaResults = persistentListOf(
+                MediaItemSummary(id = "m-1", name = "Interstellar", type = "Movie")
+            ),
+            peopleResults = persistentListOf(),
+            totalCount = 1
+        )
+
+        val repo = FakeSearchRepository(Result.success(expected))
+        val useCase = SearchMediaUseCase(repo)
+
+        val result = useCase("Interstellar", setOf("خيال علمي", "دراما"))
+        assertTrue(result.isSuccess)
+        val data = result.getOrNull()
+        assertEquals("Interstellar", data?.query)
+        assertEquals(1, data?.totalCount)
     }
 
     @Test
