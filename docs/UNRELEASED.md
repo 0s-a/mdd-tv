@@ -6,6 +6,13 @@
 ---
 
 ## الميزات الجديدة قيد الإعداد (Added)
+* منظومة شاشات التفاصيل المستقلة والموجه الذكي (`MediaDetailsDispatcher`): تفكيك الشاشة الموحدة الضخمة وبناء شاشات مستقلة متخصصة لكل نمط وسائط (`MovieDetailsScreen`, `SeriesDetailsScreen`, `BoxSetDetailsScreen`, `MusicAlbumDetailsScreen`) مع موجه ذكي ديناميكي يحدد الشاشة المناسبة في زمن استجابة صفري.
+* جناح المشغل السينمائي المتقدم (`AdvancedCinemaPlayer Suite`):
+  * مصنع فك الترميز التكيفي (`MxStyleRenderersFactory`) مع السقوط الصامت التام (<300ms) لمحرك SW FFmpeg ARM NEON.
+  * محرك الصوت وتضخيم الصوت 200% (`AudioBoostEngine`) عبر LoudnessEnhancer مع كابح التشويش ومعادل 5-Band Equalizer وبروفايل Vocal Booster وتمرير الصوت الخام Bitstream Passthrough.
+  * نظام الإيماءات المتقدم فائق السرعة (`PlayerGestureDetector`): معمارية Zero-Allocation، قفل المحور الصارم 1.5x، عتبة حركة 18dp، وهوامش أمان 24dp لمنع تعارض إيماءات نظام أندرويد.
+  * المعاينة الصورية الحركية وفصول الوسائط (`TrickplayThumbnailManager` و `CinemaScrubber`): دعم شرائح BIF وكاش إطارات I-Frames المحلي (24MB) مع شريط الفصول وعرض المعاينة العائم.
+  * نافذة الإجراءات الموحدة السفلية (`PlayerActionsModal`) ومحرك الترجمات السينمائي (`CinemaSubtitleRenderer`) مع حماية بكسلات شاشات OLED.
 * شريط التنقل السينمائي المدمج (`CinemaBottomBar`): استبدال الكبسولة الزجاجية العائمة بشريط سينمائي مدمج متكامل العرض بسواد OLED التام (`#000000`)، مع حافة علوية فائقة الدقة (1dp hairline)، وتدرج سينمائي علوي ناعم (Top Scrim Gradient 20dp) لانسياب المحتوى تحته بسلاسة.
 * التغذية الراجعة اللمسية الهادئة في شريط التنقل: نبضات اهتزازية فيزيائية خفيفة (`TextHandleMove`) عند التنقل بين التبويبات.
 * ميزة إعادة الضغط للتمرير للأعلى (`Reselection Scroll-to-Top`): دعم إعادة الضغط على التبويب النشط للتمرير الفوري للأعلى في الشاشات الرئيسية الثلاث (الرئيسية، المكتبة، والملف الشخصي) عبر `NavigationEvents`.
