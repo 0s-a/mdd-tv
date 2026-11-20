@@ -149,7 +149,7 @@ fun FrostedSearchBar(
                     value = query,
                     onValueChange = onQueryChange,
                     singleLine = true,
-                    cursorBrush = SolidColor(JellyfinColors.AccentCyan),
+                    cursorBrush = SolidColor(JellyfinColors.AccentAmber),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         color = JellyfinColors.TextPrimary
                     ),
@@ -203,7 +203,7 @@ fun FrostedSearchBar(
                         BadgedBox(
                             badge = {
                                 Badge(
-                                    containerColor = JellyfinColors.AccentCyan,
+                                    containerColor = JellyfinColors.AccentAmber,
                                     contentColor = JellyfinColors.PureBlack
                                 ) {
                                     Text(
@@ -216,7 +216,7 @@ fun FrostedSearchBar(
                             Icon(
                                 imageVector = Icons.Rounded.FilterList,
                                 contentDescription = null,
-                                tint = JellyfinColors.AccentCyan,
+                                tint = JellyfinColors.AccentAmber,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -281,14 +281,19 @@ private fun ActiveGenreRemovableChip(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .clip(RoundedCornerShape(JellyfinDimens.RadiusPill))
-            .background(JellyfinColors.AccentCyan.copy(alpha = 0.15f))
+            .background(JellyfinColors.AccentAmber.copy(alpha = 0.15f))
             .border(
                 width = 1.dp,
-                color = JellyfinColors.AccentCyan,
+                color = JellyfinColors.AccentAmber,
                 shape = RoundedCornerShape(JellyfinDimens.RadiusPill)
             )
             .clickable(onClick = onRemove)
-            .padding(start = JellyfinDimens.SpaceMedium, end = JellyfinDimens.SpaceSmall, vertical = 5.dp)
+            .padding(
+                start = JellyfinDimens.SpaceMedium,
+                end = JellyfinDimens.SpaceSmall,
+                top = 5.dp,
+                bottom = 5.dp
+            )
             .semantics {
                 role = Role.Button
                 contentDescription = "إزالة تصنيف $genre"
@@ -298,13 +303,13 @@ private fun ActiveGenreRemovableChip(
             text = genre,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = JellyfinColors.AccentCyan
+            color = JellyfinColors.AccentAmber
         )
         Spacer(modifier = Modifier.width(6.dp))
         Icon(
             imageVector = Icons.Rounded.Close,
             contentDescription = null,
-            tint = JellyfinColors.AccentCyan,
+            tint = JellyfinColors.AccentAmber,
             modifier = Modifier.size(14.dp)
         )
     }

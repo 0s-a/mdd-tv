@@ -29,7 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.toImmutableList
@@ -44,10 +44,10 @@ import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
  * SearchScreen implements the comprehensive multi-domain instant search experience as a transparent modal window.
- * - Transparent smoked glass overlay.
+ * - Transparent smoked glass overlay with click-to-dismiss on empty background.
  * - Dynamic server genres with multi-selection trailing button.
  * - 100% dynamic server data for idle state and search results.
- * - Mobile-first gestures and zero static filter ribbons.
+ * - Mobile-first gestures, auto-keyboard dismiss, and zero static filter ribbons.
  */
 @Composable
 fun SearchScreen(
@@ -60,6 +60,7 @@ fun SearchScreen(
     val query by viewModel.query.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val availableGenres by viewModel.availableGenres.collectAsState()
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // Smoked Obsidian Glass Scrim
     val overlayScrim = JellyfinColors.PureBlack.copy(alpha = 0.90f)
@@ -80,6 +81,11 @@ fun SearchScreen(
         modifier = modifier
             .fillMaxSize()
             .background(overlayScrim)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onNavigateBack
+            )
     ) {
         Column(
             modifier = Modifier
@@ -151,7 +157,7 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             CircularProgressIndicator(
-                                color = JellyfinColors.AccentCyan,
+                                color = JellyfinColors.AccentAmber,
                                 trackColor = JellyfinColors.SurfaceDark,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(44.dp)
@@ -191,7 +197,7 @@ fun SearchScreen(
                     is SearchUiState.Error -> {
                         SearchErrorState(
                             message = state.message,
-                            onRetry = { viewModel.processIntent(SearchIntent.UpdateQuery(query)) },
+                            onRetry = { viewModel.processIntent(SearchIntent.Retry) },
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -199,22 +205,21 @@ fun SearchScreen(
             }
         }
 
-        // 3. Dynamic Server Genres Multi-Select Bottom Sheet
-        if (uiState.isGenrePickerOpen) {
-            GenrePickerBottomSheet(
-                availableGenres = availableGenres.toImmutableList(),
-                selectedGenres = uiState.selectedGenres,
-                onToggleGenre = { genre ->
-                    viewModel.processIntent(SearchIntent.ToggleGenre(genre))
-                },
-                onClearGenres = {
-                    viewModel.processIntent(SearchIntent.ClearGenres)
-                },
-                onDismiss = {
-                    viewModel.processIntent(SearchIntent.CloseGenrePicker)
-                }
-            )
-        }
+        // 3. Dynamic Server Genres Multi-Select Embedded Bottom Sheet
+        GenrePickerBottomSheet(
+            isVisible = uiState.isGenrePickerOpen,
+            availableGenres = availableGenres.toImmutableList(),
+            selectedGenres = uiState.selectedGenres,
+            onToggleGenre = { genre ->
+                viewModel.processIntent(SearchIntent.ToggleGenre(genre))
+            },
+            onClearGenres = {
+                viewModel.processIntent(SearchIntent.ClearGenres)
+            },
+            onDismiss = {
+                viewModel.processIntent(SearchIntent.CloseGenrePicker)
+            }
+        )
     }
 }
 
@@ -229,6 +234,11 @@ private fun SearchEmptyState(
         modifier = modifier
             .padding(JellyfinDimens.SpaceLarge)
             .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {} // Prevents clicking the card from dismissing the dialog
+            )
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -264,7 +274,7 @@ private fun SearchEmptyState(
             Button(
                 onClick = onClear,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = JellyfinColors.AccentCyan,
+                    containerColor = JellyfinColors.AccentAmber,
                     contentColor = JellyfinColors.PureBlack
                 ),
                 shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
@@ -290,6 +300,11 @@ private fun SearchErrorState(
         modifier = modifier
             .padding(JellyfinDimens.SpaceLarge)
             .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {} // Prevents clicking the card from dismissing the dialog
+            )
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -311,7 +326,7 @@ private fun SearchErrorState(
             Button(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = JellyfinColors.AccentCyan,
+                    containerColor = JellyfinColors.AccentAmber,
                     contentColor = JellyfinColors.PureBlack
                 ),
                 shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),

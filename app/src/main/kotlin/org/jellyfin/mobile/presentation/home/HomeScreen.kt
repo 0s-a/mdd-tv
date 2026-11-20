@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.domain.model.AvatarCatalog
 import org.jellyfin.mobile.domain.model.ContinueWatchingItem
@@ -71,6 +74,9 @@ import org.jellyfin.mobile.presentation.home.components.HeroSpotlight
 import org.jellyfin.mobile.presentation.home.components.HomeShimmerSkeleton
 import org.jellyfin.mobile.presentation.home.components.LibraryCapsulesRow
 import org.jellyfin.mobile.presentation.home.components.RecentlyAddedRow
+import org.jellyfin.mobile.presentation.main.LocalBottomClearance
+import org.jellyfin.mobile.presentation.main.NavigationTab
+import org.jellyfin.mobile.presentation.main.OnTabReselected
 import org.jellyfin.mobile.ui.components.GlassmorphicCard
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
@@ -103,6 +109,14 @@ fun HomeScreen(
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
     val hapticFeedback = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    OnTabReselected(NavigationTab.HOME) {
+        coroutineScope.launch {
+            listState.animateScrollToItem(0)
+        }
+    }
 
     // Contextual bottom sheet for Continue Watching item options
     var selectedContinueItem by remember { mutableStateOf<ContinueWatchingItem?>(null) }
@@ -159,8 +173,12 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 76.dp, bottom = 100.dp) // Clearance for floating bars
+                        contentPadding = PaddingValues(
+                            top = 76.dp,
+                            bottom = LocalBottomClearance.current + JellyfinDimens.SpaceMedium
+                        )
                     ) {
                         // Enlarged Cinematic Hero Spotlight Carousel (440dp height, HorizontalPager)
                         if (state.heroItems.isNotEmpty()) {

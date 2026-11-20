@@ -27,6 +27,11 @@ import org.jellyfin.mobile.domain.usecase.GetLibraryItemsUseCase
 import org.jellyfin.mobile.domain.usecase.GetMediaDetailsUseCase
 import org.jellyfin.mobile.domain.usecase.SearchMediaUseCase
 import org.jellyfin.mobile.presentation.details.MediaDetailsViewModel
+import org.jellyfin.mobile.presentation.details.boxset.BoxSetViewModel
+import org.jellyfin.mobile.presentation.details.dispatcher.MediaDetailsDispatcherViewModel
+import org.jellyfin.mobile.presentation.details.movie.MovieViewModel
+import org.jellyfin.mobile.presentation.details.music.MusicAlbumViewModel
+import org.jellyfin.mobile.presentation.details.series.SeriesViewModel
 import org.jellyfin.mobile.presentation.home.HomeViewModel
 import org.jellyfin.mobile.presentation.library.LibraryViewModel
 import org.jellyfin.mobile.presentation.onboarding.OnboardingViewModel
@@ -186,6 +191,56 @@ val viewModelModule = module {
             mediaDetailsRepository = get(),
             handshakeRepository = get(),
             localProfileRepository = get()
+        )
+    }
+
+    viewModel {
+        MovieViewModel(
+            getMediaDetailsUseCase = get(),
+            mediaDetailsRepository = get(),
+            handshakeRepository = get(),
+            localProfileRepository = get(),
+            apiService = get(),
+            sessionManager = get()
+        )
+    }
+
+    viewModel {
+        SeriesViewModel(
+            getMediaDetailsUseCase = get(),
+            mediaDetailsRepository = get(),
+            handshakeRepository = get(),
+            localProfileRepository = get(),
+            apiService = get(),
+            sessionManager = get()
+        )
+    }
+
+    viewModel {
+        BoxSetViewModel(
+            getMediaDetailsUseCase = get(),
+            libraryRepository = get(),
+            mediaDetailsRepository = get(),
+            handshakeRepository = get(),
+            localProfileRepository = get(),
+            apiService = get()
+        )
+    }
+
+    viewModel {
+        MusicAlbumViewModel(
+            apiService = get(),
+            handshakeRepository = get(),
+            mediaDetailsRepository = get(),
+            localProfileRepository = get()
+        )
+    }
+
+    viewModel {
+        MediaDetailsDispatcherViewModel(
+            apiService = get(),
+            sessionManager = get(),
+            handshakeRepository = get()
         )
     }
 

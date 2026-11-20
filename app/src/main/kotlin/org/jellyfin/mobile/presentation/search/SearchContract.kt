@@ -15,6 +15,7 @@ import org.jellyfin.mobile.domain.model.MediaItemSummary
 sealed interface SearchIntent {
     data class UpdateQuery(val query: String) : SearchIntent
     data object ClearQuery : SearchIntent
+    data object Retry : SearchIntent
     data class ToggleGenre(val genre: String) : SearchIntent
     data class RemoveGenre(val genre: String) : SearchIntent
     data object ClearGenres : SearchIntent

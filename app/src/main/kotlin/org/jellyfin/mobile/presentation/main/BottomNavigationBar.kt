@@ -66,47 +66,24 @@ enum class NavigationTab(
 }
 
 /**
- * Floating frosted glass bottom navigation bar.
- * Strictly adheres to docs/DESIGN_SYSTEM.md & docs/screens/01_HOME_DASHBOARD.md:
- * - Floating glassmorphic pill (70% opacity, 1dp border).
- * - Minimum 48dp touch targets on all 4 tabs.
- * - Arabic TalkBack semantics with Role.Tab.
+ * Deprecated floating bottom navigation bar.
+ * Replaced by CinemaBottomBar for OLED Obsidian 2.2.0 compliance.
  */
+@Deprecated(
+    message = "Use CinemaBottomBar instead",
+    replaceWith = ReplaceWith("CinemaBottomBar(currentRoute, onTabSelected, modifier)")
+)
 @Composable
 fun FloatingBottomNavigationBar(
     currentRoute: String,
     onTabSelected: (NavigationTab) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    CinemaBottomBar(
+        currentRoute = currentRoute,
+        onTabSelected = onTabSelected,
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = JellyfinDimens.SpaceLarge, vertical = JellyfinDimens.SpaceMedium)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassmorphism(
-                    backgroundColor = JellyfinColors.SurfaceGlass,
-                    borderColor = JellyfinColors.BorderGlass,
-                    cornerRadius = JellyfinDimens.RadiusLarge
-                )
-                .padding(horizontal = JellyfinDimens.SpaceSmall, vertical = JellyfinDimens.SpaceExtraSmall),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NavigationTab.entries.forEach { tab ->
-                val isSelected = currentRoute == tab.route
-
-                BottomNavigationTabItem(
-                    tab = tab,
-                    isSelected = isSelected,
-                    onClick = { onTabSelected(tab) },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable

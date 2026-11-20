@@ -9,6 +9,7 @@ import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +19,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.CastMember
@@ -52,6 +55,8 @@ class SearchViewModel(
 
     private val _isGenrePickerOpen = MutableStateFlow(false)
     val isGenrePickerOpen: StateFlow<Boolean> = _isGenrePickerOpen.asStateFlow()
+
+    private val _retryTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     private val _uiState = MutableStateFlow<SearchUiState>(
         SearchUiState.Idle(
@@ -98,9 +103,13 @@ class SearchViewModel(
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun setupSearchPipeline() {
         viewModelScope.launch {
-            combine(_searchQuery, _selectedGenres) { q, g -> Pair(q, g) }
+            val searchFlow = combine(_searchQuery, _selectedGenres) { q, g -> Pair(q, g) }
                 .debounce(300L)
                 .distinctUntilChanged()
+
+            val retryFlow = _retryTrigger.map { Pair(_searchQuery.value, _selectedGenres.value) }
+
+            merge(searchFlow, retryFlow)
                 .flatMapLatest { (queryText, genres) ->
                     flow {
                         val trimmed = queryText.trim()
@@ -183,6 +192,9 @@ class SearchViewModel(
             }
             is SearchIntent.ClearQuery -> {
                 _searchQuery.value = ""
+            }
+            is SearchIntent.Retry -> {
+                _retryTrigger.tryEmit(Unit)
             }
             is SearchIntent.ToggleGenre -> {
                 val current = _selectedGenres.value

@@ -1,8 +1,14 @@
 package org.jellyfin.mobile.presentation.search.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +16,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -22,18 +29,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,9 +55,10 @@ import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
  * GenrePickerBottomSheet displays a dynamic multi-select bottom sheet for server genres.
+ * Embedded directly in the Compose tree with AnimatedVisibility to avoid window dialog collisions.
  * 100% dynamic from Jellyfin server with zero hardcoded values.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun GenrePickerBottomSheet(
     availableGenres: ImmutableList<String>,
@@ -61,119 +66,148 @@ fun GenrePickerBottomSheet(
     onToggleGenre: (String) -> Unit,
     onClearGenres: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isVisible: Boolean = true
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = JellyfinColors.SurfaceDark,
-        shape = RoundedCornerShape(
-            topStart = JellyfinDimens.RadiusLarge,
-            topEnd = JellyfinDimens.RadiusLarge
-        ),
-        modifier = modifier
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        modifier = modifier.fillMaxSize()
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = JellyfinDimens.SpaceLarge)
-                .padding(bottom = JellyfinDimens.SpaceLarge)
+                .fillMaxSize()
+                .background(JellyfinColors.PureBlack.copy(alpha = 0.65f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            // Header Row: Title, active counter, and clear button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(
+                        RoundedCornerShape(
+                            topStart = JellyfinDimens.RadiusLarge,
+                            topEnd = JellyfinDimens.RadiusLarge
+                        )
+                    )
+                    .background(JellyfinColors.SurfaceDark)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {} // Consumes click inside the sheet so it does not dismiss
+                    )
+                    .navigationBarsPadding()
+                    .padding(horizontal = JellyfinDimens.SpaceLarge)
+                    .padding(bottom = JellyfinDimens.SpaceLarge)
             ) {
-                Column {
-                    Text(
-                        text = "تصنيفات السيرفر",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = JellyfinColors.TextPrimary
-                    )
+                // Drag handle bar
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = JellyfinDimens.SpaceMedium)
+                        .align(Alignment.CenterHorizontally)
+                        .size(width = 36.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(JellyfinColors.TextSecondary.copy(alpha = 0.4f))
+                )
+
+                // Header Row: Title, active counter, and clear button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "تصنيفات السيرفر",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = JellyfinColors.TextPrimary
+                        )
+                        if (selectedGenres.isNotEmpty()) {
+                            Text(
+                                text = "تم اختيار ${selectedGenres.size} من التصنيفات",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = JellyfinColors.AccentAmber
+                            )
+                        }
+                    }
+
                     if (selectedGenres.isNotEmpty()) {
-                        Text(
-                            text = "تم اختيار ${selectedGenres.size} من التصنيفات",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = JellyfinColors.AccentCyan
-                        )
-                    }
-                }
-
-                if (selectedGenres.isNotEmpty()) {
-                    TextButton(onClick = onClearGenres) {
-                        Text(
-                            text = "مسح الكل",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = JellyfinColors.TextSecondary
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(JellyfinDimens.SpaceMedium))
-
-            // Body: Scrollable FlowRow of dynamic genres
-            if (availableGenres.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        color = JellyfinColors.AccentCyan,
-                        strokeWidth = 2.dp
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 340.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
-                        verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
-                    ) {
-                        availableGenres.forEach { genre ->
-                            val isSelected = selectedGenres.contains(genre)
-                            GenreSelectableChip(
-                                label = genre,
-                                isSelected = isSelected,
-                                onClick = { onToggleGenre(genre) }
+                        TextButton(onClick = onClearGenres) {
+                            Text(
+                                text = "مسح الكل",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = JellyfinColors.TextSecondary
                             )
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
+                Spacer(modifier = Modifier.height(JellyfinDimens.SpaceMedium))
 
-            // Footer Action: Apply button
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = JellyfinColors.AccentCyan,
-                    contentColor = JellyfinColors.PureBlack
-                ),
-                shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(JellyfinDimens.MinTouchTarget)
-            ) {
-                Text(
-                    text = if (selectedGenres.isEmpty()) "إغلاق" else "تطبيق (${selectedGenres.size})",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                // Body: Scrollable FlowRow of dynamic genres
+                if (availableGenres.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(32.dp),
+                            color = JellyfinColors.AccentAmber,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 340.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
+                            verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
+                        ) {
+                            availableGenres.forEach { genre ->
+                                val isSelected = selectedGenres.contains(genre)
+                                GenreSelectableChip(
+                                    label = genre,
+                                    isSelected = isSelected,
+                                    onClick = { onToggleGenre(genre) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
+
+                // Footer Action: Apply button
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = JellyfinColors.AccentAmber,
+                        contentColor = JellyfinColors.PureBlack
+                    ),
+                    shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(JellyfinDimens.MinTouchTarget)
+                ) {
+                    Text(
+                        text = if (selectedGenres.isEmpty()) "إغلاق" else "تطبيق (${selectedGenres.size})",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
@@ -187,19 +221,19 @@ private fun GenreSelectableChip(
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = if (isSelected) {
-        JellyfinColors.AccentCyan.copy(alpha = 0.18f)
+        JellyfinColors.AccentAmber.copy(alpha = 0.18f)
     } else {
         JellyfinColors.SurfaceElevated
     }
 
     val borderColor = if (isSelected) {
-        JellyfinColors.AccentCyan
+        JellyfinColors.AccentAmber
     } else {
         JellyfinColors.BorderGlass
     }
 
     val textColor = if (isSelected) {
-        JellyfinColors.AccentCyan
+        JellyfinColors.AccentAmber
     } else {
         JellyfinColors.TextPrimary
     }
@@ -227,7 +261,7 @@ private fun GenreSelectableChip(
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = null,
-                tint = JellyfinColors.AccentCyan,
+                tint = JellyfinColors.AccentAmber,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))

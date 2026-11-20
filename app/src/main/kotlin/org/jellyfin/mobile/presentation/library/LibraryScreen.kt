@@ -47,6 +47,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +58,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.presentation.core.components.CinemaChildTopBar
 import org.jellyfin.mobile.presentation.library.components.AlphabetScrubber
@@ -64,6 +66,9 @@ import org.jellyfin.mobile.presentation.library.components.BreadcrumbsBar
 import org.jellyfin.mobile.presentation.library.components.FilterChipsRow
 import org.jellyfin.mobile.presentation.library.components.FolderCard
 import org.jellyfin.mobile.presentation.library.components.LibraryPosterCard
+import org.jellyfin.mobile.presentation.main.LocalBottomClearance
+import org.jellyfin.mobile.presentation.main.NavigationTab
+import org.jellyfin.mobile.presentation.main.OnTabReselected
 import org.jellyfin.mobile.ui.components.GlassmorphicCard
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
@@ -89,8 +94,15 @@ fun LibraryScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
+
+    OnTabReselected(NavigationTab.LIBRARY) {
+        coroutineScope.launch {
+            gridState.animateScrollToItem(0)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effects.collectLatest { effect ->
@@ -251,7 +263,7 @@ fun LibraryScreen(
                                     start = JellyfinDimens.SpaceLarge,
                                     end = 36.dp, // Clearance for trailing AlphabetScrubber
                                     top = JellyfinDimens.SpaceSmall,
-                                    bottom = 120.dp // Clearance for floating bottom bar
+                                    bottom = LocalBottomClearance.current + JellyfinDimens.SpaceMedium
                                 ),
                                 horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
                                 verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),

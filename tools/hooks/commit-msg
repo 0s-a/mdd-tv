@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Git Commit-Msg Hook: Conventional Commits & Zero Emoji for mdd TV
+# ==============================================================================
+
+MSG_FILE="$1"
+COMMIT_MSG=$(cat "$MSG_FILE")
+
+# 1. Emoji check in commit message
+python3 -c "
+import sys, re
+
+emoji_pattern = re.compile(
+    r'[\U00010000-\U0010ffff]|[\u2600-\u27bf]|[\u2300-\u23ff]|[\u2b50]'
+)
+
+msg = '''$COMMIT_MSG'''
+matches = emoji_pattern.findall(msg)
+if matches:
+    print('==================================================')
+    print('COMMIT MESSAGE FAILED:')
+    print(f'  Forbidden emojis in commit message: {matches}')
+    print('  Absolute Emoji Ban is strictly enforced.')
+    print('==================================================')
+    sys.exit(1)
+"
+
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+# 2. Conventional Commits pattern check (skip merge/revert commits)
+FIRST_LINE=$(head -n 1 "$MSG_FILE")
+
+if [[ "$FIRST_LINE" =~ ^(Merge|Revert) ]]; then
+    exit 0
+fi
+
+CONVENTIONAL_PATTERN="^(feat|fix|docs|style|refactor|perf|test|chore|build|ci)(\([a-zA-Z0-9_-]+\))?: .+$"
+
+if ! [[ "$FIRST_LINE" =~ $CONVENTIONAL_PATTERN ]]; then
+    echo "=================================================="
+    echo "COMMIT MESSAGE FAILED:"
+    echo "  Your commit message does not follow Conventional Commits format."
+    echo "  Format required: <type>(<scope>): <subject>"
+    echo "  Types allowed: feat, fix, docs, style, refactor, perf, test, chore, build, ci"
+    echo "  Example: feat(player): add hardware decoding fallback"
+    echo "=================================================="
+    exit 1
+fi
+
+exit 0

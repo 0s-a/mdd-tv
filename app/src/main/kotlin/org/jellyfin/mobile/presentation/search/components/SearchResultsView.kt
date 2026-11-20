@@ -2,6 +2,8 @@ package org.jellyfin.mobile.presentation.search.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,10 +35,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -49,7 +58,6 @@ import coil.compose.AsyncImage
 import kotlinx.collections.immutable.ImmutableList
 import org.jellyfin.mobile.domain.model.CastMember
 import org.jellyfin.mobile.domain.model.MediaItemSummary
-import org.jellyfin.mobile.presentation.home.components.RecentlyAddedRow
 import org.jellyfin.mobile.ui.components.glassmorphism
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
@@ -58,8 +66,9 @@ import org.jellyfin.mobile.ui.theme.JellyfinDimens
  * SearchResultsView displays structured multi-domain search results.
  * Strictly adheres to 05_SEARCH_AND_EXPLORE.md Section 2 (ACTIVE RESULTS):
  * - Top Match Hero Card.
- * - Matching Movies & Series row (2:3 posters).
+ * - Matching Movies & Series in a compact 3-column vertical grid (2:3 posters).
  * - Matching Cast & Crew row (circular avatars).
+ * - Auto-hides soft keyboard on list scroll or touch.
  */
 @Composable
 fun SearchResultsView(
@@ -71,8 +80,26 @@ fun SearchResultsView(
     onPersonClick: (CastMember) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                keyboardController?.hide()
+                return Offset.Zero
+            }
+        }
+    }
+
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    keyboardController?.hide()
+                }
+            },
         contentPadding = PaddingValues(bottom = 100.dp) // Clearance for floating bottom bar
     ) {
         // 1. Top Match Hero Card
@@ -102,14 +129,51 @@ fun SearchResultsView(
             }
         }
 
-        // 2. Movies & Series matching row
+        // 2. Movies & Series matching vertical 3-column grid
         if (mediaResults.isNotEmpty()) {
-            item(key = "media_results_row") {
-                RecentlyAddedRow(
-                    items = mediaResults,
-                    onItemClick = onMediaClick,
-                    title = "أفلام ومسلسلات مطابقة"
+            item(key = "media_results_header") {
+                Text(
+                    text = "أفلام ومسلسلات مطابقة",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = JellyfinColors.TextPrimary,
+                    modifier = Modifier.padding(
+                        horizontal = JellyfinDimens.SpaceLarge,
+                        vertical = JellyfinDimens.SpaceSmall
+                    )
                 )
+            }
+
+            val chunkedMedia = mediaResults.chunked(3)
+            items(
+                items = chunkedMedia,
+                key = { rowList -> "media_row_${rowList.first().id}" }
+            ) { rowList ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = JellyfinDimens.SpaceLarge,
+                            vertical = 4.dp
+                        ),
+                    horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
+                ) {
+                    for (index in 0 until 3) {
+                        if (index < rowList.size) {
+                            val mediaItem = rowList[index]
+                            SearchMediaCard(
+                                item = mediaItem,
+                                onClick = { onMediaClick(mediaItem.id) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+
+            item(key = "media_results_spacer") {
                 Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
             }
         }
@@ -146,6 +210,105 @@ fun SearchResultsView(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * SearchMediaCard renders a 2:3 poster card for movies and series in search results.
+ * Fully compliant with Obsidian design system and accessibility guidelines.
+ */
+@Composable
+fun SearchMediaCard(
+    item: MediaItemSummary,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val ratingFormatted = if (item.communityRating != null && item.communityRating > 0f) {
+        String.format(java.util.Locale.US, "%.1f", item.communityRating)
+    } else {
+        "غير متوفر"
+    }
+    val talkBackDesc = "${item.name}، تقييم $ratingFormatted. اضغط للتفاصيل."
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                role = Role.Button,
+                onClick = onClick
+            )
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                contentDescription = talkBackDesc
+            }
+    ) {
+        // 2:3 Aspect Ratio Poster Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(JellyfinDimens.RadiusSmall))
+                .background(JellyfinColors.SurfaceDark)
+        ) {
+            AsyncImage(
+                model = item.posterUrl ?: item.backdropUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Rating chip on top-end corner
+            if (item.communityRating != null && item.communityRating > 0f) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .glassmorphism(
+                            backgroundColor = JellyfinColors.SurfaceDark.copy(alpha = 0.85f),
+                            borderColor = JellyfinColors.BorderGlass,
+                            cornerRadius = JellyfinDimens.RadiusSmall
+                        )
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = JellyfinColors.RatingGold,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = ratingFormatted,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = JellyfinColors.RatingGold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Title
+        Text(
+            text = item.name,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = JellyfinColors.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // Production Year
+        if (item.productionYear != null) {
+            Text(
+                text = item.productionYear.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = JellyfinColors.TextSecondary,
+                maxLines = 1
+            )
         }
     }
 }
@@ -225,7 +388,7 @@ private fun TopMatchHeroCard(
                             )
                             Spacer(modifier = Modifier.width(3.dp))
                             Text(
-                                text = String.format("%.1f", item.communityRating),
+                                text = String.format(java.util.Locale.US, "%.1f", item.communityRating),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = JellyfinColors.RatingGold

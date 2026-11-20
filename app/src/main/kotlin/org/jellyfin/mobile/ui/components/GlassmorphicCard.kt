@@ -23,25 +23,6 @@ import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
- * Modifier extension applying the refined matte Obsidian surface with crisp hairline border.
- * Adheres to docs/foundations/design_system.md:
- * - Matte smoked surface (#1B1E26 / #14171D) with subtle 1dp hairline border (10% white).
- * - Rationalized corner radius (10dp default).
- */
-fun Modifier.obsidianCard(
-    backgroundColor: Color = JellyfinColors.SurfaceDark,
-    borderColor: Color = JellyfinColors.BorderHairline,
-    cornerRadius: Dp = JellyfinDimens.RadiusDefault,
-    borderWidth: Dp = JellyfinDimens.BorderHairline
-): Modifier {
-    val shape = RoundedCornerShape(cornerRadius)
-    return this
-        .clip(shape)
-        .background(backgroundColor)
-        .border(borderWidth, borderColor, shape)
-}
-
-/**
  * Backward-compatible alias for existing screens.
  * Now applies the calm, matte smoked surface rather than flashy neon glass.
  */

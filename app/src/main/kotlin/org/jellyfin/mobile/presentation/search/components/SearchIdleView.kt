@@ -260,7 +260,7 @@ private fun DynamicSpotlightCard(
                     Icon(
                         imageVector = Icons.Rounded.Star,
                         contentDescription = null,
-                        tint = JellyfinColors.AmberWarm,
+                        tint = JellyfinColors.RatingGold,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -268,7 +268,7 @@ private fun DynamicSpotlightCard(
                         text = String.format("%.1f", item.communityRating),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = JellyfinColors.AmberWarm
+                        color = JellyfinColors.RatingGold
                     )
                 }
             }
@@ -282,7 +282,7 @@ private fun DynamicSpotlightCard(
                 Button(
                     onClick = onPlayClick,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = JellyfinColors.AccentCyan,
+                        containerColor = JellyfinColors.AccentAmber,
                         contentColor = JellyfinColors.PureBlack
                     ),
                     shape = RoundedCornerShape(JellyfinDimens.RadiusPill),

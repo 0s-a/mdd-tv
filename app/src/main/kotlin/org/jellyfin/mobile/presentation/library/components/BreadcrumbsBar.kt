@@ -133,7 +133,7 @@ fun BreadcrumbsBar(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Right: Dual-Mode Switcher (📁 مجلدات / 🎬 الكل)
+        // Right: Dual-Mode Switcher (مجلدات / الكل)
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))

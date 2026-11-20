@@ -84,13 +84,13 @@ class SearchRepositoryImpl(
                 }
             }
 
-            // Identify top match (exact match on name or first media item)
+            // Identify top match only when a search query is present
             val topMatch = if (trimmed.isNotBlank()) {
                 mediaItems.firstOrNull {
                     it.name.equals(trimmed, ignoreCase = true)
                 } ?: mediaItems.firstOrNull()
             } else {
-                mediaItems.firstOrNull()
+                null
             }
 
             val remainingMedia = if (topMatch != null) {

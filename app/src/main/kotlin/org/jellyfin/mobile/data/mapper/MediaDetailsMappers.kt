@@ -170,6 +170,7 @@ fun BaseItemDto.toMediaDetails(
         episodes = episodes.toImmutableList(),
         similarItems = similarItems.toImmutableList(),
         playbackPositionPercentage = percentage,
-        isFavorite = userData?.isFavorite == true
+        isFavorite = userData?.isFavorite == true,
+        itemType = type.orEmpty().ifBlank { if (isMovieType) "Movie" else "Series" }
     )
 }

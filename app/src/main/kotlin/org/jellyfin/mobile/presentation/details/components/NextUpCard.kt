@@ -65,7 +65,7 @@ fun NextUpCard(
             modifier = Modifier.padding(bottom = JellyfinDimens.SpaceSmall)
         ) {
             Text(
-                text = "🔥 الحلقة التالية",
+                text = "الحلقة التالية",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = JellyfinColors.TextPrimary

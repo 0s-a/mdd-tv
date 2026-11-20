@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Git Pre-Commit Hook: Governance & Zero Emoji Enforcement for mdd TV
+# ==============================================================================
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR" || exit 1
+
+echo "[Hook] Running pre-commit governance and integrity checks..."
+
+# 1. Run Python integrity verification on staged changes
+python3 -c "
+import subprocess, sys, re, os
+
+emoji_pattern = re.compile(
+    r'[\U00010000-\U0010ffff]|[\u2600-\u27bf]|[\u2300-\u23ff]|[\u2b50]'
+)
+
+# Get staged files
+result = subprocess.run(['git', 'diff', '--cached', '--name-only', '--diff-filter=ACM'], stdout=subprocess.PIPE, text=True)
+staged_files = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
+
+errors = []
+for file_path in staged_files:
+    # Check naming conventions: no spaces
+    if ' ' in file_path:
+        errors.append(f'Forbidden: File path contains spaces -> \"{file_path}\"')
+    
+    # Check emoji ban in text files
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in {'.md', '.kt', '.kts', '.sh', '.xml', '.json', '.properties', '.toml'}:
+        # Get staged content
+        content_proc = subprocess.run(['git', 'show', f':{file_path}'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            content = content_proc.stdout.decode('utf-8')
+            for line_idx, line in enumerate(content.splitlines(), 1):
+                matches = emoji_pattern.findall(line)
+                if matches:
+                    errors.append(f'Forbidden Emoji in {file_path}:{line_idx} -> {matches}')
+        except Exception:
+            pass
+
+if errors:
+    print('==================================================')
+    print('PRE-COMMIT GOVERNANCE FAILED:')
+    for err in errors:
+        print(f'  {err}')
+    print('==================================================')
+    sys.exit(1)
+"
+
+if [ $? -ne 0 ]; then
+    echo "[Hook] Commit rejected due to governance violations."
+    exit 1
+fi
+
+echo "[Hook] Pre-commit checks passed successfully."
+exit 0

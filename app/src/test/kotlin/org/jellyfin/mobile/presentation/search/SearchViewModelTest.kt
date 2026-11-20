@@ -38,9 +38,13 @@ class SearchViewModelTest {
         var availableGenres = listOf("أكشن", "خيال علمي", "دراما", "كوميديا")
         var spotlightItem: MediaItemSummary? = MediaItemSummary(id = "s-1", name = "Dune", type = "Movie")
         var searchResult: SearchResultSummary = SearchResultSummary(query = "")
+        var shouldFail: Boolean = false
         val recentQueries = MutableStateFlow<List<String>>(emptyList())
 
         override suspend fun search(query: String, genres: Set<String>): Result<SearchResultSummary> {
+            if (shouldFail) {
+                return Result.failure(RuntimeException("Network error"))
+            }
             return Result.success(searchResult)
         }
 
@@ -75,7 +79,13 @@ class SearchViewModelTest {
 
     private class FakeHandshakeRepository : HandshakeRepository {
         private val _currentSession = MutableStateFlow<UserSession?>(
-            UserSession(userId = "user-1", userName = "TestUser", token = "tok-1")
+            UserSession(
+                userId = "user-1",
+                userName = "TestUser",
+                token = "tok-1",
+                subtitleLanguagePreference = "ar",
+                subtitleMode = "Default"
+            )
         )
         override val currentSession = _currentSession.asStateFlow()
         override val serverInfo = MutableStateFlow<ServerInfo?>(null).asStateFlow()
@@ -87,8 +97,15 @@ class SearchViewModelTest {
         override suspend fun authenticate(username: String, password: String): Result<UserSession> =
             Result.success(_currentSession.value!!)
 
-        override suspend fun performHandshake(): Result<UserSession> =
+        override suspend fun performHandshake(username: String, password: String): Result<UserSession> =
             Result.success(_currentSession.value!!)
+
+        override suspend fun getUserViews(userId: String?): Result<List<org.jellyfin.mobile.domain.model.LibraryFolder>> =
+            Result.success(emptyList())
+
+        override suspend fun clearSession() {
+            _currentSession.value = null
+        }
     }
 
     private lateinit var searchRepo: FakeSearchRepository
@@ -181,5 +198,38 @@ class SearchViewModelTest {
         assertEquals("Interstellar", success.query)
         assertTrue(success.selectedGenres.contains("خيال علمي"))
         assertEquals("Interstellar", success.topMatch?.name)
+    }
+
+    @Test
+    fun searchPipeline_onFailure_thenRetry_reTriggersSearchAndSucceeds() = runTest {
+        searchRepo.shouldFail = true
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        viewModel.processIntent(SearchIntent.UpdateQuery("Batman"))
+        advanceTimeBy(350)
+        advanceUntilIdle()
+
+        val errorState = viewModel.uiState.value
+        assertTrue(errorState is SearchUiState.Error)
+        assertEquals("Network error", (errorState as SearchUiState.Error).message)
+
+        searchRepo.shouldFail = false
+        searchRepo.searchResult = SearchResultSummary(
+            query = "Batman",
+            topMatch = MediaItemSummary(id = "b-1", name = "Batman", type = "Movie"),
+            mediaResults = persistentListOf(),
+            peopleResults = persistentListOf(),
+            totalCount = 1
+        )
+
+        viewModel.processIntent(SearchIntent.Retry)
+        advanceUntilIdle()
+
+        val successState = viewModel.uiState.value
+        assertTrue(successState is SearchUiState.Success)
+        val success = successState as SearchUiState.Success
+        assertEquals("Batman", success.query)
+        assertEquals("Batman", success.topMatch?.name)
     }
 }

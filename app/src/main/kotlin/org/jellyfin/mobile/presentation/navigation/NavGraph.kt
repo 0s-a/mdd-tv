@@ -27,8 +27,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.navArgument
-import org.jellyfin.mobile.presentation.details.MediaDetailsScreen
-import org.jellyfin.mobile.presentation.details.MediaDetailsViewModel
+import org.jellyfin.mobile.presentation.details.dispatcher.MediaDetailsDispatcher
 import org.jellyfin.mobile.presentation.home.HomeScreen
 import org.jellyfin.mobile.presentation.home.HomeViewModel
 import org.jellyfin.mobile.presentation.library.LibraryScreen
@@ -85,8 +84,9 @@ sealed class Screen(val route: String) {
             }
         }
     }
-    data object Details : Screen("details/{mediaId}") {
-        fun createRoute(mediaId: String): String = "details/$mediaId"
+    data object Details : Screen("details/{mediaId}?type={type}") {
+        fun createRoute(mediaId: String, type: String? = null): String =
+            if (type != null) "details/$mediaId?type=$type" else "details/$mediaId"
     }
     data object Player : Screen("player/{mediaId}?positionMs={positionMs}") {
         fun createRoute(mediaId: String, positionMs: Long = 0L): String =
@@ -224,20 +224,28 @@ fun MainNavGraph(
         composable(
             route = Screen.Details.route,
             arguments = listOf(
-                navArgument("mediaId") { type = NavType.StringType }
+                navArgument("mediaId") { type = NavType.StringType },
+                navArgument("type") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
             )
         ) { backStackEntry ->
             val mediaId = backStackEntry.arguments?.getString("mediaId") ?: ""
-            val detailsViewModel: MediaDetailsViewModel = koinViewModel()
-            MediaDetailsScreen(
+            val explicitType = backStackEntry.arguments?.getString("type")
+            MediaDetailsDispatcher(
                 mediaId = mediaId,
-                viewModel = detailsViewModel,
+                explicitType = explicitType,
                 onNavigateBack = { navController.popBackStack() },
                 onLaunchPlayer = { id, resumePositionMs ->
                     navController.navigate(Screen.Player.createRoute(id, resumePositionMs))
                 },
                 onNavigateToGenre = { genre ->
                     navController.navigate(Screen.Search.createRoute(genre))
+                },
+                onNavigateToDetails = { childMediaId ->
+                    navController.navigate(Screen.Details.createRoute(childMediaId))
                 }
             )
         }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,9 +56,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
 import org.jellyfin.mobile.presentation.core.components.CinemaChildTopBar
+import org.jellyfin.mobile.presentation.main.LocalBottomClearance
+import org.jellyfin.mobile.presentation.main.NavigationTab
+import org.jellyfin.mobile.presentation.main.OnTabReselected
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
@@ -69,8 +75,21 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val favoritesGridState = rememberLazyGridState()
+    val watchedGridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
+
+    OnTabReselected(NavigationTab.PROFILE) {
+        coroutineScope.launch {
+            when (uiState.selectedTab) {
+                ProfileTab.FAVORITES -> favoritesGridState.animateScrollToItem(0)
+                ProfileTab.WATCHED_ARCHIVE -> watchedGridState.animateScrollToItem(0)
+                ProfileTab.LOCAL_STORAGE -> { /* No scroll needed for local storage */ }
+            }
+        }
+    }
 
     Box(
         modifier = modifier
@@ -210,7 +229,13 @@ fun ProfileScreen(
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
-                            contentPadding = PaddingValues(JellyfinDimens.SpaceMedium),
+                            state = favoritesGridState,
+                            contentPadding = PaddingValues(
+                                start = JellyfinDimens.SpaceMedium,
+                                top = JellyfinDimens.SpaceMedium,
+                                end = JellyfinDimens.SpaceMedium,
+                                bottom = LocalBottomClearance.current + JellyfinDimens.SpaceMedium
+                            ),
                             horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
                             verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
                             modifier = Modifier.weight(1f)
@@ -236,7 +261,13 @@ fun ProfileScreen(
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(3),
-                            contentPadding = PaddingValues(JellyfinDimens.SpaceMedium),
+                            state = watchedGridState,
+                            contentPadding = PaddingValues(
+                                start = JellyfinDimens.SpaceMedium,
+                                top = JellyfinDimens.SpaceMedium,
+                                end = JellyfinDimens.SpaceMedium,
+                                bottom = LocalBottomClearance.current + JellyfinDimens.SpaceMedium
+                            ),
                             horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
                             verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
                             modifier = Modifier.weight(1f)

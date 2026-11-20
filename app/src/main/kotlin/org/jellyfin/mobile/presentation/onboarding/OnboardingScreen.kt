@@ -102,7 +102,7 @@ fun OnboardingScreen(
             Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
 
             Text(
-                text = "🍿 ${AppConfig.APP_NAME}",
+                text = AppConfig.APP_NAME,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
                 color = JellyfinColors.TextPrimary,
@@ -242,7 +242,7 @@ fun OnboardingScreen(
                     )
                 } else {
                     Text(
-                        text = "✨ دخول صالة العرض",
+                        text = "دخول صالة العرض",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

@@ -258,9 +258,9 @@ fun SplashScreen(
 
 /**
  * ServerStatusPill displays live server connection state:
- * - Checking: pulsing yellow/cyan light with "جاري فحص الاتصال بالخادم..."
- * - Connected: emerald green light with "🟢 متصل بالسيرفر (xx ms)"
- * - Offline: warning icon with "⚠️ غير متصل بالسيرفر"
+ * - Checking: pulsing light with status text
+ * - Connected: emerald green indicator with latency
+ * - Offline: warning indicator with offline state
  */
 @Composable
 private fun ServerStatusPill(
@@ -291,7 +291,7 @@ private fun ServerStatusPill(
             Tuple4(
                 JellyfinColors.SuccessEmerald.copy(alpha = 0.15f),
                 JellyfinColors.SuccessEmerald.copy(alpha = 0.5f),
-                "🟢 متصل بالسيرفر (${status.latencyMs}ms)",
+                "متصل بالسيرفر (${status.latencyMs}ms)",
                 JellyfinColors.SuccessEmerald
             )
         }
@@ -299,7 +299,7 @@ private fun ServerStatusPill(
             Tuple4(
                 JellyfinColors.RatingGold.copy(alpha = 0.15f),
                 JellyfinColors.RatingGold.copy(alpha = 0.5f),
-                "⚠️ غير متصل بالسيرفر (وضع أوفلاين)",
+                "غير متصل بالسيرفر",
                 JellyfinColors.RatingGold
             )
         }

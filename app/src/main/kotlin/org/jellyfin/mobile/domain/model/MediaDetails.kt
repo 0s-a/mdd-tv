@@ -30,7 +30,8 @@ data class MediaDetails(
     val similarItems: ImmutableList<MediaItemSummary> = persistentListOf(),
     val playbackPositionPercentage: Float = 0f,
     val isFavorite: Boolean = false,
-    val qualityBadges: ImmutableList<String> = persistentListOf()
+    val qualityBadges: ImmutableList<String> = persistentListOf(),
+    val itemType: String = if (isMovie) "Movie" else "Series"
 ) {
     val durationText: String?
         get() = runTimeTicks?.let { ticks ->

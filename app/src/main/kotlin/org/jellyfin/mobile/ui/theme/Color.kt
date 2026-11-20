@@ -131,9 +131,11 @@ object JellyfinColors {
     val GlassBorder: Color = Color(0x1AFFFFFF)
     val SurfaceGlassActive: Color = JellyfinPrimitives.Graphite800
 
-    // Alerts
+    // Alerts & Statuses
     val Error: Color = JellyfinPrimitives.CrimsonMuted
     val OnError: Color = JellyfinPrimitives.WhitePure
+    val StatusAlert: Color = JellyfinPrimitives.CrimsonMuted
+    val StatusSuccess: Color = JellyfinPrimitives.EmeraldMuted
 }
 
 // Top-level property aliases for convenience

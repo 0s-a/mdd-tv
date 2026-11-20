@@ -105,7 +105,7 @@ private fun SeasonTabItem(
             color = if (isSelected) JellyfinColors.TextPrimary else JellyfinColors.TextSecondary
         )
         Text(
-            text = "${season.episodeCount} حلقات" + if (season.watchedCount > 0) " • ${season.watchedCount} تمت ✓" else "",
+            text = "${season.episodeCount} حلقات" + if (season.watchedCount > 0) " • ${season.watchedCount} تمت" else "",
             style = MaterialTheme.typography.labelSmall,
             color = if (isSelected) JellyfinColors.TechSky else JellyfinColors.TextMuted
         )
