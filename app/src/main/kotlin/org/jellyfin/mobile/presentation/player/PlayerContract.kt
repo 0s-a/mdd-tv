@@ -68,6 +68,12 @@ sealed interface PlayerIntent {
     data class SelectAudioTrack(val track: AudioOption) : PlayerIntent
     data object ToggleControlsLock : PlayerIntent
     data object ToggleHudVisibility : PlayerIntent
+    data object ToggleActionsModal : PlayerIntent
+    data class SetActionsModalVisibility(val visible: Boolean) : PlayerIntent
+    data class SetEqualizerBand(val bandIndex: Int, val gainMb: Int) : PlayerIntent
+    data object ApplyVocalBoost : PlayerIntent
+    data class SetBitstreamPassthrough(val enabled: Boolean) : PlayerIntent
+    data class SetAudioDelay(val delayMs: Long) : PlayerIntent
     data object PlayNextEpisode : PlayerIntent
     data object EnterPictureInPicture : PlayerIntent
     data object ReleasePlayer : PlayerIntent
@@ -106,7 +112,11 @@ data class PlayerUiState(
     val nextEpisodeId: String? = null,
     val errorMessage: String? = null,
     val currentSubtitleText: String? = null,
-    val isInPictureInPicture: Boolean = false
+    val isInPictureInPicture: Boolean = false,
+    val isActionsModalVisible: Boolean = false,
+    val isBitstreamPassthrough: Boolean = false,
+    val audioBands: ImmutableList<Float> = persistentListOf(0f, 0f, 0f, 0f, 0f),
+    val audioDelayMs: Long = 0L
 ) {
     val bufferedPercentage: Float
         get() = if (totalDurationMs > 0) (bufferedPositionMs.toFloat() / totalDurationMs).coerceIn(0f, 1f) else 0f

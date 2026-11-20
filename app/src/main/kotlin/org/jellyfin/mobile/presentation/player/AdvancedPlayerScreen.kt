@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -24,8 +25,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
@@ -34,10 +38,14 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import org.jellyfin.mobile.presentation.player.components.ArabicSubtitleOverlay
-import org.jellyfin.mobile.presentation.player.components.PlayerGestureLayer
+import org.jellyfin.mobile.presentation.player.components.PlayerActionsModal
 import org.jellyfin.mobile.presentation.player.components.PlayerHudOverlay
 import org.jellyfin.mobile.presentation.player.components.PlayerSurface
+import org.jellyfin.mobile.presentation.player.gestures.GestureOverlayHud
+import org.jellyfin.mobile.presentation.player.gestures.PlayerGestureCallbacks
+import org.jellyfin.mobile.presentation.player.gestures.PlayerGestureState
+import org.jellyfin.mobile.presentation.player.gestures.playerGestureDetector
+import org.jellyfin.mobile.presentation.player.subtitles.CinemaSubtitleRenderer
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 
 /**
@@ -217,46 +225,106 @@ fun AdvancedPlayerScreen(
         }
     }
 
-    Box(
+    val gestureState = remember { PlayerGestureState() }
+    LaunchedEffect(uiState.isControlsLocked) {
+        gestureState.isTouchLocked = uiState.isControlsLocked
+    }
+    val isLandscape = activity?.resources?.configuration?.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val density = LocalDensity.current.density
+    val gestureCallbacks = remember(viewModel, hapticFeedback) {
+        object : PlayerGestureCallbacks {
+            override fun onSeekDelta(deltaMs: Long) {
+                viewModel.dispatch(PlayerIntent.FastSeekBy(deltaMs))
+            }
+            override fun onBrightnessChange(brightness: Float) {
+                viewModel.dispatch(PlayerIntent.SetBrightness(brightness))
+            }
+            override fun onVolumeChange(volume: Float) {
+                viewModel.dispatch(PlayerIntent.SetVolume(volume))
+            }
+            override fun onLongPressStart() {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(2.0f))
+            }
+            override fun onLongPressEnd() {
+                viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(1.0f))
+            }
+            override fun onDoubleTapSeekBackward() {
+                viewModel.dispatch(PlayerIntent.FastSeekBy(-10_000L))
+            }
+            override fun onDoubleTapSeekForward() {
+                viewModel.dispatch(PlayerIntent.FastSeekBy(10_000L))
+            }
+            override fun onDoubleTapCenter() {
+                viewModel.dispatch(PlayerIntent.TogglePlayPause)
+            }
+            override fun onZoomChange(scale: Float, panOffset: Offset) {
+                // Zoom & pan state maintained live in gestureState
+            }
+            override fun onTouchLockToggle(locked: Boolean) {
+                viewModel.dispatch(PlayerIntent.ToggleControlsLock)
+            }
+            override fun onSingleTap() {
+                viewModel.dispatch(PlayerIntent.ToggleHudVisibility)
+            }
+        }
+    }
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(JellyfinColors.PureBlack)
     ) {
-        // 1. Hardware Video Surface (SurfaceView)
+        val containerWidthPx = constraints.maxWidth.toFloat()
+        val containerHeightPx = constraints.maxHeight.toFloat()
+
+        // 1. Hardware Video Surface (SurfaceView) with Pinch-to-Zoom & Pan
         PlayerSurface(
             player = viewModel.player,
             aspectRatioMode = uiState.aspectRatioMode,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = gestureState.zoomScale,
+                    scaleY = gestureState.zoomScale,
+                    translationX = gestureState.zoomPanOffset.x,
+                    translationY = gestureState.zoomPanOffset.y
+                )
         )
 
-        // 2. Arabic Subtitle Overlay (Lifted above HUD)
-        ArabicSubtitleOverlay(
-            subtitleText = uiState.currentSubtitleText,
+        // 2. High-contrast Cinema Subtitle Renderer (Lifted dynamically above HUD)
+        CinemaSubtitleRenderer(
+            rawCueText = uiState.currentSubtitleText,
             isHudVisible = uiState.isHudVisible && !isInPiP,
-            subtitleOffsetMs = uiState.subtitleOffsetMs,
             modifier = Modifier.fillMaxSize()
         )
 
         // Hide gesture & HUD controls completely while inside Picture-in-Picture
         if (!isInPiP) {
-            // 3. Touch Gesture Engine Layer (MX Player Style)
-            PlayerGestureLayer(
-                isControlsLocked = uiState.isControlsLocked,
-                isHudVisible = uiState.isHudVisible,
-                isPlaying = uiState.isPlaying,
-                currentVolume = uiState.volume,
-                currentBrightness = uiState.brightness,
-                currentPositionMs = uiState.currentPositionMs,
-                totalDurationMs = uiState.totalDurationMs,
-                onVolumeChange = { viewModel.dispatch(PlayerIntent.SetVolume(it)) },
-                onBrightnessChange = { viewModel.dispatch(PlayerIntent.SetBrightness(it)) },
-                onFastSeekBy = { viewModel.dispatch(PlayerIntent.FastSeekBy(it)) },
-                onSeekTo = { viewModel.dispatch(PlayerIntent.SeekTo(it)) },
-                onToggleHud = { viewModel.dispatch(PlayerIntent.ToggleHudVisibility) },
+            // 3. Zero-Allocation Gesture Layer (MX Player Style Strict Axis Lock 1.5x)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .playerGestureDetector(
+                        state = gestureState,
+                        callbacks = gestureCallbacks,
+                        isLandscape = isLandscape,
+                        containerWidthPx = containerWidthPx,
+                        containerHeightPx = containerHeightPx,
+                        currentPositionMs = uiState.currentPositionMs,
+                        currentBrightness = uiState.brightness,
+                        currentVolume = uiState.volume,
+                        density = density
+                    )
+            )
+
+            // 4. OLED True-Black Ephemeral Gesture HUD Overlays (Volume, Brightness, Seek, 2x)
+            GestureOverlayHud(
+                state = gestureState,
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 4. Floating Frosted Glass HUD Overlay (MX Player Pro Cinematic HUD)
+            // 5. Floating Frosted Glass HUD Overlay (MX Player Pro Cinematic HUD)
             PlayerHudOverlay(
                 uiState = uiState.copy(isInPictureInPicture = isInPiP),
                 onNavigateBack = {
@@ -270,14 +338,15 @@ fun AdvancedPlayerScreen(
                 onToggleOrientation = {
                     hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     activity?.let { act ->
-                        val isLandscape = act.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-                        act.requestedOrientation = if (isLandscape) {
+                        val currentLandscape = act.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                        act.requestedOrientation = if (currentLandscape) {
                             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                         } else {
                             ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                         }
                     }
                 },
+                onOpenActionsModal = { viewModel.dispatch(PlayerIntent.ToggleActionsModal) },
                 onSelectSubtitle = { viewModel.dispatch(PlayerIntent.SelectSubtitleTrack(it)) },
                 onAdjustSubtitleOffset = { viewModel.dispatch(PlayerIntent.AdjustSubtitleOffset(it)) },
                 onSelectAudio = { viewModel.dispatch(PlayerIntent.SelectAudioTrack(it)) },
@@ -288,6 +357,21 @@ fun AdvancedPlayerScreen(
                     { viewModel.dispatch(PlayerIntent.PlayNextEpisode) }
                 } else null,
                 modifier = Modifier.fillMaxSize()
+            )
+
+            // 6. Foldable Cinema Actions Modal (Audio Equalizer, Vocal Booster, Passthrough, Delays)
+            PlayerActionsModal(
+                uiState = uiState,
+                isVisible = uiState.isActionsModalVisible,
+                isPlaying = uiState.isPlaying,
+                audioBands = uiState.audioBands,
+                isBitstreamPassthrough = uiState.isBitstreamPassthrough,
+                onDismiss = { viewModel.dispatch(PlayerIntent.SetActionsModalVisibility(false)) },
+                onIntent = { viewModel.dispatch(it) },
+                onSetEqualizerBand = { index, gain -> viewModel.dispatch(PlayerIntent.SetEqualizerBand(index, gain)) },
+                onApplyVocalBoost = { viewModel.dispatch(PlayerIntent.ApplyVocalBoost) },
+                onSetBitstreamPassthrough = { viewModel.dispatch(PlayerIntent.SetBitstreamPassthrough(it)) },
+                onSetAudioDelay = { viewModel.dispatch(PlayerIntent.SetAudioDelay(it)) }
             )
         }
     }

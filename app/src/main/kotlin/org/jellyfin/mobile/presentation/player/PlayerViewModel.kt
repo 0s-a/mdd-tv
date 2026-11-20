@@ -1,7 +1,7 @@
 package org.jellyfin.mobile.presentation.player
 
 import android.content.Context
-import android.media.audiofx.LoudnessEnhancer
+import android.graphics.Bitmap
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
@@ -22,7 +22,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaSession
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import org.jellyfin.mobile.core.player.AudioBoostEngine
+import org.jellyfin.mobile.core.player.AudioFocusManager
+import org.jellyfin.mobile.core.player.MxStyleRenderersFactory
+import org.jellyfin.mobile.core.player.TrickplayThumbnailManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -72,17 +77,46 @@ class PlayerViewModel(
     private val trackSelector = DefaultTrackSelector(context)
 
     val player: ExoPlayer = ExoPlayer.Builder(context)
-        .setRenderersFactory(
-            DefaultRenderersFactory(context)
-                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-                .setEnableDecoderFallback(true)
-        )
+        .setRenderersFactory(MxStyleRenderersFactory(context))
         .setTrackSelector(trackSelector)
         .setMediaSourceFactory(DefaultMediaSourceFactory(context))
         .build()
 
+    private val audioFocusListener = object : AudioFocusManager.Listener {
+        override fun onAudioFocusGained() {
+            player.volume = _uiState.value.volume.coerceAtMost(1.0f)
+            if (!player.isPlaying) {
+                player.play()
+            }
+        }
+
+        override fun onAudioFocusPaused() {
+            if (player.isPlaying) {
+                player.pause()
+            }
+        }
+
+        override fun onAudioFocusDucked() {
+            player.volume = (_uiState.value.volume.coerceAtMost(1.0f) * 0.2f)
+        }
+
+        override fun onAudioFocusLostPermanently() {
+            if (player.isPlaying) {
+                player.pause()
+            }
+        }
+
+        override fun onBecomingNoisy() {
+            if (player.isPlaying) {
+                player.pause()
+            }
+        }
+    }
+    private val audioFocusManager = AudioFocusManager(context, audioFocusListener)
+
     private var mediaSession: MediaSession? = null
-    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var audioBoostEngine: AudioBoostEngine? = null
+    val thumbnailManager = TrickplayThumbnailManager(context)
     private var progressTickerJob: Job? = null
     private var lastReportTimeMs: Long = 0L
     private var hasMarkedPlayed: Boolean = false
@@ -107,7 +141,7 @@ class PlayerViewModel(
                             totalDurationMs = durationMs
                         )
                     }
-                    initLoudnessEnhancerIfNeeded()
+                    initAudioBoostEngineIfNeeded()
                 }
                 Player.STATE_ENDED -> {
                     _uiState.update {
@@ -125,7 +159,10 @@ class PlayerViewModel(
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _uiState.update { it.copy(isPlaying = isPlaying) }
             if (isPlaying) {
+                audioFocusManager.requestAudioFocus()
                 startProgressTicker()
+            } else {
+                audioFocusManager.abandonAudioFocus()
             }
         }
 
@@ -214,6 +251,12 @@ class PlayerViewModel(
             is PlayerIntent.SelectAudioTrack -> selectAudio(intent.track)
             is PlayerIntent.ToggleControlsLock -> toggleControlsLock()
             is PlayerIntent.ToggleHudVisibility -> toggleHudVisibility()
+            is PlayerIntent.ToggleActionsModal -> toggleActionsModal()
+            is PlayerIntent.SetActionsModalVisibility -> setActionsModalVisibility(intent.visible)
+            is PlayerIntent.SetEqualizerBand -> setEqualizerBand(intent.bandIndex, intent.gainMb)
+            is PlayerIntent.ApplyVocalBoost -> applyVocalBoost()
+            is PlayerIntent.SetBitstreamPassthrough -> setBitstreamPassthrough(intent.enabled)
+            is PlayerIntent.SetAudioDelay -> setAudioDelay(intent.delayMs)
             is PlayerIntent.PlayNextEpisode -> playNextEpisode()
             is PlayerIntent.EnterPictureInPicture -> {
                 viewModelScope.launch { _effects.send(PlayerEffect.EnterPictureInPicture) }
@@ -402,6 +445,15 @@ class PlayerViewModel(
                 player.seekTo(resumeMs)
             }
             player.playWhenReady = true
+
+            // Trickplay BIF or local I-Frame extraction (Zero dynamic server transcoding)
+            val bifUrl = "$baseServer/Videos/$mediaId/Trickplay/320/0.bif" + if (!token.isNullOrBlank()) "?api_key=$token" else ""
+            viewModelScope.launch {
+                val bifLoaded = thumbnailManager.loadBif(bifUrl)
+                if (!bifLoaded) {
+                    thumbnailManager.setLocalVideoUri(streamUrl.toString())
+                }
+            }
         }
     }
 
@@ -432,24 +484,13 @@ class PlayerViewModel(
 
         if (clampedVolume <= 1.0f) {
             player.volume = clampedVolume
-            try {
-                loudnessEnhancer?.setTargetGain(0)
-                loudnessEnhancer?.enabled = false
-            } catch (e: Exception) {
-                Log.w(tag, "LoudnessEnhancer reset error: ${e.message}")
-            }
+            audioBoostEngine?.disableBoost()
         } else {
-            // Software Audio Boost (101% to 200%)
+            // Software Audio Boost (101% to 200%) via AudioBoostEngine
             player.volume = 1.0f
-            val boostFraction = (clampedVolume - 1.0f) // 0.0 to 1.0
-            val targetGainMb = (boostFraction * 1000f).toInt() // 0 to +1000 mB
-            initLoudnessEnhancerIfNeeded()
-            try {
-                loudnessEnhancer?.setTargetGain(targetGainMb)
-                loudnessEnhancer?.enabled = true
-            } catch (e: Exception) {
-                Log.w(tag, "LoudnessEnhancer boost error: ${e.message}")
-            }
+            val boostPercent = (clampedVolume * 100f).toInt().coerceIn(101, 200)
+            initAudioBoostEngineIfNeeded()
+            audioBoostEngine?.setBoostPercent(boostPercent)
         }
 
         // Haptic feedback thresholds
@@ -574,7 +615,8 @@ class PlayerViewModel(
         _uiState.update {
             it.copy(
                 isControlsLocked = willLock,
-                isHudVisible = !willLock
+                isHudVisible = !willLock,
+                isActionsModalVisible = false
             )
         }
         viewModelScope.launch {
@@ -585,6 +627,45 @@ class PlayerViewModel(
     private fun toggleHudVisibility() {
         if (_uiState.value.isControlsLocked) return
         _uiState.update { it.copy(isHudVisible = !it.isHudVisible) }
+    }
+
+    private fun toggleActionsModal() {
+        if (_uiState.value.isControlsLocked) return
+        _uiState.update { it.copy(isActionsModalVisible = !it.isActionsModalVisible) }
+    }
+
+    private fun setActionsModalVisibility(visible: Boolean) {
+        _uiState.update { it.copy(isActionsModalVisible = visible) }
+    }
+
+    private fun setEqualizerBand(bandIndex: Int, gainMb: Int) {
+        initAudioBoostEngineIfNeeded()
+        audioBoostEngine?.setBandLevel(bandIndex.toShort(), gainMb.toShort())
+        val bands = _uiState.value.audioBands.toMutableList()
+        if (bandIndex in bands.indices) {
+            bands[bandIndex] = gainMb.toFloat()
+            _uiState.update { it.copy(audioBands = bands.toImmutableList()) }
+        }
+    }
+
+    private fun applyVocalBoost() {
+        initAudioBoostEngineIfNeeded()
+        audioBoostEngine?.applyVocalBoostPreset()
+        _uiState.update { it.copy(audioBands = persistentListOf(0f, 0f, 600f, 600f, 0f)) }
+    }
+
+    private fun setBitstreamPassthrough(enabled: Boolean) {
+        initAudioBoostEngineIfNeeded()
+        audioBoostEngine?.setBitstreamPassthrough(enabled)
+        _uiState.update { it.copy(isBitstreamPassthrough = enabled) }
+    }
+
+    private fun setAudioDelay(delayMs: Long) {
+        _uiState.update { it.copy(audioDelayMs = delayMs) }
+    }
+
+    suspend fun getThumbnail(positionMs: Long): Bitmap? {
+        return thumbnailManager.getThumbnail(positionMs)
     }
 
     private fun playNextEpisode() {
@@ -655,13 +736,16 @@ class PlayerViewModel(
         }
     }
 
-    private fun initLoudnessEnhancerIfNeeded() {
+    private fun initAudioBoostEngineIfNeeded() {
         val sessionId = player.audioSessionId
-        if (sessionId != C.AUDIO_SESSION_ID_UNSET && loudnessEnhancer == null) {
+        if (sessionId != C.AUDIO_SESSION_ID_UNSET && audioBoostEngine == null) {
             try {
-                loudnessEnhancer = LoudnessEnhancer(sessionId)
+                audioBoostEngine = AudioBoostEngine(sessionId)
+                if (_uiState.value.isBitstreamPassthrough) {
+                    audioBoostEngine?.setBitstreamPassthrough(true)
+                }
             } catch (e: Exception) {
-                Log.w(tag, "LoudnessEnhancer initialization unsupported on this device: ${e.message}")
+                Log.w(tag, "AudioBoostEngine initialization failed: ${e.message}")
             }
         }
     }
@@ -736,11 +820,22 @@ class PlayerViewModel(
         } catch (e: Exception) {
             Log.w(tag, "Error stopping ExoPlayer: ${e.message}")
         }
+        audioFocusManager.abandonAudioFocus()
     }
 
     override fun onCleared() {
         super.onCleared()
         stopPlayer()
+        try {
+            audioFocusManager.release()
+        } catch (e: Exception) {
+            Log.w(tag, "Error releasing AudioFocusManager: ${e.message}")
+        }
+        try {
+            thumbnailManager.release()
+        } catch (e: Exception) {
+            Log.w(tag, "Error releasing TrickplayThumbnailManager: ${e.message}")
+        }
         try {
             mediaSession?.release()
             mediaSession = null
@@ -754,10 +849,10 @@ class PlayerViewModel(
             Log.w(tag, "Error releasing ExoPlayer in onCleared: ${e.message}")
         }
         try {
-            loudnessEnhancer?.release()
-            loudnessEnhancer = null
+            audioBoostEngine?.release()
+            audioBoostEngine = null
         } catch (e: Exception) {
-            Log.w(tag, "Error releasing LoudnessEnhancer: ${e.message}")
+            Log.w(tag, "Error releasing AudioBoostEngine: ${e.message}")
         }
     }
 }

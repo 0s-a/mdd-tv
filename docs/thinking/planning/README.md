@@ -47,3 +47,4 @@
 | **10** | التبديل التكيفي لمعدل التحديث وعمق الألوان | عتاد الشاشات الكبيرة و HDMI Display | [`10_auto_frame_rate_matching.md`](./10_auto_frame_rate_matching.md) | معتمدة وجاهزة للتنفيذ |
 | **11** | معمارية طابور الأحداث دون اتصال مع فض التعارض | التخزين المحلي والمهام الخلفية WorkManager | [`11_offline_action_queue.md`](./11_offline_action_queue.md) | معتمدة وجاهزة للتنفيذ |
 | **12** | أتمتة بيئة التطوير وهندسة خطوط الإنتاج والجودة | أدوات البناء السحابية و Git Hooks و KSP | [`12_dev_environment_automation_suite.md`](./12_dev_environment_automation_suite.md) | معتمدة وجاهزة للتنفيذ |
+| **13** | منظومة شريط التنقل السفلي السينمائي المدمج وهندسة التفاعل | الشريط المدمج، اللمسيات، إعادة التمرير، والمشغل المصغر | [`13_docked_cinema_bottom_bar_and_navigation.md`](./13_docked_cinema_bottom_bar_and_navigation.md) | معتمدة وجاهزة للتنفيذ |

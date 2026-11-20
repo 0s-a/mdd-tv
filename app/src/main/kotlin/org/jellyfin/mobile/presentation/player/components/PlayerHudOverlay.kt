@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -107,6 +108,7 @@ fun PlayerHudOverlay(
     onSetAspectRatio: (AspectRatioMode) -> Unit,
     onEnterPiP: () -> Unit,
     onToggleOrientation: () -> Unit = {},
+    onOpenActionsModal: () -> Unit = {},
     onPlayNextEpisode: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -291,6 +293,23 @@ fun PlayerHudOverlay(
                                 modifier = Modifier.size(20.dp)
                             )
                         }
+
+                        // Advanced Actions Button (Equalizer, Vocal Booster, Passthrough, Audio/Subtitle Sync)
+                        IconButton(
+                            onClick = onOpenActionsModal,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x44000000))
+                                .semantics { contentDescription = "الإجراءات المتقدمة للصوت والترجمة" }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -437,35 +456,21 @@ fun PlayerHudOverlay(
                             color = Color.White
                         )
 
-                        var sliderPosition by remember(uiState.currentPositionMs) {
-                            mutableFloatStateOf(uiState.currentPositionMs.toFloat())
+                        val chapterMarkers = remember(uiState.chapters) {
+                            uiState.chapters.map { ChapterMarker(it.startPositionMs, it.name) }
                         }
-                        var isUserSeeking by remember { mutableStateOf(false) }
 
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 12.dp)
                         ) {
-                            Slider(
-                                value = if (isUserSeeking) sliderPosition else uiState.currentPositionMs.toFloat(),
-                                onValueChange = {
-                                    isUserSeeking = true
-                                    sliderPosition = it
-                                },
-                                onValueChangeFinished = {
-                                    isUserSeeking = false
-                                    onSeekTo(sliderPosition.toLong())
-                                },
-                                valueRange = 0f..uiState.totalDurationMs.toFloat().coerceAtLeast(1f),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = JellyfinColors.TechSky,
-                                    activeTrackColor = JellyfinColors.PrimaryIndigo,
-                                    inactiveTrackColor = Color(0x33FFFFFF)
-                                ),
-                                modifier = Modifier.semantics {
-                                    contentDescription = "شريط تقدم الفيديو السينمائي"
-                                }
+                            CinemaScrubber(
+                                positionMs = uiState.currentPositionMs,
+                                durationMs = uiState.totalDurationMs,
+                                chapters = chapterMarkers,
+                                onSeek = { /* non-blocking scrub tracking */ },
+                                onSeekFinished = { onSeekTo(it) }
                             )
                         }
 
@@ -644,7 +649,7 @@ private fun SubtitleSelectionDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "💬 مسارات الترجمة",
+                    text = "مسارات الترجمة",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -735,7 +740,7 @@ private fun AudioTrackDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "🔊 المسار الصوتي",
+                    text = "المسار الصوتي",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -770,7 +775,7 @@ private fun SpeedSelectionDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "⚡ سرعة التشغيل",
+                    text = "سرعة التشغيل",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

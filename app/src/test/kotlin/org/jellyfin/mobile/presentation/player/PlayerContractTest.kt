@@ -101,6 +101,30 @@ class PlayerContractTest {
 
         val speedIntent = PlayerIntent.SetPlaybackSpeed(1.5f)
         assertEquals(1.5f, speedIntent.speed, 0.001f)
+
+        val actionsModalIntent = PlayerIntent.ToggleActionsModal
+        val setModalVisibilityIntent = PlayerIntent.SetActionsModalVisibility(true)
+        assertTrue(setModalVisibilityIntent.visible)
+
+        val eqIntent = PlayerIntent.SetEqualizerBand(2, 600)
+        assertEquals(2, eqIntent.bandIndex)
+        assertEquals(600, eqIntent.gainMb)
+
+        val vocalBoostIntent = PlayerIntent.ApplyVocalBoost
+        val passthroughIntent = PlayerIntent.SetBitstreamPassthrough(true)
+        assertTrue(passthroughIntent.enabled)
+
+        val delayIntent = PlayerIntent.SetAudioDelay(50L)
+        assertEquals(50L, delayIntent.delayMs)
+    }
+
+    @Test
+    fun playerUiState_actionsModalAndAudioSettings_defaults() {
+        val state = PlayerUiState()
+        assertFalse(state.isActionsModalVisible)
+        assertFalse(state.isBitstreamPassthrough)
+        assertEquals(5, state.audioBands.size)
+        assertEquals(0L, state.audioDelayMs)
     }
 
     @Test
