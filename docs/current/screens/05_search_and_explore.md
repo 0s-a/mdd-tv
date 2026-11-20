@@ -75,6 +75,7 @@
 
 - **`SearchIntent`:**
   - `UpdateQuery(query)`
+  - `Retry`
   - `ToggleGenre(genre)`
   - `RemoveGenre(genre)`
   - `ClearGenres`
