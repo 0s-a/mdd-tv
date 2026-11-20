@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Build
 import android.util.Rational
 import android.view.WindowManager
@@ -161,6 +163,7 @@ fun AdvancedPlayerScreen(
                 attrs.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
                 win.attributes = attrs
             }
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
 
@@ -264,6 +267,17 @@ fun AdvancedPlayerScreen(
                 onSeekTo = { viewModel.dispatch(PlayerIntent.SeekTo(it)) },
                 onFastSeekBy = { viewModel.dispatch(PlayerIntent.FastSeekBy(it)) },
                 onToggleLock = { viewModel.dispatch(PlayerIntent.ToggleControlsLock) },
+                onToggleOrientation = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    activity?.let { act ->
+                        val isLandscape = act.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                        act.requestedOrientation = if (isLandscape) {
+                            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        } else {
+                            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                        }
+                    }
+                },
                 onSelectSubtitle = { viewModel.dispatch(PlayerIntent.SelectSubtitleTrack(it)) },
                 onAdjustSubtitleOffset = { viewModel.dispatch(PlayerIntent.AdjustSubtitleOffset(it)) },
                 onSelectAudio = { viewModel.dispatch(PlayerIntent.SelectAudioTrack(it)) },

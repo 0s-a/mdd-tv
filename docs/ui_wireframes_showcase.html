@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مستعرض مخططات واجهات تطبيقات الميديا - Jellyfin Mobile</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface-color: #151d2f;
+            --surface-card: #1c263c;
+            --accent-color: #3b82f6;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #2b3954;
+            --device-bg: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 6px;
+        }
+
+        .controls-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            background-color: var(--surface-color);
+            padding: 16px 20px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+
+        .style-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background-color: var(--surface-card);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: #ffffff;
+            border-color: var(--accent-color);
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .screen-tabs {
+            display: flex;
+            gap: 8px;
+            margin-right: auto;
+        }
+
+        .screen-btn {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .screen-btn.active {
+            background: #ffffff;
+            color: #000000;
+            font-weight: 600;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Phone Mockup Frame */
+        .phone-wrapper {
+            position: sticky;
+            top: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .phone-frame {
+            width: 340px;
+            height: 690px;
+            background: var(--device-bg);
+            border: 10px solid #2d3748;
+            border-radius: 46px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 130px;
+            height: 24px;
+            background: #2d3748;
+            border-bottom-left-radius: 14px;
+            border-bottom-right-radius: 14px;
+            z-index: 100;
+        }
+
+        .phone-screen {
+            flex: 1;
+            padding-top: 28px;
+            padding-bottom: 20px;
+            overflow-y: auto;
+            position: relative;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Wireframe Elements */
+        .wf-box {
+            background: #1e293b;
+            border: 1px dashed #475569;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            position: relative;
+        }
+
+        .wf-badge {
+            background: #334155;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 9px;
+            color: #38bdf8;
+            border: 1px solid #0284c7;
+        }
+
+        /* Description Details Column */
+        .details-panel {
+            background-color: var(--surface-color);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 28px;
+        }
+
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .style-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .style-tagline {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .score-pill {
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid var(--accent-color);
+            color: #60a5fa;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #38bdf8;
+            margin: 20px 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pros-cons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .feature-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .feature-card h4 {
+            font-size: 13px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .feature-card ul {
+            list-style: none;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .feature-card ul li::before {
+            content: "•";
+            margin-left: 6px;
+            color: var(--accent-color);
+        }
+
+        .jellyfin-verdict {
+            background: linear-gradient(135deg, rgba(30, 58, 138, 0.4), rgba(15, 23, 42, 0.6));
+            border: 1px solid #2563eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 24px;
+        }
+
+        .jellyfin-verdict h4 {
+            color: #93c5fd;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .jellyfin-verdict p {
+            color: #e2e8f0;
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+
+        /* Matrix Comparison Table */
+        .matrix-section {
+            margin-top: 36px;
+            background: var(--surface-color);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: right;
+            margin-top: 14px;
+        }
+
+        th, td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: #94a3b8;
+            font-weight: 600;
+            background: #111827;
+        }
+
+        tr:hover td {
+            background: var(--surface-card);
+        }
+
+        .rating-stars {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎬 دليل ومستعرض مخططات واجهات تطبيقات الميديا (Media Streaming UI Wireframes)</h1>
+        <p>استعرض وحلل الهيكل التخطيطي لأشهر تطبيقات البث والمكتبات الشخصية لاختيار النمط المعماري الأنسب لتطبيق Jellyfin.</p>
+    </header>
+
+    <div class="controls-panel">
+        <div class="style-tabs">
+            <button class="tab-btn active" onclick="switchStyle('infuse')">✨ نمط Infuse (السينمائي الفاخر)</button>
+            <button class="tab-btn" onclick="switchStyle('netflix')">🔴 نمط Netflix (التجاري التفاعلي)</button>
+            <button class="tab-btn" onclick="switchStyle('apple_tv')">🍏 نمط Apple TV+ (البساطة والهدوء)</button>
+            <button class="tab-btn" onclick="switchStyle('plex')">📁 نمط Plex (إدارة المكتبات)</button>
+            <button class="tab-btn" onclick="switchStyle('findroid')">🤖 نمط Material 3 / Findroid (أندرويد الأصيل)</button>
+        </div>
+
+        <div class="screen-tabs">
+            <button class="screen-btn active" onclick="switchScreen('home')">الشاشة الرئيسية (Home)</button>
+            <button class="screen-btn" onclick="switchScreen('details')">صفحة التفاصيل (Details)</button>
+            <button class="screen-btn" onclick="switchScreen('player')">المشغل (Player)</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Phone Mockup with Wireframe -->
+        <div class="phone-wrapper">
+            <div class="phone-frame">
+                <div class="phone-notch"></div>
+                <div class="phone-screen" id="wireframeDisplay">
+                    <!-- Dynamic Wireframe Content Injected Here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Details & Analysis Panel -->
+        <div class="details-panel" id="detailsDisplay">
+            <!-- Dynamic Details Content Injected Here -->
+        </div>
+    </div>
+
+    <!-- Comparison Matrix -->
+    <div class="matrix-section">
+        <h3 style="font-size: 18px; margin-bottom: 8px;">📊 جدول المقارنة الشامل لاختيار واجهة Jellyfin</h3>
+        <p style="color: var(--text-muted); font-size: 13px;">تقييم كل واجهة بناءً على المعايير الأكثر أهمية لمستخدمي خوادم الوسائط الخاصة:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>النمط والتطبيق</th>
+                    <th>الهيكل الأساسي (Focus)</th>
+                    <th>عرض البيانات التقنية (4K/Codecs)</th>
+                    <th>إدارة المكتبات والتصنيف</th>
+                    <th>سهولة وبساطة البرمجة (Flutter)</th>
+                    <th>التقييم لـ Jellyfin</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>✨ Infuse</strong></td>
+                    <td>سينمائي فخم، زجاج مصقول (Glassmorphism)</td>
+                    <td><span class="rating-stars">★★★★★</span> (الأفضل على الإطلاق)</td>
+                    <td><span class="rating-stars">★★★★☆</span></td>
+                    <td><span class="rating-stars">★★★★☆</span></td>
+                    <td><strong style="color: #4ade80;">9.5 / 10 (الخيار الموصى به)</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>🍏 Apple TV+</strong></td>
+                    <td>مينيماليست، فراغات واسعة وبطاقات سينمائية</td>
+                    <td><span class="rating-stars">★★★☆☆</span></td>
+                    <td><span class="rating-stars">★★★☆☆</span></td>
+                    <td><span class="rating-stars">★★★★★</span></td>
+                    <td><strong style="color: #60a5fa;">8.5 / 10</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>📁 Plex</strong></td>
+                    <td>تعدد السيرفرات، تصنيفات وفلاتر عميقة</td>
+                    <td><span class="rating-stars">★★★★☆</span></td>
+                    <td><span class="rating-stars">★★★★★</span> (الأقوى تنظيمياً)</td>
+                    <td><span class="rating-stars">★★★☆☆</span></td>
+                    <td><strong style="color: #fbbf24;">8.5 / 10</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>🔴 Netflix</strong></td>
+                    <td>اكتشاف تسويقي سريع، ملصقات عمودية وترقيم</td>
+                    <td><span class="rating-stars">★★☆☆☆</span> (ضعيف جداً)</td>
+                    <td><span class="rating-stars">★★★☆☆</span></td>
+                    <td><span class="rating-stars">★★★★☆</span></td>
+                    <td><strong style="color: #f87171;">7.0 / 10</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>🤖 Findroid / Material 3</strong></td>
+                    <td>ألوان النظام الديناميكية، بطاقات وبساطة مطلقة</td>
+                    <td><span class="rating-stars">★★★★☆</span></td>
+                    <td><span class="rating-stars">★★★★☆</span></td>
+                    <td><span class="rating-stars">★★★★★</span> (الأسهل في فلاتر)</td>
+                    <td><strong style="color: #38bdf8;">9.0 / 10</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const uiData = {
+            infuse: {
+                title: "Infuse (النمط السينمائي الفاخر)",
+                tagline: "تصميم زجاجي مصقول مع أولوية مطلقة لعشاق الجودة والمواصفات الفنية",
+                score: "التقييم لـ Jellyfin: 9.5 / 10",
+                features: [
+                    "مساحات حرة وهوامش واسعة تبرز جودة البوستر الفني.",
+                    "بطاقات زجاجية عائمة (Glassmorphic Cards) مع ضبابية خلفية ناعمة.",
+                    "شارات بارزة لبيانات الفيديو: 4K UHD, HDR10, Dolby Atmos, Direct Play.",
+                    "مشغل إيماءات كامل (سحب للسطوع، الصوت، والتقديم)."
+                ],
+                pros: ["أرقى مظهر بصري ممكن لتطبيق ترفيهي.", "يعطي مستخدم Jellyfin كل تفاصيل ملف الفيديو فوراً.", "مريح جداً للعين أثناء التصفح الليلي."],
+                cons: ["يتطلب تنفيذه في فلاتر استخدام BackDropFilter بدقة لتجنب التأثير على سرعة الإطارات."],
+                verdict: "هذا النمط هو الأفضل إذا كنت تريد تطبيقاً ينافس أعلى المعايير العالمية ويمنح المستخدمين إحساساً بالفخامة والاحترافية.",
+                wireframes: {
+                    home: `
+                        <div style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="wf-badge">Library: Jellyfin Home</div>
+                            <div class="wf-badge">⚙️ Settings</div>
+                        </div>
+                        <div style="padding: 0 12px; margin-bottom: 12px;">
+                            <div class="wf-box" style="height: 180px; border-radius: 14px; background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);">
+                                [Featured Cinema Banner 16:9]<br>
+                                <span style="font-size: 10px; color: #38bdf8;">Play / Continue Watching (Resume 42m)</span>
+                            </div>
+                        </div>
+                        <div style="padding: 0 12px; margin-bottom: 6px; font-size: 11px; font-weight: bold; color: #94a3b8;">المكتبات المفضلة (Libraries)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 12px; margin-bottom: 12px;">
+                            <div class="wf-box" style="height: 50px;">🎬 الأفلام (Movies)</div>
+                            <div class="wf-box" style="height: 50px;">📺 المسلسلات (TV)</div>
+                        </div>
+                        <div style="padding: 0 12px; margin-bottom: 6px; font-size: 11px; font-weight: bold; color: #94a3b8;">متابعة المشاهدة (Up Next)</div>
+                        <div style="display: flex; gap: 8px; padding: 0 12px; overflow-x: hidden;">
+                            <div class="wf-box" style="min-width: 130px; height: 90px;">Episode S01E03<br><span style="font-size: 9px; color: #4ade80;">Progress: 65%</span></div>
+                            <div class="wf-box" style="min-width: 130px; height: 90px;">Movie: Dune 2<br><span style="font-size: 9px; color: #4ade80;">Progress: 30%</span></div>
+                        </div>
+                    `,
+                    details: `
+                        <div class="wf-box" style="height: 190px; border-radius: 0; border: none; background: #1e293b; margin-bottom: 10px;">
+                            [Backdrop Fanart Image + Gradient Scrim]
+                        </div>
+                        <div style="padding: 0 16px;">
+                            <h3 style="font-size: 16px; margin-bottom: 4px;">Oppenheimer (2023)</h3>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                                <span class="wf-badge">4K UHD</span>
+                                <span class="wf-badge">HDR10+</span>
+                                <span class="wf-badge">Dolby Atmos 7.1</span>
+                                <span class="wf-badge">HEVC 10bit</span>
+                                <span class="wf-badge">Direct Play</span>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                                <div class="wf-box" style="flex: 1; height: 38px; background: #2563eb; color: #fff; font-weight: bold;">▶ تشغيل (Play)</div>
+                                <div class="wf-box" style="width: 44px; height: 38px;">⬇</div>
+                                <div class="wf-box" style="width: 44px; height: 38px;">⭐</div>
+                            </div>
+                            <div class="wf-box" style="height: 60px; padding: 8px; font-size: 10px; margin-bottom: 12px;">
+                                [Overview: قصة الفيزيائي روبرت أوبنهايمر ودوره في تطوير القنبلة الذرية...]
+                            </div>
+                            <div style="font-size: 11px; font-weight: bold; margin-bottom: 6px;">طاقم التمثيل (Cast):</div>
+                            <div style="display: flex; gap: 8px;">
+                                <div class="wf-box" style="width: 60px; height: 75px; font-size: 8px;">Cillian M.</div>
+                                <div class="wf-box" style="width: 60px; height: 75px; font-size: 8px;">Emily B.</div>
+                                <div class="wf-box" style="width: 60px; height: 75px; font-size: 8px;">Robert D.</div>
+                            </div>
+                        </div>
+                    `,
+                    player: `
+                        <div style="flex: 1; background: #000; display: flex; flex-direction: column; justify-content: space-between; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span class="wf-badge">⬅ رجوع</span>
+                                <span style="font-size: 11px;">Oppenheimer - 4K Direct</span>
+                                <span class="wf-badge">💬 ترجمة / صوت</span>
+                            </div>
+                            <div style="text-align: center; color: #475569; font-size: 13px;">
+                                [Video Stream Surface: ExoPlayer / Media3]<br>
+                                <span style="font-size: 9px; color: #94a3b8;">إيماءة السحب: اليسار (السطوع) | اليمين (الصوت)</span>
+                            </div>
+                            <div>
+                                <div class="wf-box" style="height: 6px; background: #334155; margin-bottom: 8px; border: none;">
+                                    <div style="width: 45%; height: 100%; background: #2563eb; border-radius: 4px;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 12px;">
+                                    <span>01:14:22</span>
+                                    <span>-01:45:38</span>
+                                </div>
+                                <div style="display: flex; justify-content: center; gap: 20px; align-items: center;">
+                                    <span style="font-size: 16px;">⏪ 10s</span>
+                                    <div class="wf-box" style="width: 48px; height: 48px; border-radius: 50%; background: #2563eb; color: #fff;">❚❚</div>
+                                    <span style="font-size: 16px;">⏩ 10s</span>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            },
+            netflix: {
+                title: "Netflix (النمط التجاري والتفاعلي)",
+                tagline: "ترويج مستمر للأعمال الكبرى مع تصنيفات رقمية وشريط تنقل سفلي ثابت",
+                score: "التقييم لـ Jellyfin: 7.0 / 10",
+                features: [
+                    "بوستر ضخم (Hero Banner) يغطي أكثر من نصف الشاشة العلوية.",
+                    "ترقيم الأعمال الرائجة (Top 10) بأرقام بارزة ثلاثية الأبعاد.",
+                    "صفوف تمرير عمودية وأفقية مكدسة بكثافة.",
+                    "شريط علوي يختفي تدريجياً عند التمرير للأسفل."
+                ],
+                pros: ["مألوف جداً لجميع المستخدمين بدون أي حاجة لتعلم الواجهة.", "ممتاز للاكتشاف العشوائي للأعمال."],
+                cons: ["لا يراعي تقسيم الخوادم والمكتبات الخاصة.", "يفتقر تماماً للمعلومات التقنية والترميزية."],
+                verdict: "جيد إذا كنت ترغب في تقليد نيتفلكس حرفياً لإبهار الأصدقاء، ولكنه غير عملي لإدارة وسائطك الشخصية الضخمة.",
+                wireframes: {
+                    home: `
+                        <div style="padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #e50914; font-weight: 900; font-size: 16px;">N</span>
+                            <div style="display: flex; gap: 12px; font-size: 11px;">
+                                <span>مسلسلات</span>
+                                <span>أفلام</span>
+                                <span>التصنيفات ▼</span>
+                            </div>
+                            <span>🔍</span>
+                        </div>
+                        <div style="padding: 0 12px; margin-bottom: 12px;">
+                            <div class="wf-box" style="height: 220px; border-radius: 8px; background: #181818;">
+                                [Big Hero Poster 2:3]<br>
+                                <div style="position: absolute; bottom: 10px; display: flex; gap: 8px;">
+                                    <span class="wf-badge" style="background: #fff; color: #000;">▶ تشغيل</span>
+                                    <span class="wf-badge" style="background: rgba(255,255,255,0.2); color: #fff;">+ قائمتي</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="padding: 0 12px; margin-bottom: 6px; font-size: 11px; font-weight: bold;">أفضل 10 أعمال اليوم</div>
+                        <div style="display: flex; gap: 8px; padding: 0 12px; overflow-x: hidden; margin-bottom: 12px;">
+                            <div class="wf-box" style="min-width: 90px; height: 130px;"><b style="font-size: 22px; color: #e50914;">1</b></div>
+                            <div class="wf-box" style="min-width: 90px; height: 130px;"><b style="font-size: 22px; color: #e50914;">2</b></div>
+                            <div class="wf-box" style="min-width: 90px; height: 130px;"><b style="font-size: 22px; color: #e50914;">3</b></div>
+                        </div>
+                        <div style="padding: 0 12px; margin-bottom: 6px; font-size: 11px; font-weight: bold;">متابعة المشاهدة</div>
+                        <div style="display: flex; gap: 8px; padding: 0 12px; overflow-x: hidden;">
+                            <div class="wf-box" style="min-width: 100px; height: 80px;">Poster 16:9</div>
+                            <div class="wf-box" style="min-width: 100px; height: 80px;">Poster 16:9</div>
+                        </div>
+                    `,
+                    details: `
+                        <div class="wf-box" style="height: 180px; background: #141414; border-radius: 0;">
+                            [Trailer Auto-Preview / Poster]
+                        </div>
+                        <div style="padding: 12px;">
+                            <div style="font-size: 18px; font-weight: 800;">Stranger Things</div>
+                            <div style="display: flex; gap: 8px; font-size: 10px; color: #94a3b8; margin: 4px 0 12px 0;">
+                                <span style="color: #46d369;">98% مطابقة</span>
+                                <span>2024</span>
+                                <span class="wf-badge">16+</span>
+                                <span>4 أجزاء</span>
+                            </div>
+                            <div class="wf-box" style="height: 38px; background: #ffffff; color: #000; font-weight: bold; margin-bottom: 8px;">▶ تشغيل الحلقة 1</div>
+                            <div class="wf-box" style="height: 38px; background: #262626; color: #fff; margin-bottom: 14px;">⬇ تنزيل الحلقة 1</div>
+                            <div style="font-size: 11px; line-height: 1.5; color: #ccc;">عندما يختفي صبي صغير في ظروف غامضة، تكشف بلدة سرية عن تجارب غريبة...</div>
+                        </div>
+                    `,
+                    player: `
+                        <div style="flex: 1; background: #000; display: flex; flex-direction: column; justify-content: space-between; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>⬅ رجوع</span>
+                                <span>الحلقة 1 - الموسم 4</span>
+                                <span>🔒 قفل الشاشة</span>
+                            </div>
+                            <div style="text-align: center; color: #555;">[Netflix Native Video Surface]</div>
+                            <div>
+                                <div class="wf-box" style="height: 4px; background: #333; margin-bottom: 12px; border: none;">
+                                    <div style="width: 60%; height: 100%; background: #e50914;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-around; font-size: 12px;">
+                                    <span>السرعة (1.0x)</span>
+                                    <span>الحلقات</span>
+                                    <span>الصوت والترجمة</span>
+                                    <span>الحلقة التالية ⏭</span>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            },
+            apple_tv: {
+                title: "Apple TV+ (النمط السينمائي الهادئ)",
+                tagline: "تصميم مينيماليست يعتمد على الصور العريضة والهدوء البصري الخالي من التشتت",
+                score: "التقييم لـ Jellyfin: 8.5 / 10",
+                features: [
+                    "شرائح عريضة جداً بنسبة 16:9 تأخذ راحة تامة في المساحات.",
+                    "التركيز على صف واحد أساسي هو قائمة 'التالي' (Up Next).",
+                    "نصوص بيضاء ناصعة على خلفيات شديدة السواد (#000000).",
+                    "أزرار دائرية ناعمة وشديدة البساطة."
+                ],
+                pros: ["أكثر تصميم مريح للعين ولا يسبب أي إرهاق بصري.", "سهل التنفيذ والتنسيق في Flutter."],
+                cons: ["يقلل من عدد الأفلام المعروضة في الشاشة الواحدة (تحتاج لتمرير أكثر)."],
+                verdict: "خيار رائع لمن يحب البساطة المطلقة والتركيز على الأعمال ذات الجودة العالية دون زحمة التصنيفات.",
+                wireframes: {
+                    home: `
+                        <div style="padding: 16px; font-size: 20px; font-weight: bold;">شاهد الآن (Watch Now)</div>
+                        <div style="padding: 0 16px; margin-bottom: 16px;">
+                            <div class="wf-box" style="height: 190px; border-radius: 16px; background: #161e2e;">
+                                [Cinematic Featured 16:9 Hero Card]<br>
+                                <span style="font-size: 10px; color: #94a3b8;">Severance (Season 2)</span>
+                            </div>
+                        </div>
+                        <div style="padding: 0 16px; margin-bottom: 8px; font-size: 13px; font-weight: bold;">قائمة التالي (Up Next)</div>
+                        <div style="display: flex; gap: 10px; padding: 0 16px; overflow-x: hidden;">
+                            <div class="wf-box" style="min-width: 150px; height: 95px; border-radius: 10px;">Slow Horses<br><span style="font-size: 8px;">متبقي 18 دقيقة</span></div>
+                            <div class="wf-box" style="min-width: 150px; height: 95px; border-radius: 10px;">Ted Lasso<br><span style="font-size: 8px;">حلقة جديدة</span></div>
+                        </div>
+                    `,
+                    details: `
+                        <div class="wf-box" style="height: 200px; border-radius: 0;">
+                            [Full Bleed Still Frame 16:9]
+                        </div>
+                        <div style="padding: 16px;">
+                            <h2 style="font-size: 20px; margin-bottom: 4px;">Killers of the Flower Moon</h2>
+                            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 16px;">دراما، جريمة • 3س 26د • 2023 • 4K HDR</div>
+                            <div class="wf-box" style="height: 44px; background: #ffffff; color: #000; border-radius: 22px; font-weight: bold; margin-bottom: 12px;">
+                                ▶ استئناف المشاهدة
+                            </div>
+                            <p style="font-size: 11.5px; line-height: 1.6; color: #cbd5e1;">في مطلع القرن العشرين، أصبحت قبيلة أوسيدج من أغنى شعوب العالم بعد اكتشاف النفط...</p>
+                        </div>
+                    `,
+                    player: `
+                        <div style="flex: 1; background: #000; display: flex; flex-direction: column; justify-content: space-between; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>✕ إغلاق</span>
+                                <span style="font-size: 11px; color: #94a3b8;">4K Dolby Vision</span>
+                            </div>
+                            <div style="text-align: center; color: #334155;">[Minimalist Player View]</div>
+                            <div>
+                                <div class="wf-box" style="height: 4px; background: #222; margin-bottom: 12px; border: none;">
+                                    <div style="width: 35%; height: 100%; background: #fff;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #aaa;">
+                                    <span>45:10</span>
+                                    <span>-1:15:30</span>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            },
+            plex: {
+                title: "Plex (النمط الهيكلي وإدارة المكتبات)",
+                tagline: "التركيز على تصنيف السيرفرات وإدارة المجموعات الضخمة والتصفية المتقدمة",
+                score: "التقييم لـ Jellyfin: 8.5 / 10",
+                features: [
+                    "قائمة جانبية وسفلية لإدارة تعدد السيرفرات والمكتبات المنفصلة.",
+                    "شريط تصفية وترتيب عميق (حسب الدقة، سنة الإنتاج، نوع الكوديك، غير المشاهد).",
+                    "طرق عرض متعددة (Grid View، List View، Details View).",
+                    "إمكانية تخصيص الشاشة الرئيسية وترتيب الأقسام يدوياً."
+                ],
+                pros: ["مثالي لأصحاب المكتبات الضخمة (آلاف الأفلام والمسلسلات).", "أقوى نظام فرز وتصفية للملفات."],
+                cons: ["الواجهة قد تبدو معقدة وتحتوي على خيارات كثيرة للمستخدم العادي."],
+                verdict: "الخيار الأفضل إذا كان الهدف الأساسي للمستخدم هو ترتيب وفهرسة وتصنيف مكتبته الخاصة بدقة بالغة.",
+                wireframes: {
+                    home: `
+                        <div style="padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b;">
+                            <span style="font-weight: bold; color: #e5a00d;">PLEX / Home</span>
+                            <span class="wf-badge">Server: Synology NAS ▼</span>
+                        </div>
+                        <div style="padding: 10px 14px; display: flex; gap: 8px; overflow-x: hidden;">
+                            <span class="wf-badge" style="background: #e5a00d; color: #000;">الكل</span>
+                            <span class="wf-badge">أفلام 4K</span>
+                            <span class="wf-badge">مسلسلات حديثة</span>
+                            <span class="wf-badge">أنمي</span>
+                        </div>
+                        <div style="padding: 0 14px; margin-bottom: 8px; font-size: 11px; font-weight: bold;">أضيف حديثاً في الأفلام (Recently Added)</div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 14px; margin-bottom: 12px;">
+                            <div class="wf-box" style="height: 110px;">Poster 1</div>
+                            <div class="wf-box" style="height: 110px;">Poster 2</div>
+                            <div class="wf-box" style="height: 110px;">Poster 3</div>
+                        </div>
+                        <div style="padding: 0 14px; margin-bottom: 8px; font-size: 11px; font-weight: bold;">حلقات غير مكتملة</div>
+                        <div style="display: flex; gap: 8px; padding: 0 14px; overflow-x: hidden;">
+                            <div class="wf-box" style="min-width: 120px; height: 75px;">S02E05</div>
+                            <div class="wf-box" style="min-width: 120px; height: 75px;">S01E08</div>
+                        </div>
+                    `,
+                    details: `
+                        <div style="padding: 14px;">
+                            <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+                                <div class="wf-box" style="width: 90px; height: 135px; flex-shrink: 0;">Poster</div>
+                                <div>
+                                    <h3 style="font-size: 16px;">Gladiator II</h3>
+                                    <div style="font-size: 10px; color: #e5a00d; margin: 4px 0;">★ 7.8/10 (IMDb)</div>
+                                    <div style="font-size: 10px; color: #94a3b8;">2024 • 2h 28m • Action</div>
+                                    <div style="display: flex; gap: 4px; margin-top: 6px;">
+                                        <span class="wf-badge">4K</span>
+                                        <span class="wf-badge">DTS-HD</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                <div class="wf-box" style="flex: 1; height: 36px; background: #e5a00d; color: #000; font-weight: bold;">تشغيل</div>
+                                <div class="wf-box" style="width: 40px; height: 36px;">✓</div>
+                                <div class="wf-box" style="width: 40px; height: 36px;">⋮</div>
+                            </div>
+                            <div class="wf-box" style="height: 50px; font-size: 10px; margin-bottom: 12px;">
+                                [ملف الميديا: Gladiator.II.2024.2160p.UHD.Remux.mkv (48.2 GB)]
+                            </div>
+                        </div>
+                    `,
+                    player: `
+                        <div style="flex: 1; background: #000; display: flex; flex-direction: column; justify-content: space-between; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>⬅ رجوع</span>
+                                <span style="font-size: 10px; color: #e5a00d;">Direct Play (Original 48Mbps)</span>
+                                <span>⚙️ الإعدادات</span>
+                            </div>
+                            <div style="text-align: center; color: #444;">[Plex ExoPlayer Engine]</div>
+                            <div>
+                                <div class="wf-box" style="height: 4px; background: #333; margin-bottom: 8px;">
+                                    <div style="width: 50%; height: 100%; background: #e5a00d;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                                    <span>55:00</span>
+                                    <span>-1:33:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            },
+            findroid: {
+                title: "Findroid / Material 3 (نمط أندرويد الأصيل)",
+                tagline: "تصميم نظيف وسريع يتبع إرشادات جوجل مع دعم ثيم النظام والتنقل السفلي البسيط",
+                score: "التقييم لـ Jellyfin: 9.0 / 10",
+                features: [
+                    "مبني 100% وفق معايير Material Design 3.",
+                    "تلوين ديناميكي يتكيف مع ألوان خلفية جهاز المستخدم.",
+                    "بناء شاشات خفيف جداً يضمن 60/120 إطار في الثانية دون أي تقطيع.",
+                    "تنقل قياسي وسهل عبر شريط التنقل السفلي (NavigationBar)."
+                ],
+                pros: ["الأخف وزناً والأسرع استجابة بين جميع الخيارات.", "أسهل نمط يمكن برمجته وصيانته في Flutter باستخدام ودجات Material القياسية."],
+                cons: ["أقل إبهاراً سينمائياً مقارنة بنمط الزجاج المصقول في Infuse."],
+                verdict: "خيار رائع وعملي جداً إذا كنت تريد إطلاق نسخة مستقرة وسريعة وخالية من التعقيد في أقصر وقت ممكن.",
+                wireframes: {
+                    home: `
+                        <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+                            <h2 style="font-size: 18px; color: #93c5fd;">Jellyfin</h2>
+                            <span class="wf-badge" style="border-radius: 12px;">👤 حسابي</span>
+                        </div>
+                        <div style="padding: 0 16px; margin-bottom: 12px;">
+                            <div class="wf-box" style="height: 42px; border-radius: 24px; background: #1e293b; justify-content: flex-start; padding: 0 16px;">
+                                🔍 ابحث في مكتبتك...
+                            </div>
+                        </div>
+                        <div style="padding: 0 16px; margin-bottom: 8px; font-size: 11px; font-weight: bold; color: #93c5fd;">المكتبات</div>
+                        <div style="display: flex; gap: 8px; padding: 0 16px; margin-bottom: 16px;">
+                            <div class="wf-box" style="flex: 1; height: 65px; border-radius: 12px;">أفلام 🎬</div>
+                            <div class="wf-box" style="flex: 1; height: 65px; border-radius: 12px;">مسلسلات 📺</div>
+                            <div class="wf-box" style="flex: 1; height: 65px; border-radius: 12px;">موسيقى 🎵</div>
+                        </div>
+                        <div style="padding: 0 16px; margin-bottom: 8px; font-size: 11px; font-weight: bold; color: #93c5fd;">استئناف المشاهدة</div>
+                        <div style="display: flex; gap: 8px; padding: 0 16px; overflow-x: hidden;">
+                            <div class="wf-box" style="min-width: 130px; height: 80px; border-radius: 12px;">Media Card</div>
+                            <div class="wf-box" style="min-width: 130px; height: 80px; border-radius: 12px;">Media Card</div>
+                        </div>
+                    `,
+                    details: `
+                        <div class="wf-box" style="height: 170px; border-radius: 0 0 20px 20px; background: #1e293b;">
+                            [SliverAppBar with FlexibleSpace Poster]
+                        </div>
+                        <div style="padding: 16px;">
+                            <h3 style="font-size: 18px; color: #93c5fd;">Interstellar</h3>
+                            <div style="font-size: 10px; color: #94a3b8; margin: 4px 0 12px 0;">2014 • 2h 49m • Sci-Fi</div>
+                            <div style="display: flex; gap: 10px; margin-bottom: 14px;">
+                                <div class="wf-box" style="flex: 1; height: 42px; border-radius: 20px; background: #3b82f6; color: #fff; font-weight: bold;">تشغيل</div>
+                                <div class="wf-box" style="flex: 1; height: 42px; border-radius: 20px; background: #1e293b;">تحميل</div>
+                            </div>
+                            <p style="font-size: 11px; line-height: 1.6; color: #cbd5e1;">يسافر فريق من المستكشفين عبر ثقب دودي في الفضاء في محاولة لضمان بقاء البشرية...</p>
+                        </div>
+                    `,
+                    player: `
+                        <div style="flex: 1; background: #000; display: flex; flex-direction: column; justify-content: space-between; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>⬅</span>
+                                <span style="font-size: 11px;">Interstellar</span>
+                                <span>⚙️</span>
+                            </div>
+                            <div style="text-align: center; color: #475569;">[Material Media Player]</div>
+                            <div>
+                                <div class="wf-box" style="height: 6px; border-radius: 3px; background: #334155; margin-bottom: 10px;">
+                                    <div style="width: 40%; height: 100%; background: #3b82f6;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8;">
+                                    <span>00:45:12</span>
+                                    <span>02:49:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                }
+            }
+        };
+
+        let currentStyle = 'infuse';
+        let currentScreen = 'home';
+
+        function render() {
+            const data = uiData[currentStyle];
+            
+            // Render Wireframe
+            const wfContainer = document.getElementById('wireframeDisplay');
+            wfContainer.innerHTML = data.wireframes[currentScreen];
+
+            // Render Details
+            const detailsContainer = document.getElementById('detailsDisplay');
+            detailsContainer.innerHTML = `
+                <div class="details-header">
+                    <div>
+                        <div class="style-title">${data.title}</div>
+                        <div class="style-tagline">${data.tagline}</div>
+                    </div>
+                    <div class="score-pill">${data.score}</div>
+                </div>
+
+                <div class="section-title">📌 الميزات المعمارية والتخطيطية للشاشات</div>
+                <ul style="list-style: none; font-size: 13px; color: #cbd5e1; line-height: 1.8; margin-bottom: 16px;">
+                    ${data.features.map(f => `<li>🔹 ${f}</li>`).join('')}
+                </ul>
+
+                <div class="pros-cons-grid">
+                    <div class="feature-card">
+                        <h4 style="color: #4ade80;">✅ نقاط القوة لـ Jellyfin</h4>
+                        <ul>
+                            ${data.pros.map(p => `<li>${p}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="feature-card">
+                        <h4 style="color: #f87171;">⚠️ العيوب أو التحديات</h4>
+                        <ul>
+                            ${data.cons.map(c => `<li>${c}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="jellyfin-verdict">
+                    <h4>💡 الخلاصة والتوصية المعمارية لتطبيقك:</h4>
+                    <p>${data.verdict}</p>
+                </div>
+            `;
+        }
+
+        function switchStyle(styleKey) {
+            currentStyle = styleKey;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            render();
+        }
+
+        function switchScreen(screenKey) {
+            currentScreen = screenKey;
+            document.querySelectorAll('.screen-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            render();
+        }
+
+        // Initial Render
+        render();
+    </script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+{
+  "server": "http://192.168.200.200:80",
+  "user": "الاستراحه",
+  "timestamp": "2026-11-19 05:05:21",
+  "total_cases": 44,
+  "passed": 44,
+  "failed": 0,
+  "duration_seconds": 31.92,
+  "cases": [
+    {
+      "category": "Auth & Handshake",
+      "name": "Public System Info",
+      "status": "PASS",
+      "duration_ms": 31.92,
+      "details": "Server 'DESKTOP-GB042EM' v10.8.9 on Windows",
+      "error": null
+    },
+    {
+      "category": "Auth & Handshake",
+      "name": "Authenticate by Username",
+      "status": "PASS",
+      "duration_ms": 29.82,
+      "details": "Authenticated as 'الاستراحه'. UserID: eed1f2048c954133a7f96829321774e8, Token: 6f2bf632...",
+      "error": null
+    },
+    {
+      "category": "Auth & Handshake",
+      "name": "Verify Public Users",
+      "status": "PASS",
+      "duration_ms": 22.78,
+      "details": "Public user confirmed: 'الاستراحه' (HasPassword: False)",
+      "error": null
+    },
+    {
+      "category": "Auth & Handshake",
+      "name": "Invalid Auth Rejection",
+      "status": "PASS",
+      "duration_ms": 13.68,
+      "details": "Gracefully rejected invalid auth with HTTP 401",
+      "error": null
+    },
+    {
+      "category": "Library Views",
+      "name": "Fetch All User Views",
+      "status": "PASS",
+      "duration_ms": 143.79,
+      "details": "Found 11 libraries: قسم الافلام, الانمي والاطفال, البرامج التلفزيونية, المسلسلات الاجنبية, المسلسلات الاسيوية...",
+      "error": null
+    },
+    {
+      "category": "Library Views",
+      "name": "Verify 11 Mandatory Libraries",
+      "status": "PASS",
+      "duration_ms": 0.01,
+      "details": "All 11 expected server libraries are present and verified.",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'قسم الافلام'",
+      "status": "PASS",
+      "duration_ms": 524.38,
+      "details": "Count: 7/7 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'الانمي والاطفال'",
+      "status": "PASS",
+      "duration_ms": 1730.82,
+      "details": "Count: 4/4 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'البرامج التلفزيونية'",
+      "status": "PASS",
+      "duration_ms": 157.76,
+      "details": "Count: 6/6 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'المسلسلات الاجنبية'",
+      "status": "PASS",
+      "duration_ms": 631.37,
+      "details": "Count: 2/2 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'المسلسلات الاسيوية'",
+      "status": "PASS",
+      "duration_ms": 1113.1,
+      "details": "Count: 4/4 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'المسلسلات التركية'",
+      "status": "PASS",
+      "duration_ms": 967.57,
+      "details": "Count: 3/3 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'المسلسلات العربية'",
+      "status": "PASS",
+      "duration_ms": 1214.77,
+      "details": "Count: 11/11 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'المكتبة الاسلامية'",
+      "status": "PASS",
+      "duration_ms": 135.44,
+      "details": "Count: 2/2 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'المنوعـــــات'",
+      "status": "PASS",
+      "duration_ms": 360.81,
+      "details": "Count: 6/6 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'مسلسلات رمضان'",
+      "status": "PASS",
+      "duration_ms": 311.86,
+      "details": "Count: 6/6 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Hierarchical Root",
+      "name": "Library 'مسلسللات متتنوعة'",
+      "status": "PASS",
+      "duration_ms": 146.46,
+      "details": "Count: 4/4 items, Types: ['Folder']",
+      "error": null
+    },
+    {
+      "category": "Deep Drilldown",
+      "name": "Drill into 'الانمي والاطفال'",
+      "status": "PASS",
+      "duration_ms": 292.61,
+      "details": "L1: 'مسلسلات اطفال' (10 items)",
+      "error": null
+    },
+    {
+      "category": "Deep Drilldown",
+      "name": "Drill into 'المكتبة الاسلامية'",
+      "status": "PASS",
+      "duration_ms": 80.74,
+      "details": "L1: 'برامج ومحاضرات وخواطر' (10 items) -> L2: 'البرنامج الديني اجمل نظرة في حياتك' (10 items)",
+      "error": null
+    },
+    {
+      "category": "Deep Drilldown",
+      "name": "Drill into 'قسم الافلام'",
+      "status": "PASS",
+      "duration_ms": 117.79,
+      "details": "L1: 'افلام ايرانية' (10 items) -> L2: 'افلام الانبياء' (10 items)",
+      "error": null
+    },
+    {
+      "category": "Flat vs Hierarchical",
+      "name": "Volume comparison for 'مسلسلات رمضان'",
+      "status": "PASS",
+      "duration_ms": 283.36,
+      "details": "Hierarchical root count: 6 vs Flat catalog count: 13148 (ratio: 2191.3x)",
+      "error": null
+    },
+    {
+      "category": "Flat vs Hierarchical",
+      "name": "Volume comparison for 'الانمي والاطفال'",
+      "status": "PASS",
+      "duration_ms": 394.84,
+      "details": "Hierarchical root count: 4 vs Flat catalog count: 16934 (ratio: 4233.5x)",
+      "error": null
+    },
+    {
+      "category": "Pagination",
+      "name": "Consecutive Page Continuity",
+      "status": "PASS",
+      "duration_ms": 103.15,
+      "details": "Page 1 (10 items) and Page 2 (10 items) have 0 overlap",
+      "error": null
+    },
+    {
+      "category": "Pagination",
+      "name": "Out-of-Bounds Offset Handling",
+      "status": "PASS",
+      "duration_ms": 38.96,
+      "details": "Gracefully returned 0 items; TotalRecordCount preserved (4304)",
+      "error": null
+    },
+    {
+      "category": "Filters",
+      "name": "Community Rating Filter Evaluation",
+      "status": "PASS",
+      "duration_ms": 44.19,
+      "details": "Found 3 items with rating >= 7.0 among sample of 20",
+      "error": null
+    },
+    {
+      "category": "Filters",
+      "name": "4K / UHD Scoped Recursion Evaluation",
+      "status": "PASS",
+      "duration_ms": 155.75,
+      "details": "Scoped recursion evaluated 50 movies: 0 identified as native 4K/UHD",
+      "error": null
+    },
+    {
+      "category": "Alphabet Scrubber",
+      "name": "Filter by letter 'ا'",
+      "status": "PASS",
+      "duration_ms": 33.79,
+      "details": "Letter 'ا' returned 10/406 items. Samples: ['الرجل العنكبوت 3', 'الطيب و الشرس و اللعوب']",
+      "error": null
+    },
+    {
+      "category": "Alphabet Scrubber",
+      "name": "Filter by letter 'م'",
+      "status": "PASS",
+      "duration_ms": 20.61,
+      "details": "Letter 'م' returned 10/78 items. Samples: ['مطعم الجدات', 'متعدد الهويات']",
+      "error": null
+    },
+    {
+      "category": "Alphabet Scrubber",
+      "name": "Filter by letter 'A'",
+      "status": "PASS",
+      "duration_ms": 48.65,
+      "details": "Letter 'A' returned 10/179 items. Samples: ['The Atticus Institute', 'Avarice']",
+      "error": null
+    },
+    {
+      "category": "Alphabet Scrubber",
+      "name": "Filter by letter 'T'",
+      "status": "PASS",
+      "duration_ms": 21.4,
+      "details": "Letter 'T' returned 10/141 items. Samples: ['The Three Stooges', 'Temple Grandin (2014) Biography , Drama']",
+      "error": null
+    },
+    {
+      "category": "Media Details",
+      "name": "Movie Details & Codecs",
+      "status": "PASS",
+      "duration_ms": 329.95,
+      "details": "Movie 'Nightfire' | Container: mov,mp4,m4a,3gp,3g2,mj2 | Video: h264 | Audio: aac",
+      "error": null
+    },
+    {
+      "category": "Media Details",
+      "name": "Series, Seasons & Episodes Hierarchy",
+      "status": "PASS",
+      "duration_ms": 236.67,
+      "details": "Series 'اليتيم' has 1 seasons. Season 1 has 30 episodes.",
+      "error": null
+    },
+    {
+      "category": "Media Details",
+      "name": "Islamic Library Media Item",
+      "status": "PASS",
+      "duration_ms": 58.81,
+      "details": "Item '104 Al Humaza - الهمزة' Type: Audio Duration: 92s",
+      "error": null
+    },
+    {
+      "category": "Home Feeds",
+      "name": "Next Up Episodes (/Shows/NextUp)",
+      "status": "PASS",
+      "duration_ms": 5616.54,
+      "details": "Fetched 16 Next Up episodes. First: Anna Pigeon (TV Series 2026",
+      "error": null
+    },
+    {
+      "category": "Home Feeds",
+      "name": "Resume Items (/Items/Resume)",
+      "status": "PASS",
+      "duration_ms": 3004.0,
+      "details": "Fetched 12 continue watching items.",
+      "error": null
+    },
+    {
+      "category": "Home Feeds",
+      "name": "Spotlight Carousel (/Items?sortBy=Random)",
+      "status": "PASS",
+      "duration_ms": 296.2,
+      "details": "Fetched 5 spotlight items with backdrop images.",
+      "error": null
+    },
+    {
+      "category": "Home Feeds",
+      "name": "Latest Items (/Items/Latest)",
+      "status": "PASS",
+      "duration_ms": 1667.43,
+      "details": "Fetched 16 globally latest items.",
+      "error": null
+    },
+    {
+      "category": "Playback & Assets",
+      "name": "Video Stream HTTP Range 206",
+      "status": "PASS",
+      "duration_ms": 5591.34,
+      "details": "Stream active: HTTP 206 | Content-Type: video/quicktime | Range: bytes 0-1024/386424251",
+      "error": null
+    },
+    {
+      "category": "Playback & Assets",
+      "name": "Primary Image (Poster) Handshake",
+      "status": "PASS",
+      "duration_ms": 287.99,
+      "details": "Poster delivered: HTTP 200 | Type: image/jpeg | Size: 77 KB",
+      "error": null
+    },
+    {
+      "category": "Search Engine",
+      "name": "Search query 'رمضان'",
+      "status": "PASS",
+      "duration_ms": 1499.3,
+      "details": "Query 'رمضان' -> Total: 106. Matches: ['يارمضان امين حاميم Ya Ramadan Ameen Hameem(360P)', 'مسلسل مخلف صعيب - رمضان 2021م', 'محمد رمضان مدفع رمضان']",
+      "error": null
+    },
+    {
+      "category": "Search Engine",
+      "name": "Search query 'Batman'",
+      "status": "PASS",
+      "duration_ms": 1182.96,
+      "details": "Query 'Batman' -> Total: 28. Matches: ['فيلم الليجو باتمان', 'باتمان: الهالوين الطويل، الجزء الأول', 'باتمان: النكتة القاتلة']",
+      "error": null
+    },
+    {
+      "category": "Search Engine",
+      "name": "Search query 'محمد'",
+      "status": "PASS",
+      "duration_ms": 1186.9,
+      "details": "Query 'محمد' -> Total: 334. Matches: ['🌍مسرحية الو من معي🤣🤣محمد قحطاناخو الاستاذ عبدالله الفقيه', 'يوميات_قحطان2 اضحك من قلبك مع الجزء الثاني لرحلة الفنان -محمد قحطان- الى الاهجر', 'يوميات_قحطان1 اضحك مع الفنان -محمد قحطان-رحلة الى الاهجر - YouTube']",
+      "error": null
+    },
+    {
+      "category": "Search Engine",
+      "name": "Search query 'nonexistentquery_xyz_999'",
+      "status": "PASS",
+      "duration_ms": 1125.84,
+      "details": "Query 'nonexistentquery_xyz_999' -> Total: 0. Matches: []",
+      "error": null
+    },
+    {
+      "category": "Playback Sessions",
+      "name": "Report Start, Progress, and Stop",
+      "status": "PASS",
+      "duration_ms": 662.95,
+      "details": "Playback start, progress and stop sessions accepted by Jellyfin server",
+      "error": null
+    }
+  ]
+}

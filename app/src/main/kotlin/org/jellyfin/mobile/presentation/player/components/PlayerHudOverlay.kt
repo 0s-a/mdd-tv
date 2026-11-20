@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Subtitles
@@ -105,6 +106,7 @@ fun PlayerHudOverlay(
     onSetPlaybackSpeed: (Float) -> Unit,
     onSetAspectRatio: (AspectRatioMode) -> Unit,
     onEnterPiP: () -> Unit,
+    onToggleOrientation: () -> Unit = {},
     onPlayNextEpisode: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -240,6 +242,23 @@ fun PlayerHudOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Screen Flip / Rotation Button
+                        IconButton(
+                            onClick = onToggleOrientation,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x44000000))
+                                .semantics { contentDescription = "قلب اتجاه الشاشة" }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ScreenRotation,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
                         // Subtitle Dialog Button
                         IconButton(
                             onClick = { showSubtitleDialog = true },

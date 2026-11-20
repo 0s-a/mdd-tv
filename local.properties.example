@@ -1,0 +1,11 @@
+## نموذج لملف الإعدادات المحلية الخاص بالمطور
+## انسخ هذا الملف إلى local.properties وضع عنوان خادمك واسم المستخدم
+## يُمنع رفع ملف local.properties إلى مستودع Git
+
+## مسار Android SDK
+# sdk.dir=/home/username/Android/Sdk
+
+## بيانات السيرفر والمستخدم فقط (كافة البيانات الأخرى تُجلب ديناميكياً من السيرفر)
+JELLYFIN_SERVER_URL=http://192.168.200.200:80
+JELLYFIN_DEFAULT_USERNAME=الاستراحه
+JELLYFIN_DEFAULT_PASSWORD=
