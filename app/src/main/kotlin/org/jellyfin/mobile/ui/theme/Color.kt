@@ -120,6 +120,8 @@ object JellyfinColors {
     val RatingGold: Color = JellyfinPrimitives.GoldCinema
     val SuccessEmerald: Color = JellyfinPrimitives.EmeraldMuted
     val AccentAmber: Color = JellyfinPrimitives.AmberWarm
+    val AmberWarm: Color = JellyfinPrimitives.AmberWarm
+    val AccentCyan: Color = Color(0xFF38BDF8)
 
     // Typography Contrast (WCAG 2.1 & 2.2 Compliance)
     val TextPrimary: Color = JellyfinPrimitives.Gray100
@@ -153,3 +155,5 @@ val TextMuted = JellyfinColors.TextMuted
 val TextTertiary = JellyfinColors.TextTertiary
 val GlassBorder = JellyfinColors.GlassBorder
 val SurfaceGlassActive = JellyfinColors.SurfaceGlassActive
+val AccentCyan = JellyfinColors.AccentCyan
+val AmberWarm = JellyfinColors.AmberWarm
