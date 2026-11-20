@@ -22,7 +22,7 @@ EMOJI_PATTERN = re.compile(
     r'|[\u2b50]'
 )
 
-EXCLUDED_DIRS = {'.git', '.gradle', 'build', '.kotlin'}
+EXCLUDED_DIRS = {'.git', '.gradle', 'build', '.kotlin', 'server_test_suite'}
 CHECKED_EXTENSIONS = {'.md', '.kt', '.kts', '.sh', '.xml', '.json', '.properties', '.toml'}
 
 def check_emojis():
