@@ -9,9 +9,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Book
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Photo
+import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,6 +31,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.ui.components.glassmorphism
@@ -79,13 +89,13 @@ private fun LibraryCapsule(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val iconEmoji = when (folder.type.lowercase()) {
-        "movies" -> "🎬"
-        "tvshows" -> "📺"
-        "music" -> "🎵"
-        "photos" -> "📷"
-        "books" -> "📚"
-        else -> "📁"
+    val icon = when (folder.type.lowercase()) {
+        "movies" -> Icons.Rounded.Movie
+        "tvshows" -> Icons.Rounded.Tv
+        "music" -> Icons.Rounded.MusicNote
+        "photos" -> Icons.Rounded.Photo
+        "books" -> Icons.Rounded.Book
+        else -> Icons.Rounded.Folder
     }
 
     Row(
@@ -114,9 +124,11 @@ private fun LibraryCapsule(
                 contentDescription = "تصفح مكتبة ${folder.name}"
             }
     ) {
-        Text(
-            text = iconEmoji,
-            style = MaterialTheme.typography.bodyMedium
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = JellyfinColors.TextPrimary,
+            modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(JellyfinDimens.SpaceSmall))
         Text(

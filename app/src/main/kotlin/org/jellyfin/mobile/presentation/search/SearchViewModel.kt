@@ -2,13 +2,17 @@ package org.jellyfin.mobile.presentation.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -17,14 +21,15 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.CastMember
+import org.jellyfin.mobile.domain.model.MediaItemSummary
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.SearchRepository
 import org.jellyfin.mobile.domain.usecase.SearchMediaUseCase
 
 /**
  * SearchViewModel manages reactive universal search with zero race conditions.
- * Uses Coroutines debounce(300ms) -> distinctUntilChanged() -> flatMapLatest().
- * Strictly adheres to docs/screens/05_SEARCH_AND_EXPLORE.md.
+ * Uses combine(searchQuery, selectedGenres) -> debounce(300ms) -> distinctUntilChanged() -> flatMapLatest().
+ * 100% dynamic server data for available genres, random spotlight, and recent search history.
  */
 class SearchViewModel(
     private val searchMediaUseCase: SearchMediaUseCase,
@@ -36,10 +41,25 @@ class SearchViewModel(
     val query: StateFlow<String> = _searchQuery.asStateFlow()
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _selectedGenres = MutableStateFlow<Set<String>>(emptySet())
+    val selectedGenres: StateFlow<Set<String>> = _selectedGenres.asStateFlow()
+
+    private val _availableGenres = MutableStateFlow<List<String>>(emptyList())
+    val availableGenres: StateFlow<List<String>> = _availableGenres.asStateFlow()
+
+    private val _spotlightItem = MutableStateFlow<MediaItemSummary?>(null)
+    val spotlightItem: StateFlow<MediaItemSummary?> = _spotlightItem.asStateFlow()
+
+    private val _isGenrePickerOpen = MutableStateFlow(false)
+    val isGenrePickerOpen: StateFlow<Boolean> = _isGenrePickerOpen.asStateFlow()
+
     private val _uiState = MutableStateFlow<SearchUiState>(
         SearchUiState.Idle(
-            recentQueries = emptyList<String>().toImmutableList(),
-            genres = searchRepository.getExploreGenres().toImmutableList()
+            recentQueries = persistentListOf(),
+            availableGenres = persistentListOf(),
+            selectedGenres = persistentSetOf(),
+            spotlightItem = null,
+            isGenrePickerOpen = false
         )
     )
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
@@ -48,60 +68,103 @@ class SearchViewModel(
     val effects = _effects.receiveAsFlow()
 
     init {
-        loadInitialIdleState()
+        loadDynamicServerData()
         setupSearchPipeline()
     }
 
-    private fun loadInitialIdleState() {
+    private fun loadDynamicServerData() {
         viewModelScope.launch {
-            val recent = searchRepository.getRecentQueries().first().toImmutableList()
-            val genres = searchRepository.getExploreGenres().toImmutableList()
-            if (_searchQuery.value.isBlank()) {
-                _uiState.value = SearchUiState.Idle(recentQueries = recent, genres = genres)
+            // 1. Fetch available server genres dynamically
+            searchRepository.getAvailableGenres().onSuccess { genres ->
+                _availableGenres.value = genres
+                refreshIdleStateIfBlank()
             }
+        }
+
+        viewModelScope.launch {
+            // 2. Fetch random dynamic spotlight from server
+            searchRepository.getRandomSpotlight().onSuccess { item ->
+                _spotlightItem.value = item
+                refreshIdleStateIfBlank()
+            }
+        }
+
+        viewModelScope.launch {
+            // 3. Load user's real recent queries
+            refreshIdleStateIfBlank()
         }
     }
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun setupSearchPipeline() {
         viewModelScope.launch {
-            _searchQuery
+            combine(_searchQuery, _selectedGenres) { q, g -> Pair(q, g) }
                 .debounce(300L)
                 .distinctUntilChanged()
-                .flatMapLatest { queryText ->
+                .flatMapLatest { (queryText, genres) ->
                     flow {
                         val trimmed = queryText.trim()
-                        if (trimmed.isBlank()) {
+                        if (trimmed.isBlank() && genres.isEmpty()) {
                             val recent = searchRepository.getRecentQueries().first().toImmutableList()
-                            val genres = searchRepository.getExploreGenres().toImmutableList()
-                            emit(SearchUiState.Idle(recentQueries = recent, genres = genres))
+                            emit(
+                                SearchUiState.Idle(
+                                    recentQueries = recent,
+                                    availableGenres = _availableGenres.value.toImmutableList(),
+                                    selectedGenres = persistentSetOf(),
+                                    spotlightItem = _spotlightItem.value,
+                                    isGenrePickerOpen = _isGenrePickerOpen.value
+                                )
+                            )
                         } else {
-                            emit(SearchUiState.Searching)
+                            emit(
+                                SearchUiState.Searching(
+                                    query = trimmed,
+                                    selectedGenres = genres.toImmutableSet(),
+                                    isGenrePickerOpen = _isGenrePickerOpen.value
+                                )
+                            )
 
                             // Ensure active session
                             if (handshakeRepository.currentSession.value == null) {
                                 handshakeRepository.performHandshake()
                             }
 
-                            searchMediaUseCase(trimmed).fold(
+                            searchMediaUseCase(trimmed, genres).fold(
                                 onSuccess = { result ->
                                     if (result.topMatch == null && result.mediaResults.isEmpty() && result.peopleResults.isEmpty()) {
-                                        emit(SearchUiState.Empty(query = trimmed))
+                                        emit(
+                                            SearchUiState.Empty(
+                                                query = trimmed,
+                                                selectedGenres = genres.toImmutableSet(),
+                                                isGenrePickerOpen = _isGenrePickerOpen.value
+                                            )
+                                        )
                                     } else {
-                                        searchRepository.addRecentQuery(trimmed)
+                                        if (trimmed.isNotBlank()) {
+                                            searchRepository.addRecentQuery(trimmed)
+                                        }
                                         emit(
                                             SearchUiState.Success(
                                                 query = trimmed,
+                                                selectedGenres = genres.toImmutableSet(),
                                                 topMatch = result.topMatch,
                                                 mediaResults = result.mediaResults,
                                                 peopleResults = result.peopleResults,
-                                                totalCount = result.totalCount
+                                                totalCount = result.totalCount,
+                                                availableGenres = _availableGenres.value.toImmutableList(),
+                                                isGenrePickerOpen = _isGenrePickerOpen.value
                                             )
                                         )
                                     }
                                 },
                                 onFailure = { error ->
-                                    emit(SearchUiState.Error(message = error.localizedMessage ?: "حدث خطأ أثناء البحث"))
+                                    emit(
+                                        SearchUiState.Error(
+                                            message = error.localizedMessage ?: "حدث خطأ أثناء البحث",
+                                            selectedGenres = genres.toImmutableSet(),
+                                            isGenrePickerOpen = _isGenrePickerOpen.value
+                                        )
+                                    )
                                 }
                             )
                         }
@@ -121,6 +184,28 @@ class SearchViewModel(
             is SearchIntent.ClearQuery -> {
                 _searchQuery.value = ""
             }
+            is SearchIntent.ToggleGenre -> {
+                val current = _selectedGenres.value
+                _selectedGenres.value = if (current.contains(intent.genre)) {
+                    current - intent.genre
+                } else {
+                    current + intent.genre
+                }
+            }
+            is SearchIntent.RemoveGenre -> {
+                _selectedGenres.value = _selectedGenres.value - intent.genre
+            }
+            is SearchIntent.ClearGenres -> {
+                _selectedGenres.value = emptySet()
+            }
+            is SearchIntent.OpenGenrePicker -> {
+                _isGenrePickerOpen.value = true
+                updatePickerStateInUiState(true)
+            }
+            is SearchIntent.CloseGenrePicker -> {
+                _isGenrePickerOpen.value = false
+                updatePickerStateInUiState(false)
+            }
             is SearchIntent.SelectRecentQuery -> {
                 _searchQuery.value = intent.query
             }
@@ -137,7 +222,7 @@ class SearchViewModel(
                 }
             }
             is SearchIntent.SelectGenre -> {
-                searchByGenre(intent.genre)
+                _selectedGenres.value = setOf(intent.genre)
             }
             is SearchIntent.QuickPlay -> {
                 viewModelScope.launch {
@@ -155,40 +240,34 @@ class SearchViewModel(
                     _effects.send(SearchEffect.NavigateToPersonFilmography(intent.personId, intent.name))
                 }
             }
+            is SearchIntent.DismissSearch -> {
+                viewModelScope.launch {
+                    _effects.send(SearchEffect.Dismiss)
+                }
+            }
         }
     }
 
-    private fun searchByGenre(genreName: String) {
-        _searchQuery.value = genreName
-        viewModelScope.launch {
-            _uiState.value = SearchUiState.Searching
-            searchRepository.getItemsByGenre(genreName)
-                .onSuccess { items ->
-                    if (items.isEmpty()) {
-                        _uiState.value = SearchUiState.Empty(genreName)
-                    } else {
-                        val top = items.firstOrNull()
-                        val rest = if (top != null) items.filterNot { it.id == top.id } else items
-                        _uiState.value = SearchUiState.Success(
-                            query = genreName,
-                            topMatch = top,
-                            mediaResults = rest.toImmutableList(),
-                            peopleResults = emptyList<CastMember>().toImmutableList(),
-                            totalCount = items.size
-                        )
-                    }
-                }
-                .onFailure { error ->
-                    _uiState.value = SearchUiState.Error(error.localizedMessage ?: "تعذر استعراض تصنيف $genreName")
-                }
+    private fun updatePickerStateInUiState(isOpen: Boolean) {
+        _uiState.value = when (val current = _uiState.value) {
+            is SearchUiState.Idle -> current.copy(isGenrePickerOpen = isOpen)
+            is SearchUiState.Searching -> current.copy(isGenrePickerOpen = isOpen)
+            is SearchUiState.Success -> current.copy(isGenrePickerOpen = isOpen)
+            is SearchUiState.Empty -> current.copy(isGenrePickerOpen = isOpen)
+            is SearchUiState.Error -> current.copy(isGenrePickerOpen = isOpen)
         }
     }
 
     private suspend fun refreshIdleStateIfBlank() {
-        if (_searchQuery.value.isBlank()) {
+        if (_searchQuery.value.isBlank() && _selectedGenres.value.isEmpty()) {
             val recent = searchRepository.getRecentQueries().first().toImmutableList()
-            val genres = searchRepository.getExploreGenres().toImmutableList()
-            _uiState.value = SearchUiState.Idle(recentQueries = recent, genres = genres)
+            _uiState.value = SearchUiState.Idle(
+                recentQueries = recent,
+                availableGenres = _availableGenres.value.toImmutableList(),
+                selectedGenres = _selectedGenres.value.toImmutableSet(),
+                spotlightItem = _spotlightItem.value,
+                isGenrePickerOpen = _isGenrePickerOpen.value
+            )
         }
     }
 }
