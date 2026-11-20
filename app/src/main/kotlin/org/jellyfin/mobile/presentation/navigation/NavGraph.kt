@@ -24,6 +24,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.navArgument
 import org.jellyfin.mobile.presentation.details.MediaDetailsScreen
 import org.jellyfin.mobile.presentation.details.MediaDetailsViewModel
@@ -261,7 +263,7 @@ fun MainNavGraph(
             )
         }
 
-        composable(
+        dialog(
             route = Screen.Search.route,
             arguments = listOf(
                 navArgument("genre") {
@@ -269,6 +271,11 @@ fun MainNavGraph(
                     nullable = true
                     defaultValue = null
                 }
+            ),
+            dialogProperties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
             )
         ) { backStackEntry ->
             val rawGenre = backStackEntry.arguments?.getString("genre")

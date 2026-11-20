@@ -1,7 +1,8 @@
 package org.jellyfin.mobile.presentation.search
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,26 +26,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.collectLatest
-import org.jellyfin.mobile.domain.model.CastMember
 import org.jellyfin.mobile.presentation.search.components.FrostedSearchBar
+import org.jellyfin.mobile.presentation.search.components.GenrePickerBottomSheet
 import org.jellyfin.mobile.presentation.search.components.SearchIdleView
 import org.jellyfin.mobile.presentation.search.components.SearchResultsView
 import org.jellyfin.mobile.ui.components.GlassmorphicCard
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
-import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
 
 /**
- * SearchScreen implements the comprehensive multi-domain instant search experience.
- * Strictly adheres to docs/screens/05_SEARCH_AND_EXPLORE.md:
- * - Frosted glass search bar with clear and voice search actions.
- * - Reactive state toggling (Idle Explore ↔ Searching Shimmer ↔ Results Grid ↔ Empty State).
- * - True Black OLED background and TalkBack accessibility.
+ * SearchScreen implements the comprehensive multi-domain instant search experience as a transparent modal window.
+ * - Transparent smoked glass overlay.
+ * - Dynamic server genres with multi-selection trailing button.
+ * - 100% dynamic server data for idle state and search results.
+ * - Mobile-first gestures and zero static filter ribbons.
  */
 @Composable
 fun SearchScreen(
@@ -56,8 +59,10 @@ fun SearchScreen(
 ) {
     val query by viewModel.query.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
-    val isOled = LocalOledTrueBlack.current
-    val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
+    val availableGenres by viewModel.availableGenres.collectAsState()
+
+    // Smoked Obsidian Glass Scrim
+    val overlayScrim = JellyfinColors.PureBlack.copy(alpha = 0.90f)
 
     LaunchedEffect(Unit) {
         viewModel.effects.collectLatest { effect ->
@@ -66,6 +71,7 @@ fun SearchScreen(
                 is SearchEffect.LaunchPlayer -> onLaunchPlayer(effect.mediaId)
                 is SearchEffect.NavigateToPersonFilmography -> { /* Person profile */ }
                 is SearchEffect.ShowToast -> { /* Notification */ }
+                is SearchEffect.Dismiss -> onNavigateBack()
             }
         }
     }
@@ -73,14 +79,14 @@ fun SearchScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(backgroundColor)
+            .background(overlayScrim)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // 1. Frosted Search Bar Header
+            // 1. Frosted Search Bar Header with Trailing Filter Button
             FrostedSearchBar(
                 query = query,
                 onQueryChange = { newQuery ->
@@ -89,7 +95,18 @@ fun SearchScreen(
                 onClearClick = {
                     viewModel.processIntent(SearchIntent.ClearQuery)
                 },
+                selectedGenres = uiState.selectedGenres,
+                onRemoveGenre = { genre ->
+                    viewModel.processIntent(SearchIntent.RemoveGenre(genre))
+                },
+                onClearGenres = {
+                    viewModel.processIntent(SearchIntent.ClearGenres)
+                },
+                onFilterClick = {
+                    viewModel.processIntent(SearchIntent.OpenGenrePicker)
+                },
                 onBackClick = onNavigateBack,
+                autoFocus = true,
                 modifier = Modifier
                     .padding(horizontal = JellyfinDimens.SpaceLarge)
                     .padding(top = JellyfinDimens.SpaceSmall, bottom = JellyfinDimens.SpaceMedium)
@@ -105,7 +122,8 @@ fun SearchScreen(
                     is SearchUiState.Idle -> {
                         SearchIdleView(
                             recentQueries = state.recentQueries,
-                            genres = state.genres,
+                            availableGenres = state.availableGenres,
+                            spotlightItem = state.spotlightItem,
                             onQueryClick = { selectedQuery ->
                                 viewModel.processIntent(SearchIntent.SelectRecentQuery(selectedQuery))
                             },
@@ -113,10 +131,16 @@ fun SearchScreen(
                                 viewModel.processIntent(SearchIntent.DeleteRecentQuery(deletedQuery))
                             },
                             onClearAllQueries = {
-                                viewModel.processIntent(SearchIntent.ClearSearchHistory)
+                                viewModel.processIntent(SearchIntent.ClearHistory)
                             },
                             onGenreClick = { genre ->
-                                viewModel.processIntent(SearchIntent.SelectGenre(genre.name))
+                                viewModel.processIntent(SearchIntent.ToggleGenre(genre))
+                            },
+                            onQuickPlayClick = { mediaId ->
+                                viewModel.processIntent(SearchIntent.QuickPlay(mediaId))
+                            },
+                            onDetailsClick = { mediaId ->
+                                viewModel.processIntent(SearchIntent.OpenDetails(mediaId))
                             }
                         )
                     }
@@ -127,9 +151,10 @@ fun SearchScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             CircularProgressIndicator(
-                                color = JellyfinColors.PrimaryIndigo,
+                                color = JellyfinColors.AccentCyan,
                                 trackColor = JellyfinColors.SurfaceDark,
-                                modifier = Modifier.size(48.dp)
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(44.dp)
                             )
                         }
                     }
@@ -154,7 +179,11 @@ fun SearchScreen(
                     is SearchUiState.Empty -> {
                         SearchEmptyState(
                             query = state.query,
-                            onClear = { viewModel.processIntent(SearchIntent.ClearQuery) },
+                            hasGenres = state.selectedGenres.isNotEmpty(),
+                            onClear = {
+                                viewModel.processIntent(SearchIntent.ClearQuery)
+                                viewModel.processIntent(SearchIntent.ClearGenres)
+                            },
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -169,12 +198,30 @@ fun SearchScreen(
                 }
             }
         }
+
+        // 3. Dynamic Server Genres Multi-Select Bottom Sheet
+        if (uiState.isGenrePickerOpen) {
+            GenrePickerBottomSheet(
+                availableGenres = availableGenres.toImmutableList(),
+                selectedGenres = uiState.selectedGenres,
+                onToggleGenre = { genre ->
+                    viewModel.processIntent(SearchIntent.ToggleGenre(genre))
+                },
+                onClearGenres = {
+                    viewModel.processIntent(SearchIntent.ClearGenres)
+                },
+                onDismiss = {
+                    viewModel.processIntent(SearchIntent.CloseGenrePicker)
+                }
+            )
+        }
     }
 }
 
 @Composable
 private fun SearchEmptyState(
     query: String,
+    hasGenres: Boolean,
     onClear: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -201,8 +248,15 @@ private fun SearchEmptyState(
                 color = JellyfinColors.TextPrimary
             )
             Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
+            val description = if (query.isNotBlank() && hasGenres) {
+                "لا توجد نتائج تطابق \"$query\" مع التصنيفات المختارة"
+            } else if (query.isNotBlank()) {
+                "لا توجد أفلام أو مسلسلات تطابق \"$query\""
+            } else {
+                "لا توجد أعمال في المكتبة تطابق التصنيفات المختارة"
+            }
             Text(
-                text = "لا توجد أفلام أو مسلسلات أو ممثلين يطابقون \"$query\"",
+                text = description,
                 style = MaterialTheme.typography.bodyMedium,
                 color = JellyfinColors.TextSecondary
             )
@@ -210,13 +264,17 @@ private fun SearchEmptyState(
             Button(
                 onClick = onClear,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = JellyfinColors.PrimaryIndigo,
-                    contentColor = JellyfinColors.TextPrimary
+                    containerColor = JellyfinColors.AccentCyan,
+                    contentColor = JellyfinColors.PureBlack
                 ),
                 shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
                 modifier = Modifier.defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
             ) {
-                Text(text = "مسح البحث", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = "مسح الفلاتر والبحث",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -253,13 +311,17 @@ private fun SearchErrorState(
             Button(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = JellyfinColors.PrimaryIndigo,
-                    contentColor = JellyfinColors.TextPrimary
+                    containerColor = JellyfinColors.AccentCyan,
+                    contentColor = JellyfinColors.PureBlack
                 ),
                 shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
                 modifier = Modifier.defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
             ) {
-                Text(text = "إعادة المحاولة", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = "إعادة المحاولة",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

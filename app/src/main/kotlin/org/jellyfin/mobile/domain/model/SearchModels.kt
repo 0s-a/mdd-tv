@@ -44,8 +44,7 @@ data class GenreCategory(
     val name: String,
     val gradientStartHex: Long = 0xFF0D47A1L,
     val gradientEndHex: Long = 0xFF00E5FFL,
-    val iconName: String = "Explore",
-    val emoji: String = "🎬"
+    val iconName: String = "Explore"
 ) {
     companion object {
         fun getDefaultExploreGenres(): List<GenreCategory> = listOf(
@@ -54,48 +53,42 @@ data class GenreCategory(
                 name = "خيال علمي",
                 gradientStartHex = 0xFF0F172AL,
                 gradientEndHex = 0xFF38BDF8L,
-                iconName = "RocketLaunch",
-                emoji = "🚀"
+                iconName = "RocketLaunch"
             ),
             GenreCategory(
                 id = "action",
                 name = "حركة وأكشن",
                 gradientStartHex = 0xFF2E0808L,
                 gradientEndHex = 0xFFF97316L,
-                iconName = "FlashOn",
-                emoji = "💥"
+                iconName = "FlashOn"
             ),
             GenreCategory(
                 id = "drama",
                 name = "دراما سينمائية",
                 gradientStartHex = 0xFF1E1035L,
                 gradientEndHex = 0xFFA855F7L,
-                iconName = "TheaterComedy",
-                emoji = "🎭"
+                iconName = "TheaterComedy"
             ),
             GenreCategory(
                 id = "horror",
                 name = "رعب وغموض",
                 gradientStartHex = 0xFF090D16L,
                 gradientEndHex = 0xFF0EA5E9L,
-                iconName = "VisibilityOff",
-                emoji = "👻"
+                iconName = "VisibilityOff"
             ),
             GenreCategory(
                 id = "animation",
                 name = "رسوم متحركة",
                 gradientStartHex = 0xFF06281DL,
                 gradientEndHex = 0xFF14B8A6L,
-                iconName = "Animation",
-                emoji = "🎨"
+                iconName = "Animation"
             ),
             GenreCategory(
                 id = "documentary",
                 name = "وثائقي",
                 gradientStartHex = 0xFF271B04L,
                 gradientEndHex = 0xFFF59E0BL,
-                iconName = "Explore",
-                emoji = "📚"
+                iconName = "Explore"
             )
         )
     }
