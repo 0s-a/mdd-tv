@@ -1,0 +1,40 @@
+name: Continuous Integration & Quality Gate
+
+on:
+  push:
+    branches: [ main, 'feature/**', 'fix/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify-build:
+    name: Verify Code Compilation & Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Verify Docs & Governance Integrity
+        run: python3 tools/verify_docs_integrity.py
+
+      - name: Compile Kotlin (Debug)
+        run: ./gradlew compileDebugKotlin --no-daemon
+
+      - name: Run Silent Unit Tests
+        run: ./gradlew testDebugUnitTest --no-daemon

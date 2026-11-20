@@ -34,8 +34,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
-import org.jellyfin.mobile.core.download.DownloadManagerProvider
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.presentation.player.util.SubtitleTextCleaner
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.data.remote.dto.MediaSourceDto
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
@@ -75,13 +75,10 @@ class PlayerViewModel(
         .setRenderersFactory(
             DefaultRenderersFactory(context)
                 .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                .setEnableDecoderFallback(true)
         )
         .setTrackSelector(trackSelector)
-        .setMediaSourceFactory(
-            DefaultMediaSourceFactory(
-                DownloadManagerProvider.buildPlaybackDataSourceFactory(context)
-            )
-        )
+        .setMediaSourceFactory(DefaultMediaSourceFactory(context))
         .build()
 
     private var mediaSession: MediaSession? = null
@@ -140,7 +137,7 @@ class PlayerViewModel(
             val text = cueGroup.cues
                 .mapNotNull { it.text }
                 .joinToString("\n") { it.toString().trim() }
-                .takeIf { it.isNotBlank() }
+                .let { SubtitleTextCleaner.clean(it) }
 
             rawSubtitleText = text
             val currentPos = player.currentPosition.coerceAtLeast(0L)
@@ -175,9 +172,22 @@ class PlayerViewModel(
             .build()
         player.setAudioAttributes(audioAttributes, true)
 
+        // 2. Configure track selector for software fallback compatibility & Arabic priority
+        trackSelector.parameters = trackSelector.buildUponParameters()
+            .setPreferredAudioMimeTypes(
+                MimeTypes.AUDIO_AAC,
+                MimeTypes.AUDIO_E_AC3,
+                MimeTypes.AUDIO_AC3,
+                MimeTypes.AUDIO_MPEG,
+                MimeTypes.AUDIO_OPUS
+            )
+            .setPreferredTextLanguage("ar")
+            .setSelectUndeterminedTextLanguage(true)
+            .build()
+
         player.addListener(playerListener)
 
-        // 2. Initialize MediaSession for Bluetooth remotes, lockscreen, and system notifications
+        // 3. Initialize MediaSession for Bluetooth remotes, lockscreen, and system notifications
         try {
             mediaSession = MediaSession.Builder(context, player).build()
         } catch (e: Exception) {
@@ -228,7 +238,6 @@ class PlayerViewModel(
         rawSubtitleText = null
         hasMarkedPlayed = false
 
-        val isDownloaded = DownloadManagerProvider.isMediaDownloadedById(context, mediaId)
         val isOnline = isNetworkAvailable(context)
 
         viewModelScope.launch {
@@ -292,7 +301,7 @@ class PlayerViewModel(
                     _uiState.update {
                         it.copy(
                             mediaTitle = title,
-                            mediaSubtitle = if (isDownloaded) "🟢 تشغيل أوفلاين محلي · $subTitle" else subTitle,
+                            mediaSubtitle = subTitle,
                             videoCodecInfo = vCodec,
                             audioCodecInfo = aCodec,
                             playbackMethod = PlaybackMethod.DirectPlay
@@ -322,16 +331,16 @@ class PlayerViewModel(
                     _uiState.update {
                         it.copy(
                             mediaTitle = AppConfig.APP_NAME,
-                            mediaSubtitle = if (isDownloaded) "🟢 تشغيل أوفلاين من الذاكرة" else "مشاهدة مباشرة"
+                            mediaSubtitle = "مشاهدة مباشرة"
                         )
                     }
                 }
             } else {
-                // Completely offline mode: zero network requests
+                // Offline fallback
                 _uiState.update {
                     it.copy(
                         mediaTitle = AppConfig.APP_NAME,
-                        mediaSubtitle = "🟢 تشغيل أوفلاين بدون إنترنت",
+                        mediaSubtitle = "يرجى التحقق من الاتصال بالخادم",
                         playbackMethod = PlaybackMethod.DirectPlay
                     )
                 }
@@ -349,16 +358,29 @@ class PlayerViewModel(
             if (isOnline && currentMediaSourceId != null) {
                 primarySource?.mediaStreams?.filter { it.type.equals("Subtitle", ignoreCase = true) }?.forEach { sub ->
                     val idx = sub.index ?: return@forEach
-                    val subUrl = StringBuilder("$baseServer/Videos/$mediaId/$currentMediaSourceId/Subtitles/$idx/Stream.vtt")
+                    val codec = sub.codec?.lowercase().orEmpty()
+
+                    // Select native subtitle format: SRT (SubRip), ASS/SSA, or WebVTT
+                    val (ext, mimeType) = when {
+                        codec.contains("subrip") || codec.contains("srt") -> "srt" to MimeTypes.APPLICATION_SUBRIP
+                        codec.contains("ass") || codec.contains("ssa") -> "ass" to MimeTypes.TEXT_SSA
+                        else -> "vtt" to MimeTypes.TEXT_VTT
+                    }
+
+                    val subUrl = StringBuilder("$baseServer/Videos/$mediaId/$currentMediaSourceId/Subtitles/$idx/Stream.$ext")
                     if (!token.isNullOrBlank()) {
                         subUrl.append("?api_key=$token")
                     }
                     val lang = sub.language ?: "ar"
-                    val label = sub.displayTitle ?: if (lang == "ar") "العربية" else lang.uppercase()
-                    val isDefault = sub.isDefault == true || lang.equals("ar", ignoreCase = true)
+                    val isArabic = lang.equals("ar", ignoreCase = true) ||
+                            sub.displayTitle?.contains("عرب", ignoreCase = true) == true ||
+                            sub.displayTitle?.contains("Arabic", ignoreCase = true) == true
+
+                    val label = sub.displayTitle ?: if (isArabic) "العربية" else lang.uppercase()
+                    val isDefault = sub.isDefault == true || isArabic
 
                     val config = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl.toString()))
-                        .setMimeType(MimeTypes.TEXT_VTT)
+                        .setMimeType(mimeType)
                         .setLanguage(lang)
                         .setLabel(label)
                         .setSelectionFlags(if (isDefault) C.SELECTION_FLAG_DEFAULT else 0)

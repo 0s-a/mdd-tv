@@ -29,7 +29,7 @@ import org.koin.compose.koinInject
  * MainScaffold hosts the primary application navigation shell with a floating frosted
  * glass bottom navigation bar.
  * Strictly adheres to docs/v2/01_HEADER_AND_NAV_V2.md:
- * - 3 tabs only: Home, Library, Downloads.
+ * - 3 tabs: Home, Library, Profile.
  * - Hidden in Player, Details, Search, Onboarding, Profile.
  * - Automatically hidden when keyboard is visible (isImeVisible).
  * - Checks local profile on start to route to Onboarding or Home.
@@ -59,7 +59,7 @@ fun MainScaffold(
 
         val isTopLevelDestination = currentRoute == Screen.Home.route ||
                 currentRoute.startsWith("library") ||
-                currentRoute == Screen.Downloads.route
+                currentRoute == Screen.Profile.route
         val isImeVisible = WindowInsets.isImeVisible
         val showBottomBar = isTopLevelDestination && !isImeVisible
 

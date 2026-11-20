@@ -18,7 +18,8 @@ import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 
 enum class ProfileTab {
     FAVORITES,
-    WATCHED_ARCHIVE
+    WATCHED_ARCHIVE,
+    LOCAL_STORAGE
 }
 
 data class ProfileUiState(

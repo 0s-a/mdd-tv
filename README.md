@@ -8,62 +8,49 @@
 
 ---
 
-## 📚 وثائق التطبيق المستقلة (App Documentation)
+## وثائق التطبيق المستقلة (App Documentation)
 
 جميع مواصفات وتصاميم ومعمارية التطبيق متوفرة ومحدثة داخل:  
-👉 [`docs/README.md`](./docs/README.md)
+* [`docs/README.md`](./docs/README.md)
 
 | الوثيقة | المسار | الوصف |
 | :--- | :--- | :--- |
-| **المواصفات الفنية الشاملة** | [`docs/SPEC.md`](./docs/SPEC.md) | رؤية المنتج ومعايير القبول ونطاق الشاشات. |
-| **نظام التصميم السينمائي** | [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md) | رموز التصميم وألوان الأوبسيديان وشارات Infuse. |
-| **المعمارية التقنية** | [`docs/ARCHITECTURE_AND_TECH_STACK.md`](./docs/ARCHITECTURE_AND_TECH_STACK.md) | معمارية MVI ومحرك Media3 وتدفق البيانات. |
-| **المتطلبات غير الوظيفية** | [`docs/NON_FUNCTIONAL_REQUIREMENTS.md`](./docs/NON_FUNCTIONAL_REQUIREMENTS.md) | معايير الأداء ومعدل 120Hz وكفاءة البطارية. |
-| **مواصفات الشاشات الست** | [`docs/screens/`](./docs/screens/) | تفاصيل الواجهات والمخططات وحالات الخطأ. |
-| **تطوير الإصدار الثاني** | [`docs/v2/`](./docs/v2/) | خطة العمل والملف الشخصي المحلي. |
+| **المواصفات الفنية الشاملة** | [`docs/current/spec.md`](./docs/current/spec.md) | رؤية المنتج ومعايير القبول ونطاق الشاشات. |
+| **نظام التصميم السينمائي** | [`docs/foundations/design_system.md`](./docs/foundations/design_system.md) | رموز التصميم وألوان الأوبسيديان وميثاق مكافحة نمط الذكاء الاصطناعي. |
+| **المعمارية التقنية** | [`docs/foundations/architecture.md`](./docs/foundations/architecture.md) | معمارية MVI ومحرك Media3 وتدفق البيانات. |
+| **المتطلبات غير الوظيفية** | [`docs/foundations/non_functional_requirements.md`](./docs/foundations/non_functional_requirements.md) | معايير الأداء ومعدل 120Hz وكفاءة البطارية. |
+| **سجل القرارات المعمارية** | [`docs/adr/`](./docs/adr/) | قرارات العزل المحلي، التشغيل العتادي، وتأجيل التنزيلات. |
+| **مواصفات الشاشات الحالية** | [`docs/current/screens/`](./docs/current/screens/) | تفاصيل الواجهات والمخططات وحالات الخطأ. |
+| **حاضنة التفكير والتخطيط** | [`docs/thinking/`](./docs/thinking/) | مسار دراسة الأفكار الجديدة والخطط المعمارية المعتمدة. |
 
 ---
 
-## 📁 هيكلية المجلد المستقل (`mdd_tv/`)
+## هيكلية المجلد المستقل (`mdd_tv/`)
 
-يحتوي هذا المجلد على مشروع الأندرويد المستقل بالكامل، بحيث يمكن فتحه مباشرة في **Android Studio** كنقطة بداية:
+يحتوي هذا المجلد على مشروع الأندرويد المستقل بالكامل، بحيث يمكن فتحه مباشرة في Android Studio كنقطة بداية:
 
 ```text
 mdd_tv/
-├── docs/                               # التوثيق الكامل للتطبيق (PRD، التصميم، المعمارية)
-│   ├── SPEC.md                         # المواصفات الفنية الشاملة
-│   ├── DESIGN_SYSTEM.md                # نظام التصميم والألوان السينمائية
-│   ├── ARCHITECTURE_AND_TECH_STACK.md  # معمارية Clean + MVI + Media3
-│   ├── NON_FUNCTIONAL_REQUIREMENTS.md  # متطلبات الأداء والـ Direct Play
-│   ├── screens/                        # تفاصيل ومخططات الشاشات
-│   ├── v2/                             # خطة وتطوير الإصدار الثاني
-│   └── ui_references/                  # مراجع وتجارب الواجهات المرئية
-├── tasks/                              # خطط التنفيذ وقوائم المهام للتطبيق
-│   ├── plan.md                         # خطة التنفيذ الشاملة للشاشات والمراحل
-│   └── todo.md                         # قائمة متابعة الإنجاز والمهام
-├── tools/                              # أدوات الفحص التابعة للمشروع
+├── docs/                               # التوثيق الكامل للتطبيق (PRD، التصميم، المعمارية، ADRs)
+│   ├── current/                        # المواصفات الفنية المعتمدة والشاشات
+│   ├── foundations/                    # ركائز المعمارية ونظام التصميم والأداء
+│   ├── adr/                            # سجل القرارات المعمارية (ADRs)
+│   └── thinking/                       # حاضنة الأفكار والخطط المعتمدة
+├── tasks/                              # خطط التنفيذ وقوائم المهام الحالية (active_task.md)
+├── tools/                              # أدوات الأتمتة والفحص التابعة للمشروع
+│   ├── release.sh                      # محرك الإصدارات التلقائي
+│   ├── verify_docs_integrity.py        # فحص سلامة التوثيق والحوكمة
+│   ├── install_hooks.sh                # تثبيت خطافات Git للحوكمة
 │   └── server_test_suite/              # فحص اتصال السيرفر الحي
-├── app/
-│   ├── src/main/
-│   │   ├── AndroidManifest.xml          # إعدادات التطبيق والأذونات (مدد TV)
-│   │   ├── kotlin/org/jellyfin/mobile/
-│   │   │   ├── AppConfig.kt            # كائن التهيئة المركزي (السيرفر + الهوية)
-│   │   │   ├── JellyfinApp.kt          # فئة التطبيق الرئيسية (Application)
-│   │   │   └── ui/theme/               # ثيم التطبيق والألوان السينمائية
-│   │   └── res/
-│   │       ├── values/strings.xml      # اسم التطبيق بالعربية: "مدد TV"
-│   │       └── values-en/strings.xml   # اسم التطبيق بالإنجليزية: "mdd TV"
-│   └── build.gradle.kts                # تبعيات وإعدادات موديول التطبيق
-├── gradle/
-│   ├── wrapper/                        # مشغل Gradle Wrapper
-│   └── libs.versions.toml              # كتالوج الإصدارات الموحد (Version Catalog)
+├── app/                                # كود تطبيق الأندرويد
+├── gradle/                             # مشغل ومكتبات Gradle Version Catalog
 ├── build.gradle.kts                    # إعدادات البناء الجذرية
-└── settings.gradle.kts                 # تسجيل المشروع باسم: MadadTV
+└── settings.gradle.kts                 # تسجيل المشروع باسم: mdd-TV
 ```
 
 ---
 
-## 🏷️ تغيير أو تحديث اسم التطبيق (بشكل مؤقت أو دائم)
+## تغيير أو تحديث اسم التطبيق (بشكل مؤقت أو دائم)
 
 الاسم المركزي للتطبيق معزول في مكانين محددين لسهولة تعديله أو استبداله مستقبلاً بضغطة زر دون المساس بمنطق الأكواد:
 

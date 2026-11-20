@@ -20,7 +20,7 @@ import org.jellyfin.mobile.domain.model.SeasonSummary
 fun PersonDto.toCastMember(): CastMember {
     val personId = id.orEmpty()
     val imgUrl = if (personId.isNotBlank()) {
-        JellyfinApiService.buildPrimaryImageUrl(personId, maxWidth = 300, maxHeight = 300)
+        JellyfinApiService.buildPrimaryImageUrl(personId, maxWidth = 200, maxHeight = 200, quality = 80)
     } else null
 
     return CastMember(
@@ -49,7 +49,7 @@ fun BaseItemDto.toEpisodeSummary(): EpisodeSummary {
         } else 0f
 
     val imgUrl = if (itemId.isNotBlank()) {
-        JellyfinApiService.buildPrimaryImageUrl(itemId, maxWidth = 640, quality = 80)
+        JellyfinApiService.buildPrimaryImageUrl(itemId, maxWidth = 400, quality = 80)
     } else null
 
     return EpisodeSummary(
@@ -137,17 +137,17 @@ fun BaseItemDto.toMediaDetails(
         } else 0f
 
     val backdrop = when {
-        !backdropImageTags.isNullOrEmpty() -> JellyfinApiService.buildBackdropImageUrl(itemId)
-        !parentBackdropItemId.isNullOrBlank() -> JellyfinApiService.buildBackdropImageUrl(parentBackdropItemId)
-        !seriesId.isNullOrBlank() -> JellyfinApiService.buildBackdropImageUrl(seriesId)
-        else -> JellyfinApiService.buildPrimaryImageUrl(itemId)
+        !backdropImageTags.isNullOrEmpty() -> JellyfinApiService.buildBackdropImageUrl(itemId, maxWidth = 1280, quality = 80)
+        !parentBackdropItemId.isNullOrBlank() -> JellyfinApiService.buildBackdropImageUrl(parentBackdropItemId, maxWidth = 1280, quality = 80)
+        !seriesId.isNullOrBlank() -> JellyfinApiService.buildBackdropImageUrl(seriesId, maxWidth = 1280, quality = 80)
+        else -> null
     }
 
     val poster = when {
         !seriesPrimaryImageTag.isNullOrBlank() && !seriesId.isNullOrBlank() -> {
-            JellyfinApiService.buildPrimaryImageUrl(seriesId)
+            JellyfinApiService.buildPrimaryImageUrl(seriesId, maxWidth = 450, quality = 80)
         }
-        else -> JellyfinApiService.buildPrimaryImageUrl(itemId)
+        else -> JellyfinApiService.buildPrimaryImageUrl(itemId, maxWidth = 450, quality = 80)
     }
 
     val cast = people?.map { it.toCastMember() }?.toImmutableList() ?: persistentListOf()

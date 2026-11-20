@@ -4,7 +4,7 @@
 > **نوع الشاشة:** First-Launch Onboarding (تظهر مرة واحدة فقط في عمر التطبيق)  
 > **الفلسفة:** 5 ثوانٍ من فتح التطبيق حتى دخول صالة العرض  
 > **الشرط البرمجي:** لا تظهر إطلاقاً إذا وُجد ملف شخصي محفوظ في Room DB  
-> **المرجع المعماري:** [`00_LOCAL_PROFILE_SYSTEM_SPEC.md`](./00_LOCAL_PROFILE_SYSTEM_SPEC.md)
+> **المرجع المعماري:** [`00_LOCAL_PROFILE_SYSTEM_SPEC.md`](../../adr/0001_local_room_profiles_isolation.md)
 
 ---
 
@@ -29,7 +29,7 @@
 ║                                                                      ║
 ║  اختر صورتك الرمزية:                                                 ║
 ║  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐          ║
-║  │   1  │  │   2  │  │   3  │  │  ️ 4  │  │  ⭐ 5  │          ║
+║  │   1  │  │   2  │  │   3  │  │   4  │  │  * 5  │          ║
 ║  │[ محدد]│  │        │  │        │  │        │  │        │          ║
 ║  └────────┘  └────────┘  └────────┘  └────────┘  └────────┘          ║
 ║  ┌────────┐  ┌────────┐  ┌────────┐                                  ║
@@ -62,8 +62,8 @@ val avatarList = listOf(
     AvatarItem("avatar_1", ""),  // ممثل
     AvatarItem("avatar_2", ""),  // أسد
     AvatarItem("avatar_3", ""),  // رائد فضاء
-    AvatarItem("avatar_4", "️"),  // عميل سري
-    AvatarItem("avatar_5", "⭐"),  // نجم
+    AvatarItem("avatar_4", "agent"),  // عميل سري
+    AvatarItem("avatar_5", "star"),  // نجم
     AvatarItem("avatar_6", ""),  // مخرج
     AvatarItem("avatar_7", ""),  // ليلي
     AvatarItem("avatar_8", ""),  // حماسي

@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -57,11 +57,11 @@ enum class NavigationTab(
         selectedIcon = Icons.Rounded.VideoLibrary,
         unselectedIcon = Icons.Outlined.VideoLibrary
     ),
-    DOWNLOADS(
-        route = "downloads",
-        title = "التنزيلات",
-        selectedIcon = Icons.Rounded.FileDownload,
-        unselectedIcon = Icons.Outlined.FileDownload
+    PROFILE(
+        route = "profile",
+        title = "الشخصي",
+        selectedIcon = Icons.Rounded.Person,
+        unselectedIcon = Icons.Outlined.Person
     )
 }
 

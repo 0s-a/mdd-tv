@@ -18,9 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.FileDownloadDone
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -42,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import kotlinx.collections.immutable.ImmutableList
+import org.jellyfin.mobile.core.util.BidiFormatter
 import org.jellyfin.mobile.domain.model.EpisodeDomainModel
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
@@ -55,7 +54,6 @@ fun EpisodesList(
     episodes: ImmutableList<EpisodeDomainModel>,
     onEpisodeClick: (String) -> Unit,
     onToggleWatched: (String) -> Unit,
-    onDownloadClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (episodes.isEmpty()) return
@@ -69,8 +67,7 @@ fun EpisodesList(
             EpisodeItemRow(
                 episode = episode,
                 onItemClick = { onEpisodeClick(episode.id) },
-                onToggleWatched = { onToggleWatched(episode.id) },
-                onDownloadClick = { onDownloadClick(episode.id) }
+                onToggleWatched = { onToggleWatched(episode.id) }
             )
 
             if (index < episodes.lastIndex) {
@@ -89,7 +86,6 @@ private fun EpisodeItemRow(
     episode: EpisodeDomainModel,
     onItemClick: () -> Unit,
     onToggleWatched: () -> Unit,
-    onDownloadClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val talkBackDesc = "الحلقة ${episode.episodeNumber}: ${episode.title}، ${episode.runtimeFormatted ?: ""}، ${if (episode.isWatched) "تمت المشاهدة" else "غير مشاهدة"}"
@@ -186,7 +182,7 @@ private fun EpisodeItemRow(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = "E${episode.episodeNumber.toString().padStart(2, '0')} • ${episode.title}",
+                text = "${BidiFormatter.wrapLtr("E" + episode.episodeNumber.toString().padStart(2, '0'))} • ${BidiFormatter.wrapLtr(episode.title)}",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = JellyfinColors.TextPrimary,
@@ -216,45 +212,22 @@ private fun EpisodeItemRow(
             }
         }
 
-        // 3. Action Buttons (Toggle Watched + Download)
-        Row(
-            verticalAlignment = Alignment.CenterVertically
+        // 3. Watched Checkbox Icon Button (Min 48dp touch target)
+        IconButton(
+            onClick = onToggleWatched,
+            modifier = Modifier
+                .size(JellyfinDimens.MinTouchTarget)
+                .semantics {
+                    role = Role.Checkbox
+                    contentDescription = if (episode.isWatched) "تحديد كغير مشاهد" else "تحديد كتمت المشاهدة"
+                }
         ) {
-            // Watched Checkbox Icon Button (Min 48dp touch target)
-            IconButton(
-                onClick = onToggleWatched,
-                modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
-                    .semantics {
-                        role = Role.Checkbox
-                        contentDescription = if (episode.isWatched) "تحديد كغير مشاهد" else "تحديد كتمت المشاهدة"
-                    }
-            ) {
-                Icon(
-                    imageVector = if (episode.isWatched) Icons.Rounded.CheckCircle else Icons.Outlined.CheckCircle,
-                    contentDescription = null,
-                    tint = if (episode.isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Download Icon Button (Min 48dp touch target)
-            IconButton(
-                onClick = onDownloadClick,
-                modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = if (episode.isDownloaded) "تم التنزيل" else "تنزيل الحلقة"
-                    }
-            ) {
-                Icon(
-                    imageVector = if (episode.isDownloaded) Icons.Rounded.FileDownloadDone else Icons.Outlined.FileDownload,
-                    contentDescription = null,
-                    tint = if (episode.isDownloaded) JellyfinColors.TechSky else JellyfinColors.TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            Icon(
+                imageVector = if (episode.isWatched) Icons.Rounded.CheckCircle else Icons.Outlined.CheckCircle,
+                contentDescription = null,
+                tint = if (episode.isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.Icon
@@ -28,8 +27,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import org.jellyfin.mobile.presentation.details.MediaDetailsScreen
 import org.jellyfin.mobile.presentation.details.MediaDetailsViewModel
-import org.jellyfin.mobile.presentation.downloads.DownloadsScreen
-import org.jellyfin.mobile.presentation.downloads.DownloadsViewModel
 import org.jellyfin.mobile.presentation.home.HomeScreen
 import org.jellyfin.mobile.presentation.home.HomeViewModel
 import org.jellyfin.mobile.presentation.library.LibraryScreen
@@ -72,8 +69,20 @@ sealed class Screen(val route: String) {
             }
         }
     }
-    data object Search : Screen("search")
-    data object Downloads : Screen(NavigationTab.DOWNLOADS.route)
+    data object Search : Screen("search?genre={genre}") {
+        fun createRoute(genre: String? = null): String {
+            return if (!genre.isNullOrBlank()) {
+                val encodedGenre = try {
+                    java.net.URLEncoder.encode(genre, "UTF-8")
+                } catch (e: Exception) {
+                    genre
+                }
+                "search?genre=$encodedGenre"
+            } else {
+                "search"
+            }
+        }
+    }
     data object Details : Screen("details/{mediaId}") {
         fun createRoute(mediaId: String): String = "details/$mediaId"
     }
@@ -108,11 +117,6 @@ fun MainNavGraph(
                 },
                 onNavigateToOnboarding = {
                     navController.navigate(Screen.Onboarding.route) {
-                        popUpTo(Screen.Splash.route) { inclusive = true }
-                    }
-                },
-                onNavigateToDownloads = {
-                    navController.navigate(Screen.Downloads.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
@@ -229,6 +233,9 @@ fun MainNavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onLaunchPlayer = { id, resumePositionMs ->
                     navController.navigate(Screen.Player.createRoute(id, resumePositionMs))
+                },
+                onNavigateToGenre = { genre ->
+                    navController.navigate(Screen.Search.createRoute(genre))
                 }
             )
         }
@@ -254,8 +261,32 @@ fun MainNavGraph(
             )
         }
 
-        composable(Screen.Search.route) {
+        composable(
+            route = Screen.Search.route,
+            arguments = listOf(
+                navArgument("genre") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val rawGenre = backStackEntry.arguments?.getString("genre")
+            val decodedGenre = rawGenre?.let {
+                try {
+                    java.net.URLDecoder.decode(it, "UTF-8")
+                } catch (e: Exception) {
+                    it
+                }
+            }
             val searchViewModel: SearchViewModel = koinViewModel()
+            androidx.compose.runtime.LaunchedEffect(decodedGenre) {
+                if (!decodedGenre.isNullOrBlank()) {
+                    searchViewModel.processIntent(
+                        org.jellyfin.mobile.presentation.search.SearchIntent.SelectGenre(decodedGenre)
+                    )
+                }
+            }
             SearchScreen(
                 viewModel = searchViewModel,
                 onNavigateToDetails = { mediaId ->
@@ -266,16 +297,6 @@ fun MainNavGraph(
                 },
                 onNavigateBack = {
                     navController.popBackStack()
-                }
-            )
-        }
-
-        composable(Screen.Downloads.route) {
-            val downloadsViewModel: DownloadsViewModel = koinViewModel()
-            DownloadsScreen(
-                viewModel = downloadsViewModel,
-                onLaunchPlayer = { mediaId, positionMs ->
-                    navController.navigate(Screen.Player.createRoute(mediaId, positionMs))
                 }
             )
         }

@@ -23,19 +23,16 @@ import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
- * Modifier extension applying the cinematic polished glass (Glassmorphism) effect.
- * Strictly adheres to Section 4 of docs/DESIGN_SYSTEM.md.
- *
- * @param backgroundColor The translucent surface fill color (default 70% dark glass).
- * @param borderColor The subtle glass outline border color (default 20% cyan glass).
- * @param cornerRadius The radius of the rounded corners (default 16.dp).
- * @param borderWidth The stroke width of the glass border (default 1.dp).
+ * Modifier extension applying the refined matte Obsidian surface with crisp hairline border.
+ * Adheres to docs/foundations/design_system.md:
+ * - Matte smoked surface (#1B1E26 / #14171D) with subtle 1dp hairline border (10% white).
+ * - Rationalized corner radius (10dp default).
  */
-fun Modifier.glassmorphism(
-    backgroundColor: Color = JellyfinColors.SurfaceGlass,
-    borderColor: Color = JellyfinColors.BorderGlass,
+fun Modifier.obsidianCard(
+    backgroundColor: Color = JellyfinColors.SurfaceDark,
+    borderColor: Color = JellyfinColors.BorderHairline,
     cornerRadius: Dp = JellyfinDimens.RadiusDefault,
-    borderWidth: Dp = JellyfinDimens.BorderThin
+    borderWidth: Dp = JellyfinDimens.BorderHairline
 ): Modifier {
     val shape = RoundedCornerShape(cornerRadius)
     return this
@@ -45,75 +42,38 @@ fun Modifier.glassmorphism(
 }
 
 /**
- * GlassmorphicCard is an accessible, 120Hz-ready glassmorphic container composable.
- * Supports interactive states, full TalkBack semantics, and enforces minimum
- * 48x48dp touch targets in compliance with WCAG 2.1 AA.
- *
- * @param modifier Additional external modifiers applied to the card container.
- * @param backgroundColor Translucent surface background color.
- * @param borderColor Border accent color for three-dimensional glass depth.
- * @param borderWidth Stroke thickness for the border.
- * @param cornerRadius Corner radius of the card.
- * @param onClick Optional click callback; when non-null, makes the card interactive with
- *                a touch target of at least 48dp and TalkBack button role semantics.
- * @param enabled Whether click interactions are enabled.
- * @param contentDescription Accessibility description for TalkBack screen reader.
- * @param content Composable child content rendered inside the glass container.
+ * Backward-compatible alias for existing screens.
+ * Now applies the calm, matte smoked surface rather than flashy neon glass.
+ */
+fun Modifier.glassmorphism(
+    backgroundColor: Color = JellyfinColors.SurfaceGlass,
+    borderColor: Color = JellyfinColors.BorderGlass,
+    cornerRadius: Dp = JellyfinDimens.RadiusDefault,
+    borderWidth: Dp = JellyfinDimens.BorderHairline
+): Modifier = obsidianCard(backgroundColor, borderColor, cornerRadius, borderWidth)
+
+/**
+ * Backward-compatible alias for GlassmorphicCard.
  */
 @Composable
 fun GlassmorphicCard(
     modifier: Modifier = Modifier,
     backgroundColor: Color = JellyfinColors.SurfaceGlass,
     borderColor: Color = JellyfinColors.BorderGlass,
-    borderWidth: Dp = JellyfinDimens.BorderThin,
+    borderWidth: Dp = JellyfinDimens.BorderHairline,
     cornerRadius: Dp = JellyfinDimens.RadiusDefault,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     contentDescription: String? = null,
     content: @Composable BoxScope.() -> Unit
-) {
-    val shape: Shape = RoundedCornerShape(cornerRadius)
-
-    val cardModifier = if (onClick != null) {
-        modifier
-            .defaultMinSize(
-                minWidth = JellyfinDimens.MinTouchTarget,
-                minHeight = JellyfinDimens.MinTouchTarget
-            )
-            .clip(shape)
-            .background(backgroundColor)
-            .border(borderWidth, borderColor, shape)
-            .clickable(
-                enabled = enabled,
-                role = Role.Button,
-                onClick = onClick
-            )
-            .semantics(mergeDescendants = true) {
-                if (contentDescription != null) {
-                    this.contentDescription = contentDescription
-                }
-                this.role = Role.Button
-            }
-    } else {
-        modifier
-            .clip(shape)
-            .background(backgroundColor)
-            .border(borderWidth, borderColor, shape)
-            .then(
-                if (contentDescription != null) {
-                    Modifier.semantics {
-                        this.contentDescription = contentDescription
-                    }
-                } else {
-                    Modifier
-                }
-            )
-    }
-
-    CompositionLocalProvider(LocalContentColor provides JellyfinColors.TextPrimary) {
-        Box(
-            modifier = cardModifier,
-            content = content
-        )
-    }
-}
+) = ObsidianCard(
+    modifier = modifier,
+    backgroundColor = backgroundColor,
+    borderColor = borderColor,
+    borderWidth = borderWidth,
+    cornerRadius = cornerRadius,
+    onClick = onClick,
+    enabled = enabled,
+    contentDescription = contentDescription,
+    content = content
+)

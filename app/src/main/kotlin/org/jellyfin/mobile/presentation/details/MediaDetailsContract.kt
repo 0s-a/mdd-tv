@@ -23,13 +23,10 @@ sealed interface MediaDetailsIntent {
     data object PlayFromStart : MediaDetailsIntent
     data class PlayEpisode(val episodeId: String) : MediaDetailsIntent
     data class ToggleEpisodeWatched(val episodeId: String) : MediaDetailsIntent
-    data class DownloadEpisode(val episodeId: String) : MediaDetailsIntent
-    data object DownloadMovie : MediaDetailsIntent
     data class OpenActorFilmography(val personId: String, val personName: String) : MediaDetailsIntent
-    data object OpenTechInspector : MediaDetailsIntent
-    data object DismissTechInspector : MediaDetailsIntent
     data object OpenTrailer : MediaDetailsIntent
     data object RetryLoad : MediaDetailsIntent
+    data object RefreshPlaybackState : MediaDetailsIntent
 }
 
 sealed interface MediaDetailsUiState {
@@ -43,7 +40,6 @@ sealed interface MediaDetailsUiState {
         val selectedSeasonId: String? = null,
         val episodesForSelectedSeason: ImmutableList<EpisodeSummary> = persistentListOf(),
         val castList: ImmutableList<CastMember> = mediaDetails.castMembers,
-        val isInspectorOpen: Boolean = false,
         val isFavorite: Boolean = mediaDetails.isFavorite,
         val isWatched: Boolean = false,
         val isLoadingEpisodes: Boolean = false,

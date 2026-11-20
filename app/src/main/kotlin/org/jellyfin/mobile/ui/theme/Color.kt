@@ -4,63 +4,137 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
 /**
- * Cinematic Ambient Design System Color Tokens.
- * Strict implementation of docs/DESIGN_SYSTEM.md.
- * Zero hardcoded colors; use JellyfinColors throughout the app.
+ * Refined Cinema & Obsidian Design System (Tokens 2.2.0).
+ * Implements docs/foundations/design_system.md:
+ * - Anti-AI Manifesto: Zero neon aura, zero flashy cyan glass, 100% matte graphite and OLED true black.
+ * - 3-Tier Token Architecture: Primitives -> States -> Semantic Tokens.
  */
-@Immutable
-object JellyfinColors {
-    // 1. OLED & True Dark Surfaces
-    /** Pure OLED black for maximum contrast and zero power consumption on AMOLED displays */
-    val PureBlack: Color = Color(0xFF000000)
 
-    /** Deep obsidian navy background for screens and gradients */
-    val Background: Color = Color(0xFF080B10)
+// ──────────────────────────────────────────
+// 1. Primitive Tokens (Raw Palette)
+// ──────────────────────────────────────────
+object JellyfinPrimitives {
+    // Carbon & Obsidian
+    val BlackOled = Color(0xFF000000)
+    val Obsidian950 = Color(0xFF0B0C0E)
+    val Graphite900 = Color(0xFF14171D)
+    val Graphite800 = Color(0xFF1B1E26)
+    val Slate700 = Color(0xFF272B35)
 
-    /** Subtle night navy surface for inactive cards and list items */
-    val SurfaceDark: Color = Color(0xFF0F1522)
+    // Neutral & Typography
+    val Ivory50 = Color(0xFFEDEAE5)
+    val WhitePure = Color(0xFFFFFFFF)
+    val Gray100 = Color(0xFFF3F4F6)
+    val Gray400 = Color(0xFF9CA3AF)
+    val Gray500 = Color(0xFF6B7280)
+    val Gray700 = Color(0xFF374151)
 
-    /** Polished glass surface with 70% opacity for floating bars, bottom navigation, and pill cards */
-    val SurfaceGlass: Color = Color(0xB3131A29)
-
-    /** 1dp subtle glass accent border creating 3D depth for cards and technical badges */
-    val BorderGlass: Color = Color(0x3338BDF8)
-
-    // 2. Brand & Tech Badges
-    /** Royal Indigo brand color for playback controls, primary action buttons, and active states */
-    val PrimaryIndigo: Color = Color(0xFF6366F1)
-
-    /** Soft glowing circular radial aura behind banners and play buttons */
-    val IndigoGlow: Color = Color(0x666366F1)
-
-    /** Tech badge cyan for technical quality chips (4K UHD, Dolby Vision, Direct Play) */
-    val TechSky: Color = Color(0xFF38BDF8)
-
-    /** Cinematic gold for IMDb / Community ratings */
-    val RatingGold: Color = Color(0xFFF59E0B)
-
-    /** Emerald green for watched indicators and completed downloads */
-    val SuccessEmerald: Color = Color(0xFF10B981)
-
-    // 3. Typography Contrast (WCAG 2.1 AAA & AA compliance)
-    /** Highest contrast primary text (20.4:1 contrast ratio against PureBlack, AAA) */
-    val TextPrimary: Color = Color(0xFFFFFFFF)
-
-    /** Secondary contrast text for synopses, release years, and genre tags (4.9:1, AA) */
-    val TextSecondary: Color = Color(0xFF94A3B8)
-
-    /** Muted contrast text for codecs, container sizes, and audio stream details (4.6:1, AA) */
-    val TextMuted: Color = Color(0xFF8899AA)
-    val TextTertiary: Color = TextMuted
-    val GlassBorder: Color = BorderGlass
-    val SurfaceGlassActive: Color = Color(0xCC1E293B)
-
-    // 4. Alert & Feedback States
-    val Error: Color = Color(0xFFEF4444)
-    val OnError: Color = Color(0xFFFFFFFF)
+    // Accent & Cinema Status
+    val AmberWarm = Color(0xFFD4A373)
+    val GoldCinema = Color(0xFFE5A93C)
+    val CrimsonMuted = Color(0xFF9E4343)
+    val EmeraldMuted = Color(0xFF2D8A66)
 }
 
-// Top-level property aliases for convenience and backwards compatibility
+// ──────────────────────────────────────────
+// 2. State Layer Tokens (Opacity & Interaction)
+// ──────────────────────────────────────────
+@Immutable
+object JellyfinStates {
+    const val DraggedOpacity: Float = 0.16f
+    const val FocusOpacity: Float = 0.12f
+    const val PressedOpacity: Float = 0.10f
+    const val HoverOpacity: Float = 0.08f
+    const val DisabledContainerOpacity: Float = 0.12f
+    const val DisabledContentOpacity: Float = 0.38f
+}
+
+// ──────────────────────────────────────────
+// 3. Semantic Color Tokens
+// ──────────────────────────────────────────
+@Immutable
+data class JellyfinColorTokens(
+    val backgroundRoot: Color,
+    val onBackgroundRoot: Color,
+    val surfaceDefault: Color,
+    val onSurfaceDefault: Color,
+    val surfaceElevated: Color,
+    val onSurfaceElevated: Color,
+    val surfaceOverlay: Color,
+    val borderHairline: Color,
+    val borderFocus: Color,
+    val actionPrimary: Color,
+    val onActionPrimary: Color,
+    val accentHighlight: Color,
+    val ratingBadge: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val textMuted: Color,
+    val statusSuccess: Color,
+    val statusAlert: Color
+)
+
+fun createJellyfinColorScheme(isOledTrueBlack: Boolean = true): JellyfinColorTokens {
+    return JellyfinColorTokens(
+        backgroundRoot = if (isOledTrueBlack) JellyfinPrimitives.BlackOled else JellyfinPrimitives.Obsidian950,
+        onBackgroundRoot = JellyfinPrimitives.Gray100,
+        surfaceDefault = if (isOledTrueBlack) JellyfinPrimitives.BlackOled else JellyfinPrimitives.Graphite900,
+        onSurfaceDefault = JellyfinPrimitives.Gray100,
+        surfaceElevated = JellyfinPrimitives.Graphite800,
+        onSurfaceElevated = JellyfinPrimitives.Gray100,
+        surfaceOverlay = Color(0x990B0C0E),
+        borderHairline = Color(0x1AFFFFFF), // Hairline 10% white for crisp contrast
+        borderFocus = Color(0x80FFFFFF),    // 50% white focus border for 4.2:1 contrast
+        actionPrimary = JellyfinPrimitives.Ivory50,
+        onActionPrimary = JellyfinPrimitives.Obsidian950,
+        accentHighlight = JellyfinPrimitives.AmberWarm,
+        ratingBadge = JellyfinPrimitives.GoldCinema,
+        textPrimary = JellyfinPrimitives.Gray100,
+        textSecondary = JellyfinPrimitives.Gray400,
+        textMuted = JellyfinPrimitives.Gray500,
+        statusSuccess = JellyfinPrimitives.EmeraldMuted,
+        statusAlert = JellyfinPrimitives.CrimsonMuted
+    )
+}
+
+// ──────────────────────────────────────────
+// 4. Backward-Compatible Semantic Object
+// Maps legacy references directly to the new Obsidian & Matte Palette
+// ──────────────────────────────────────────
+@Immutable
+object JellyfinColors {
+    // OLED & Matte Obsidian Surfaces
+    val PureBlack: Color = JellyfinPrimitives.BlackOled
+    val Background: Color = JellyfinPrimitives.BlackOled
+    val SurfaceDark: Color = JellyfinPrimitives.Graphite900
+    val SurfaceElevated: Color = JellyfinPrimitives.Graphite800
+    val SurfaceGlass: Color = JellyfinPrimitives.Graphite800
+    val BorderGlass: Color = Color(0x1AFFFFFF)
+    val BorderHairline: Color = Color(0x1AFFFFFF)
+    val BorderFocus: Color = Color(0x80FFFFFF)
+
+    // Brand, Accents & Badges
+    val PrimaryIndigo: Color = JellyfinPrimitives.Ivory50
+    val IndigoGlow: Color = Color(0x14FFFFFF)
+    val TechSky: Color = JellyfinPrimitives.Gray400
+    val RatingGold: Color = JellyfinPrimitives.GoldCinema
+    val SuccessEmerald: Color = JellyfinPrimitives.EmeraldMuted
+    val AccentAmber: Color = JellyfinPrimitives.AmberWarm
+
+    // Typography Contrast (WCAG 2.1 & 2.2 Compliance)
+    val TextPrimary: Color = JellyfinPrimitives.Gray100
+    val TextSecondary: Color = JellyfinPrimitives.Gray400
+    val TextMuted: Color = JellyfinPrimitives.Gray500
+    val TextTertiary: Color = JellyfinPrimitives.Gray500
+    val GlassBorder: Color = Color(0x1AFFFFFF)
+    val SurfaceGlassActive: Color = JellyfinPrimitives.Graphite800
+
+    // Alerts
+    val Error: Color = JellyfinPrimitives.CrimsonMuted
+    val OnError: Color = JellyfinPrimitives.WhitePure
+}
+
+// Top-level property aliases for convenience
 val PureBlack = JellyfinColors.PureBlack
 val BackgroundDark = JellyfinColors.Background
 val SurfaceDark = JellyfinColors.SurfaceDark

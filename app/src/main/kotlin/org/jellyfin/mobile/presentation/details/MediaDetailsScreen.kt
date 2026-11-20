@@ -25,7 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.rounded.Check
@@ -42,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -62,13 +62,19 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
+import org.jellyfin.mobile.core.util.BidiFormatter
 import org.jellyfin.mobile.domain.model.ContentType
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
 import org.jellyfin.mobile.presentation.core.components.rememberDominantColor
+import org.jellyfin.mobile.presentation.details.components.AdaptiveBackdropHeader
 import org.jellyfin.mobile.presentation.details.components.CastCarousel
 import org.jellyfin.mobile.presentation.details.components.EpisodesList
+import org.jellyfin.mobile.presentation.details.components.GenreChipsRow
 import org.jellyfin.mobile.presentation.details.components.InfuseTechBadgesRow
 import org.jellyfin.mobile.presentation.details.components.NextUpCard
 import org.jellyfin.mobile.presentation.details.components.SeasonTabs
@@ -89,6 +95,7 @@ fun MediaDetailsScreen(
     viewModel: MediaDetailsViewModel,
     onNavigateBack: () -> Unit,
     onLaunchPlayer: (String, Long) -> Unit,
+    onNavigateToGenre: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -113,6 +120,20 @@ fun MediaDetailsScreen(
                 is MediaDetailsEffect.OpenTrailerPlayer -> { /* Trailer */ }
                 MediaDetailsEffect.ShareMedia -> { /* Share */ }
             }
+        }
+    }
+
+    // Auto-synchronize playback progress and watched status upon returning from player
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.processIntent(MediaDetailsIntent.RefreshPlaybackState)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -162,33 +183,14 @@ fun MediaDetailsScreen(
                         .verticalScroll(scrollState)
                         .padding(bottom = 80.dp)
                 ) {
-                    // Parallax Backdrop Banner
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                    ) {
-                        AsyncImage(
-                            model = media.backdropUrl ?: media.posterUrl,
-                            contentDescription = "خلفية ${media.title}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        // OLED Scrim Gradient (fades to pure black at bottom)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        0.0f to JellyfinColors.PureBlack.copy(alpha = 0.5f),
-                                        0.4f to Color.Transparent,
-                                        0.75f to backgroundColor.copy(alpha = 0.85f),
-                                        1.0f to backgroundColor
-                                    )
-                                )
-                        )
-                    }
+                    // 220dp Golden Ratio Adaptive Backdrop with Dual Scrims
+                    AdaptiveBackdropHeader(
+                        backdropUrl = media.backdropUrl,
+                        posterUrl = media.posterUrl,
+                        title = media.title,
+                        maxHeight = 220.dp,
+                        backgroundColor = backgroundColor
+                    )
 
                     // Content details body
                     Column(
@@ -196,9 +198,9 @@ fun MediaDetailsScreen(
                             .fillMaxWidth()
                             .padding(horizontal = JellyfinDimens.SpaceLarge)
                     ) {
-                        // Title
+                        // Title with BiDi protection
                         Text(
-                            text = media.title,
+                            text = BidiFormatter.wrapLtr(media.title),
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.Bold,
                             color = JellyfinColors.TextPrimary
@@ -206,7 +208,7 @@ fun MediaDetailsScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // Metadata Badges (IMDb Rating + Year + Runtime + Rating)
+                        // Clean Metadata Row (Rating • Year • Runtime • Content Rating)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
@@ -217,62 +219,60 @@ fun MediaDetailsScreen(
                                         imageVector = Icons.Rounded.Star,
                                         contentDescription = null,
                                         tint = JellyfinColors.RatingGold,
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(15.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
                                     Text(
                                         text = String.format("%.1f IMDb", media.communityRating),
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.bodySmall,
                                         color = JellyfinColors.RatingGold,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
-                                Text(text = "•", color = JellyfinColors.TextSecondary)
+                                Text(text = "•", color = JellyfinColors.TextMuted)
                             }
 
                             if (media.productionYear != null) {
                                 Text(
                                     text = media.productionYear.toString(),
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = JellyfinColors.TextSecondary
                                 )
-                                Text(text = "•", color = JellyfinColors.TextSecondary)
+                                Text(text = "•", color = JellyfinColors.TextMuted)
                             }
 
                             val runtimeFormatted = media.runtimeFormatted
                             if (!runtimeFormatted.isNullOrBlank()) {
                                 Text(
                                     text = runtimeFormatted,
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = JellyfinColors.TextSecondary
                                 )
                             }
 
                             if (!media.officialRating.isNullOrBlank()) {
+                                if (!runtimeFormatted.isNullOrBlank() || media.productionYear != null) {
+                                    Text(text = "•", color = JellyfinColors.TextMuted)
+                                }
                                 Text(
                                     text = media.officialRating,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = JellyfinColors.TextMuted,
-                                    modifier = Modifier
-                                        .border(1.dp, JellyfinColors.BorderGlass, RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = JellyfinColors.TextSecondary
                                 )
                             }
                         }
 
-                        // Genres
+                        // Interactive Genre Chips Row
                         if (media.genres.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = media.genres.joinToString(" • "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = JellyfinColors.TextSecondary
+                            Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
+                            GenreChipsRow(
+                                genres = media.genres,
+                                onGenreClick = onNavigateToGenre
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(JellyfinDimens.SpaceMedium))
-
-                        // Infuse Tech Badges Row & Inspector
+                        // Subtle Technical Outlined Badges
+                        Spacer(modifier = Modifier.height(JellyfinDimens.SpaceExtraSmall))
                         InfuseTechBadgesRow(mediaItem = media)
 
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
@@ -324,28 +324,6 @@ fun MediaDetailsScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (state.isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary
                                 )
-                            }
-
-                            if (media.isMovie) {
-                                OutlinedButton(
-                                    onClick = { viewModel.processIntent(MediaDetailsIntent.DownloadMovie) },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Download,
-                                        contentDescription = null,
-                                        tint = JellyfinColors.TechSky,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "تنزيل",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = JellyfinColors.TechSky
-                                    )
-                                }
                             }
                         }
 
@@ -420,9 +398,6 @@ fun MediaDetailsScreen(
                                 },
                                 onToggleWatched = { epId ->
                                     viewModel.processIntent(MediaDetailsIntent.ToggleEpisodeWatched(epId))
-                                },
-                                onDownloadClick = { epId ->
-                                    viewModel.processIntent(MediaDetailsIntent.DownloadEpisode(epId))
                                 }
                             )
                         }

@@ -27,8 +27,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.WarningAmber
@@ -73,7 +73,6 @@ fun SplashScreen(
     viewModel: SplashViewModel,
     onNavigateToHome: () -> Unit,
     onNavigateToOnboarding: () -> Unit,
-    onNavigateToDownloads: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,7 +84,6 @@ fun SplashScreen(
             when (effect) {
                 SplashEffect.NavigateToHome -> onNavigateToHome()
                 SplashEffect.NavigateToOnboarding -> onNavigateToOnboarding()
-                SplashEffect.NavigateToDownloads -> onNavigateToDownloads()
             }
         }
     }
@@ -192,7 +190,7 @@ fun SplashScreen(
                     .fillMaxWidth()
                     .padding(bottom = JellyfinDimens.SpaceMedium)
             ) {
-                // If offline: Show Retry & Offline Downloads options
+                // If offline: Show Retry & Offline local profile options
                 AnimatedVisibility(
                     visible = uiState.serverStatus is ServerStatus.Offline,
                     enter = fadeIn(),
@@ -227,21 +225,21 @@ fun SplashScreen(
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
 
                         OutlinedButton(
-                            onClick = { viewModel.handleIntent(SplashIntent.OpenDownloads) },
+                            onClick = { viewModel.handleIntent(SplashIntent.ContinueOffline) },
                             shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.FileDownload,
+                                imageVector = Icons.Rounded.CloudOff,
                                 contentDescription = null,
                                 tint = JellyfinColors.TechSky,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "المشاهدة بدون إنترنت (التنزيلات)",
+                                text = "المتابعة دون اتصال",
                                 color = JellyfinColors.TechSky,
                                 fontWeight = FontWeight.SemiBold
                             )

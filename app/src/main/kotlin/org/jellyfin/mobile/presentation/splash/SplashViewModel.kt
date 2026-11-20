@@ -39,9 +39,13 @@ class SplashViewModel(
         when (intent) {
             SplashIntent.Initialize -> performStartupHandshake()
             SplashIntent.Retry -> performStartupHandshake()
-            SplashIntent.OpenDownloads -> {
+            SplashIntent.ContinueOffline -> {
                 viewModelScope.launch {
-                    _effects.send(SplashEffect.NavigateToDownloads)
+                    if (_uiState.value.hasProfile) {
+                        _effects.send(SplashEffect.NavigateToHome)
+                    } else {
+                        _effects.send(SplashEffect.NavigateToOnboarding)
+                    }
                 }
             }
         }

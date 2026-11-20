@@ -58,7 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import org.jellyfin.mobile.domain.model.LibraryFolder
-import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
+import org.jellyfin.mobile.presentation.core.components.CinemaChildTopBar
 import org.jellyfin.mobile.presentation.library.components.AlphabetScrubber
 import org.jellyfin.mobile.presentation.library.components.BreadcrumbsBar
 import org.jellyfin.mobile.presentation.library.components.FilterChipsRow
@@ -333,81 +333,32 @@ private fun LibraryFloatingTopBar(
     onSearchClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
-    FloatingFrostedTopBar(modifier = modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
-        ) {
-            if (onBackClick != null) {
+    CinemaChildTopBar(
+        title = title,
+        subtitle = if (totalCount > 0) "($totalCount عملاً)" else null,
+        onBackClick = onBackClick,
+        modifier = modifier,
+        actions = {
+            if (onSearchClick != null) {
                 IconButton(
-                    onClick = onBackClick,
+                    onClick = onSearchClick,
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(JellyfinDimens.MinTouchTarget)
                         .semantics {
                             role = Role.Button
-                            contentDescription = "الرجوع"
+                            contentDescription = "البحث في المكتبة"
                         }
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        imageVector = Icons.Rounded.Search,
                         contentDescription = null,
                         tint = JellyfinColors.TextPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            } else {
-                Icon(
-                    imageVector = Icons.Rounded.VideoLibrary,
-                    contentDescription = null,
-                    tint = JellyfinColors.PrimaryIndigo,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = JellyfinColors.TextPrimary
-            )
-
-            if (totalCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(JellyfinDimens.RadiusPill))
-                        .background(JellyfinColors.SurfaceDark)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = "$totalCount عملاً",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = JellyfinColors.TextSecondary
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (onSearchClick != null) {
-            IconButton(
-                onClick = onSearchClick,
-                modifier = Modifier
-                    .size(36.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "البحث في المكتبة"
-                    }
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = JellyfinColors.TextPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
+    )
 }
 
 @Composable

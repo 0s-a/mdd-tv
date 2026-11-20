@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">مدد TV</string>
-    <string name="download_channel_name">تنزيلات مدد TV</string>
-    <string name="download_channel_description">إشعارات تنزيل الأفلام والمسلسلات للمشاهدة بدون إنترنت</string>
 </resources>

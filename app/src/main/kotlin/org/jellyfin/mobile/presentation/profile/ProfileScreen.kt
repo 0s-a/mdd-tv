@@ -56,7 +56,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
-import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
+import org.jellyfin.mobile.presentation.core.components.CinemaChildTopBar
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
@@ -87,32 +87,11 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            // Floating Frosted Top Bar
-            FloatingFrostedTopBar {
-                IconButton(
-                    onClick = onNavigateBack,
-                    modifier = Modifier
-                        .size(JellyfinDimens.MinTouchTarget)
-                        .semantics {
-                            role = Role.Button
-                            contentDescription = "الرجوع"
-                        }
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = null,
-                        tint = JellyfinColors.TextPrimary
-                    )
-                }
-
-                Text(
-                    text = "الملف الشخصي",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = JellyfinColors.TextPrimary,
-                    modifier = Modifier.padding(start = JellyfinDimens.SpaceSmall)
-                )
-            }
+            // Unified Cinema TopBar
+            CinemaChildTopBar(
+                title = "الملف الشخصي",
+                onBackClick = onNavigateBack
+            )
 
             // Avatar & Name Section
             Column(
@@ -171,12 +150,17 @@ fun ProfileScreen(
                 )
             }
 
-            // Two Tabs: Favorites & Watched Archive
+            // Three Tabs: Favorites, Watched Archive, Local Storage Info
             val tabs = listOf(
-                "⭐ المفضلة (${uiState.favorites.size})",
-                "✓ تمت مشاهدتها (${uiState.watchedArchive.size})"
+                "المفضلة (${uiState.favorites.size})",
+                "المشاهدات (${uiState.watchedArchive.size})",
+                "بيانات التخزين"
             )
-            val selectedTabIndex = if (uiState.selectedTab == ProfileTab.FAVORITES) 0 else 1
+            val selectedTabIndex = when (uiState.selectedTab) {
+                ProfileTab.FAVORITES -> 0
+                ProfileTab.WATCHED_ARCHIVE -> 1
+                ProfileTab.LOCAL_STORAGE -> 2
+            }
 
             TabRow(
                 selectedTabIndex = selectedTabIndex,
@@ -195,7 +179,11 @@ fun ProfileScreen(
                         selected = selectedTabIndex == index,
                         onClick = {
                             viewModel.selectTab(
-                                if (index == 0) ProfileTab.FAVORITES else ProfileTab.WATCHED_ARCHIVE
+                                when (index) {
+                                    0 -> ProfileTab.FAVORITES
+                                    1 -> ProfileTab.WATCHED_ARCHIVE
+                                    else -> ProfileTab.LOCAL_STORAGE
+                                }
                             )
                         },
                         text = {
@@ -210,57 +198,67 @@ fun ProfileScreen(
                 }
             }
 
-            // Tab Content: Posters Grid
+            // Tab Content
             val baseServer = AppConfig.SERVER_URL.trimEnd('/')
-            if (uiState.selectedTab == ProfileTab.FAVORITES) {
-                if (uiState.favorites.isEmpty()) {
-                    EmptyListState(
-                        message = "لا توجد عناصر مضافة إلى المفضلة بعد",
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(JellyfinDimens.SpaceMedium),
-                        horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
-                        verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(uiState.favorites, key = { it.itemId }) { item ->
-                            val posterUrl = "$baseServer/Items/${item.itemId}/Images/Primary?fillWidth=300&quality=80"
-                            ProfileMediaPosterCard(
-                                title = item.title,
-                                subTitle = item.releaseYear,
-                                posterUrl = posterUrl,
-                                onClick = { onNavigateToDetails(item.itemId) }
-                            )
+            when (uiState.selectedTab) {
+                ProfileTab.FAVORITES -> {
+                    if (uiState.favorites.isEmpty()) {
+                        EmptyListState(
+                            message = "لا توجد عناصر مضافة إلى المفضلة بعد",
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(JellyfinDimens.SpaceMedium),
+                            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
+                            verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(uiState.favorites, key = { it.itemId }) { item ->
+                                val posterUrl = "$baseServer/Items/${item.itemId}/Images/Primary?fillWidth=300&quality=80"
+                                ProfileMediaPosterCard(
+                                    title = item.title,
+                                    subTitle = item.releaseYear,
+                                    posterUrl = posterUrl,
+                                    onClick = { onNavigateToDetails(item.itemId) }
+                                )
+                            }
                         }
                     }
                 }
-            } else {
-                if (uiState.watchedArchive.isEmpty()) {
-                    EmptyListState(
-                        message = "لم تقم بإنهاء مشاهدة أي عمل بعد",
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(JellyfinDimens.SpaceMedium),
-                        horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
-                        verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(uiState.watchedArchive, key = { it.itemId }) { item ->
-                            val posterUrl = "$baseServer/Items/${item.itemId}/Images/Primary?fillWidth=300&quality=80"
-                            ProfileMediaPosterCard(
-                                title = item.title,
-                                subTitle = item.mediaType,
-                                posterUrl = posterUrl,
-                                onClick = { onNavigateToDetails(item.itemId) }
-                            )
+                ProfileTab.WATCHED_ARCHIVE -> {
+                    if (uiState.watchedArchive.isEmpty()) {
+                        EmptyListState(
+                            message = "لم تقم بإنهاء مشاهدة أي عمل بعد",
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(JellyfinDimens.SpaceMedium),
+                            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
+                            verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(uiState.watchedArchive, key = { it.itemId }) { item ->
+                                val posterUrl = "$baseServer/Items/${item.itemId}/Images/Primary?fillWidth=300&quality=80"
+                                ProfileMediaPosterCard(
+                                    title = item.title,
+                                    subTitle = item.mediaType,
+                                    posterUrl = posterUrl,
+                                    onClick = { onNavigateToDetails(item.itemId) }
+                                )
+                            }
                         }
                     }
+                }
+                ProfileTab.LOCAL_STORAGE -> {
+                    LocalStorageInfoView(
+                        displayName = uiState.displayName,
+                        serverUrl = baseServer,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -367,6 +365,102 @@ private fun EmptyListState(
                 color = JellyfinColors.TextSecondary,
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+@Composable
+private fun LocalStorageInfoView(
+    displayName: String,
+    serverUrl: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(JellyfinDimens.SpaceLarge),
+        verticalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceMedium)
+    ) {
+        // Card 1: Download Service Status
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .background(JellyfinColors.SurfaceDark)
+                .border(1.dp, JellyfinColors.BorderGlass, RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .padding(JellyfinDimens.SpaceMedium)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "حالة خدمة التنزيل والمحتوى المحلي",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = JellyfinColors.TextPrimary
+                )
+                Text(
+                    text = "تم تعطيل خدمة التنزيل مؤقتاً لتطوير محرك التخزين والترقية إلى معمارية التخزين المحلية الجديدة.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JellyfinColors.TextSecondary
+                )
+            }
+        }
+
+        // Card 2: Local Storage Footprint
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .background(JellyfinColors.SurfaceDark)
+                .border(1.dp, JellyfinColors.BorderGlass, RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .padding(JellyfinDimens.SpaceMedium)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "المساحة المشغولة محلياً",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = JellyfinColors.TextPrimary
+                )
+                Text(
+                    text = "0 ميغابايت (لا توجد ملفات فيديو مخزنة حالياً في الذاكرة)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JellyfinColors.TechSky
+                )
+            }
+        }
+
+        // Card 3: Account & Streaming Profile
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .background(JellyfinColors.SurfaceDark)
+                .border(1.dp, JellyfinColors.BorderGlass, RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .padding(JellyfinDimens.SpaceMedium)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "بيانات الحساب والسيرفر",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = JellyfinColors.TextPrimary
+                )
+                Text(
+                    text = "المستخدم: $displayName",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JellyfinColors.TextSecondary
+                )
+                Text(
+                    text = "السيرفر: $serverUrl",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JellyfinColors.TextSecondary
+                )
+                Text(
+                    text = "نمط التشغيل المعتمد: البث المباشر (Direct Stream)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = JellyfinColors.SuccessEmerald
+                )
+            }
         }
     }
 }

@@ -1,10 +1,8 @@
 package org.jellyfin.mobile.presentation.details
 
 import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.exoplayer.offline.DownloadRequest
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,13 +11,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
-import org.jellyfin.mobile.core.download.DownloadManagerProvider
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.model.MediaDetails
 import org.jellyfin.mobile.domain.model.SeasonInfo
 import org.jellyfin.mobile.domain.model.toEpisodeDomainModel
 import org.jellyfin.mobile.domain.model.toMediaDetailDomainModel
-import org.jellyfin.mobile.domain.repository.DownloadsRepository
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
@@ -34,7 +30,6 @@ class MediaDetailsViewModel(
     private val mediaDetailsRepository: MediaDetailsRepository,
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository? = null,
-    private val downloadsRepository: DownloadsRepository? = null,
     private val context: Context? = null
 ) : ViewModel() {
 
@@ -82,27 +77,47 @@ class MediaDetailsViewModel(
             is MediaDetailsIntent.ToggleEpisodeWatched -> {
                 toggleEpisodeWatched(intent.episodeId)
             }
-            is MediaDetailsIntent.DownloadEpisode -> {
-                handleDownloadEpisode(intent.episodeId)
-            }
-            is MediaDetailsIntent.DownloadMovie -> {
-                handleDownloadMovie()
-            }
             is MediaDetailsIntent.OpenActorFilmography -> {
                 viewModelScope.launch {
                     _effects.send(MediaDetailsEffect.NavigateToActorFilmography(intent.personId, intent.personName))
                 }
             }
-            is MediaDetailsIntent.OpenTechInspector -> {
-                updateInspectorState(isOpen = true)
-            }
-            is MediaDetailsIntent.DismissTechInspector -> {
-                updateInspectorState(isOpen = false)
-            }
             is MediaDetailsIntent.OpenTrailer -> {
                 viewModelScope.launch {
                     _effects.send(MediaDetailsEffect.ShowToast("الإعلانات الترويجية غير متوفرة لهذا العمل"))
                 }
+            }
+            is MediaDetailsIntent.RefreshPlaybackState -> {
+                refreshPlaybackState()
+            }
+        }
+    }
+
+    private fun refreshPlaybackState() {
+        val mediaId = currentMediaId ?: return
+        val current = _uiState.value
+        if (current !is MediaDetailsUiState.Success) return
+
+        viewModelScope.launch {
+            getMediaDetailsUseCase(mediaId).onSuccess { details ->
+                val isFav = localProfileRepository?.isFavorite(mediaId) ?: details.isFavorite
+                val isWat = localProfileRepository?.isWatched(mediaId) ?: (details.playbackPositionPercentage >= 95f)
+
+                val episodesForSeasonModels = details.episodes
+                    .filter { ep -> current.selectedSeasonId == null || ep.seasonId == current.selectedSeasonId }
+                    .map { it.toEpisodeDomainModel(current.selectedSeasonNumber) }
+                    .toImmutableList()
+
+                val nextUp = episodesForSeasonModels.firstOrNull { !it.isWatched }
+                    ?: episodesForSeasonModels.firstOrNull()
+
+                _uiState.value = current.copy(
+                    mediaDetails = details,
+                    mediaItem = details.toMediaDetailDomainModel(),
+                    nextUpEpisode = nextUp,
+                    isWatched = isWat,
+                    isFavorite = isFav
+                )
             }
         }
     }
@@ -163,7 +178,6 @@ class MediaDetailsViewModel(
                         episodesForSeason = episodesForSeasonModels,
                         episodesForSelectedSeason = episodesForSeasonList.toImmutableList(),
                         castList = details.castMembers,
-                        isInspectorOpen = false,
                         isFavorite = isFav,
                         isWatched = isWat
                     )
@@ -258,7 +272,7 @@ class MediaDetailsViewModel(
             } else {
                 mediaDetailsRepository.toggleFavorite(mediaId, targetState)
             }
-            val msg = if (targetState) "تمت الإضافة إلى المفضلة ❤️" else "تمت الإزالة من المفضلة"
+            val msg = if (targetState) "تمت الإضافة إلى المفضلة" else "تمت الإزالة من المفضلة"
             _effects.send(MediaDetailsEffect.ShowToast(msg))
         }
     }
@@ -286,7 +300,7 @@ class MediaDetailsViewModel(
             } else {
                 mediaDetailsRepository.markAsWatched(mediaId, targetState)
             }
-            val msg = if (targetState) "تم التحديد كمشاهد ✓" else "تمت إزالة علامة المشاهدة"
+            val msg = if (targetState) "تم التحديد كمشاهد" else "تمت إزالة علامة المشاهدة"
             _effects.send(MediaDetailsEffect.ShowToast(msg))
         }
     }
@@ -307,7 +321,7 @@ class MediaDetailsViewModel(
         viewModelScope.launch {
             mediaDetailsRepository.markAsWatched(episodeId, targetWatched)
                 .onSuccess {
-                    val msg = if (targetWatched) "تم تحديد الحلقة كمشاهدة ✓" else "تمت إزالة علامة المشاهدة"
+                    val msg = if (targetWatched) "تم تحديد الحلقة كمشاهدة" else "تمت إزالة علامة المشاهدة"
                     _effects.send(MediaDetailsEffect.ShowToast(msg))
                 }
                 .onFailure {
@@ -375,72 +389,6 @@ class MediaDetailsViewModel(
 
         viewModelScope.launch {
             _effects.send(MediaDetailsEffect.LaunchPlayer(mediaId = episodeId, resumePositionMs = resumeMs))
-        }
-    }
-
-    private fun updateInspectorState(isOpen: Boolean) {
-        val current = _uiState.value
-        if (current is MediaDetailsUiState.Success) {
-            _uiState.value = current.copy(isInspectorOpen = isOpen)
-        }
-    }
-
-    private fun handleDownloadEpisode(episodeId: String) {
-        val state = _uiState.value as? MediaDetailsUiState.Success ?: return
-        val episode = state.episodesForSelectedSeason.firstOrNull { it.id == episodeId }
-        val title = episode?.let { "${state.mediaDetails.title} - ${it.title}" } ?: state.mediaDetails.title
-
-        viewModelScope.launch {
-            if (context != null && downloadsRepository != null) {
-                val streamUrl = AppConfig.buildVideoStreamUrl(episodeId)
-                val request = DownloadRequest.Builder(episodeId, Uri.parse(streamUrl))
-                    .setData(title.toByteArray())
-                    .build()
-                DownloadManagerProvider.sendAddDownload(context, request)
-
-                downloadsRepository.saveDownloadedMedia(
-                    id = episodeId,
-                    title = title,
-                    mediaType = "Episode",
-                    localFilePath = streamUrl,
-                    subtitleFilePath = null,
-                    totalSizeBytes = 0L,
-                    durationTicks = episode?.runTimeTicks,
-                    qualityTag = "HD"
-                )
-                _effects.send(MediaDetailsEffect.ShowToast("تمت إضافة الحلقة إلى قائمة التنزيلات"))
-            } else {
-                _effects.send(MediaDetailsEffect.ShowToast("جارٍ بدء التنزيل في الخلفية..."))
-            }
-        }
-    }
-
-    private fun handleDownloadMovie() {
-        val state = _uiState.value as? MediaDetailsUiState.Success ?: return
-        val movie = state.mediaDetails
-
-        viewModelScope.launch {
-            if (context != null && downloadsRepository != null) {
-                val streamUrl = AppConfig.buildVideoStreamUrl(movie.id)
-                val request = DownloadRequest.Builder(movie.id, Uri.parse(streamUrl))
-                    .setData(movie.title.toByteArray())
-                    .build()
-                DownloadManagerProvider.sendAddDownload(context, request)
-
-                downloadsRepository.saveDownloadedMedia(
-                    id = movie.id,
-                    title = movie.title,
-                    mediaType = "Movie",
-                    localFilePath = streamUrl,
-                    subtitleFilePath = null,
-                    totalSizeBytes = 0L,
-                    durationTicks = movie.runTimeTicks,
-                    qualityTag = movie.qualityBadges.firstOrNull() ?: "1080p"
-                )
-                _effects.send(MediaDetailsEffect.ShowToast("تمت إضافة الفيلم إلى قائمة التنزيلات"))
-            } else {
-                _effects.send(MediaDetailsEffect.ShowToast("جارٍ بدء التنزيل في الخلفية..."))
-            }
         }
     }
 }

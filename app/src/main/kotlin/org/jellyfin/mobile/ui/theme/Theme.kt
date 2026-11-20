@@ -10,49 +10,42 @@ import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
  * CompositionLocal indicating whether OLED True Black mode is enabled.
+ * Defaults to true for AMOLED/OLED displays.
  */
-val LocalOledTrueBlack = staticCompositionLocalOf { false }
+val LocalOledTrueBlack = staticCompositionLocalOf { true }
 
 /**
- * Builds the Material 3 Dark ColorScheme configured with Cinematic Ambient Design Tokens.
- *
- * @param oledTrueBlack When true, root backgrounds and surfaces switch from Obsidian (#080B10)
- *                      to Pure Black (#000000) to shut off AMOLED screen pixels.
+ * Builds Material 3 ColorScheme with Refined Cinema Obsidian tokens.
  */
-fun jellyfinDarkColorScheme(oledTrueBlack: Boolean = false): ColorScheme = darkColorScheme(
-    primary = JellyfinColors.PrimaryIndigo,
-    onPrimary = JellyfinColors.TextPrimary,
-    primaryContainer = JellyfinColors.IndigoGlow,
-    onPrimaryContainer = JellyfinColors.TextPrimary,
-    secondary = JellyfinColors.TechSky,
-    onSecondary = JellyfinColors.PureBlack,
-    secondaryContainer = JellyfinColors.SurfaceGlass,
-    onSecondaryContainer = JellyfinColors.TechSky,
-    tertiary = JellyfinColors.RatingGold,
-    onTertiary = JellyfinColors.PureBlack,
-    background = if (oledTrueBlack) JellyfinColors.PureBlack else JellyfinColors.Background,
-    onBackground = JellyfinColors.TextPrimary,
-    surface = if (oledTrueBlack) JellyfinColors.PureBlack else JellyfinColors.SurfaceDark,
-    onSurface = JellyfinColors.TextPrimary,
-    surfaceVariant = JellyfinColors.SurfaceDark,
-    onSurfaceVariant = JellyfinColors.TextSecondary,
-    outline = JellyfinColors.BorderGlass,
-    outlineVariant = JellyfinColors.SurfaceGlass,
-    error = JellyfinColors.Error,
-    onError = JellyfinColors.OnError
+fun jellyfinDarkColorScheme(oledTrueBlack: Boolean = true): ColorScheme = darkColorScheme(
+    primary = JellyfinPrimitives.Ivory50,
+    onPrimary = JellyfinPrimitives.Obsidian950,
+    primaryContainer = JellyfinPrimitives.Graphite800,
+    onPrimaryContainer = JellyfinPrimitives.Gray100,
+    secondary = JellyfinPrimitives.AmberWarm,
+    onSecondary = JellyfinPrimitives.Obsidian950,
+    secondaryContainer = JellyfinPrimitives.Graphite900,
+    onSecondaryContainer = JellyfinPrimitives.Gray100,
+    tertiary = JellyfinPrimitives.GoldCinema,
+    onTertiary = JellyfinPrimitives.BlackOled,
+    background = if (oledTrueBlack) JellyfinPrimitives.BlackOled else JellyfinPrimitives.Obsidian950,
+    onBackground = JellyfinPrimitives.Gray100,
+    surface = if (oledTrueBlack) JellyfinPrimitives.BlackOled else JellyfinPrimitives.Graphite900,
+    onSurface = JellyfinPrimitives.Gray100,
+    surfaceVariant = JellyfinPrimitives.Graphite800,
+    onSurfaceVariant = JellyfinPrimitives.Gray400,
+    outline = JellyfinColors.BorderHairline,
+    outlineVariant = JellyfinPrimitives.Graphite800,
+    error = JellyfinPrimitives.CrimsonMuted,
+    onError = JellyfinPrimitives.WhitePure
 )
 
 /**
- * JellyfinTheme applies the Cinematic Ambient Design System (Infuse + Apple TV+ aesthetics)
- * built for 120Hz AMOLED displays.
- *
- * @param oledTrueBlack Set to true to switch to True Black OLED mode (#000000).
- *                      Defaults to false (Cinematic Obsidian #080B10).
- * @param content Composable tree to render under this theme.
+ * JellyfinTheme applies the Refined Cinema & Obsidian Design System (v2.2.0).
  */
 @Composable
 fun JellyfinTheme(
-    oledTrueBlack: Boolean = false,
+    oledTrueBlack: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = jellyfinDarkColorScheme(oledTrueBlack = oledTrueBlack)
@@ -69,7 +62,7 @@ fun JellyfinTheme(
 }
 
 /**
- * Quick accessor for Jellyfin-specific design tokens from Compose tree.
+ * Quick accessor for Jellyfin design tokens.
  */
 object JellyfinTheme {
     val colors: JellyfinColors

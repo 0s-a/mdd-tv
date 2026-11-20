@@ -28,7 +28,7 @@ data class SplashUiState(
 sealed interface SplashIntent {
     data object Initialize : SplashIntent
     data object Retry : SplashIntent
-    data object OpenDownloads : SplashIntent
+    data object ContinueOffline : SplashIntent
 }
 
 /**
@@ -37,5 +37,4 @@ sealed interface SplashIntent {
 sealed interface SplashEffect {
     data object NavigateToHome : SplashEffect
     data object NavigateToOnboarding : SplashEffect
-    data object NavigateToDownloads : SplashEffect
 }

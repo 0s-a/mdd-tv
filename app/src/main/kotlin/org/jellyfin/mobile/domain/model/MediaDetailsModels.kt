@@ -59,8 +59,7 @@ data class EpisodeSummary(
     val runTimeTicks: Long? = null,
     val playbackPositionPercentage: Float = 0f,
     val isPlayed: Boolean = false,
-    val imageUrl: String? = null,
-    val isDownloaded: Boolean = false
+    val imageUrl: String? = null
 ) {
     val title: String get() = name
     val episodeNumber: Int get() = indexNumber ?: 1

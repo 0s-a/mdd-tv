@@ -64,7 +64,7 @@ import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.domain.model.AvatarCatalog
 import org.jellyfin.mobile.domain.model.ContinueWatchingItem
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
-import org.jellyfin.mobile.presentation.core.components.FloatingFrostedTopBar
+import org.jellyfin.mobile.presentation.core.components.CinemaRootTopBar
 import org.jellyfin.mobile.presentation.core.components.rememberDominantColor
 import org.jellyfin.mobile.presentation.home.components.ContinueWatchingRow
 import org.jellyfin.mobile.presentation.home.components.HeroSpotlight
@@ -244,11 +244,10 @@ fun HomeScreen(
                     }
                 }
 
-                // 3. Floating Frosted Top Bar
-                HomeFloatingTopBar(
-                    avatarEmoji = AvatarCatalog.getEmoji(state.userAvatarKey),
+                // 3. Unified Cinema TopBar
+                CinemaRootTopBar(
+                    title = AppConfig.APP_NAME,
                     onSearchClick = onNavigateToSearch,
-                    onProfileClick = onNavigateToProfile,
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
             }
@@ -393,78 +392,6 @@ fun HomeScreen(
     }
 }
 
-@Composable
-private fun HomeFloatingTopBar(
-    avatarEmoji: String,
-    onSearchClick: () -> Unit,
-    onProfileClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    FloatingFrostedTopBar(modifier = modifier) {
-        // App Title & Brand
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Movie,
-                contentDescription = null,
-                tint = JellyfinColors.PrimaryIndigo,
-                modifier = Modifier.size(24.dp)
-            )
-            Text(
-                text = AppConfig.APP_NAME,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = JellyfinColors.TextPrimary
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Actions: Search & Local Profile Avatar
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
-        ) {
-            IconButton(
-                onClick = onSearchClick,
-                modifier = Modifier
-                    .size(36.dp)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "البحث في المكتبات"
-                    }
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = JellyfinColors.TextPrimary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .border(1.5.dp, JellyfinColors.PrimaryIndigo, CircleShape)
-                    .background(JellyfinColors.SurfaceGlass)
-                    .clickable(onClick = onProfileClick)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "الملف الشخصي"
-                    }
-            ) {
-                Text(
-                    text = avatarEmoji,
-                    fontSize = 17.sp
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun ErrorState(

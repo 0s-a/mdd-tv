@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">mdd TV</string>
-    <string name="download_channel_name">mdd TV Downloads</string>
-    <string name="download_channel_description">Offline media download progress and status</string>
 </resources>

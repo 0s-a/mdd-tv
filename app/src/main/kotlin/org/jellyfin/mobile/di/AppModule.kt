@@ -10,14 +10,12 @@ import org.jellyfin.mobile.core.network.AuthInterceptor
 import org.jellyfin.mobile.core.network.SessionManager
 import org.jellyfin.mobile.data.local.AppDatabase
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
-import org.jellyfin.mobile.data.repository.DownloadsRepositoryImpl
 import org.jellyfin.mobile.data.repository.HandshakeRepositoryImpl
 import org.jellyfin.mobile.data.repository.HomeRepositoryImpl
 import org.jellyfin.mobile.data.repository.LibraryRepositoryImpl
 import org.jellyfin.mobile.data.repository.LocalProfileRepositoryImpl
 import org.jellyfin.mobile.data.repository.MediaDetailsRepositoryImpl
 import org.jellyfin.mobile.data.repository.SearchRepositoryImpl
-import org.jellyfin.mobile.domain.repository.DownloadsRepository
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.HomeRepository
 import org.jellyfin.mobile.domain.repository.LibraryRepository
@@ -29,7 +27,6 @@ import org.jellyfin.mobile.domain.usecase.GetLibraryItemsUseCase
 import org.jellyfin.mobile.domain.usecase.GetMediaDetailsUseCase
 import org.jellyfin.mobile.domain.usecase.SearchMediaUseCase
 import org.jellyfin.mobile.presentation.details.MediaDetailsViewModel
-import org.jellyfin.mobile.presentation.downloads.DownloadsViewModel
 import org.jellyfin.mobile.presentation.home.HomeViewModel
 import org.jellyfin.mobile.presentation.library.LibraryViewModel
 import org.jellyfin.mobile.presentation.onboarding.OnboardingViewModel
@@ -133,13 +130,6 @@ val repositoryModule = module {
         )
     }
 
-    single<DownloadsRepository> {
-        DownloadsRepositoryImpl(
-            context = androidContext(),
-            dao = get()
-        )
-    }
-
     single<LocalProfileRepository> {
         LocalProfileRepositoryImpl(
             userProfileDao = get(),
@@ -159,7 +149,6 @@ val databaseModule = module {
         ).fallbackToDestructiveMigration().build()
     }
 
-    single { get<AppDatabase>().downloadedMediaDao() }
     single { get<AppDatabase>().userProfileDao() }
     single { get<AppDatabase>().localFavoriteDao() }
     single { get<AppDatabase>().watchedArchiveDao() }
@@ -196,9 +185,7 @@ val viewModelModule = module {
             getMediaDetailsUseCase = get(),
             mediaDetailsRepository = get(),
             handshakeRepository = get(),
-            localProfileRepository = get(),
-            downloadsRepository = get(),
-            context = androidContext()
+            localProfileRepository = get()
         )
     }
 
@@ -217,14 +204,6 @@ val viewModelModule = module {
             sessionManager = get(),
             handshakeRepository = get(),
             localProfileRepository = get()
-        )
-    }
-
-    viewModel {
-        DownloadsViewModel(
-            downloadsRepository = get(),
-            localProfileRepository = get(),
-            context = androidContext()
         )
     }
 

@@ -183,11 +183,11 @@ class SplashViewModelTest {
         assertTrue(viewModel.uiState.value.serverStatus is ServerStatus.Offline)
         assertTrue(effects.isEmpty())
 
-        // Test manual offline download navigation
-        viewModel.handleIntent(SplashIntent.OpenDownloads)
+        // Test manual offline continue navigation
+        viewModel.handleIntent(SplashIntent.ContinueOffline)
         advanceUntilIdle()
 
-        assertEquals(listOf(SplashEffect.NavigateToDownloads), effects)
+        assertEquals(listOf(SplashEffect.NavigateToHome), effects)
         job.cancel()
     }
 }
