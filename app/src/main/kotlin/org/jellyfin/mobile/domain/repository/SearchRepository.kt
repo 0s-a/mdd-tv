@@ -12,9 +12,20 @@ import org.jellyfin.mobile.domain.model.SearchResultSummary
 interface SearchRepository {
 
     /**
-     * Executes universal search on the Jellyfin server across movies, series, episodes, and persons.
+     * Executes universal search on the Jellyfin server across movies, series, episodes, and persons,
+     * with optional multi-genre filtering.
      */
-    suspend fun search(query: String): Result<SearchResultSummary>
+    suspend fun search(query: String, genres: Set<String> = emptySet()): Result<SearchResultSummary>
+
+    /**
+     * Dynamically retrieves all available genres from the Jellyfin server.
+     */
+    suspend fun getAvailableGenres(): Result<List<String>>
+
+    /**
+     * Dynamically retrieves a random spotlight media item from the Jellyfin server for idle exploration.
+     */
+    suspend fun getRandomSpotlight(): Result<MediaItemSummary?>
 
     /**
      * Retrieves media items filtered by a specific genre.
@@ -42,7 +53,7 @@ interface SearchRepository {
     suspend fun clearRecentQueries()
 
     /**
-     * Returns curated genres for the idle exploration grid.
+     * Returns curated genres for the idle exploration grid. Deprecated in favor of getAvailableGenres().
      */
-    fun getExploreGenres(): List<GenreCategory>
+    fun getExploreGenres(): List<GenreCategory> = emptyList()
 }

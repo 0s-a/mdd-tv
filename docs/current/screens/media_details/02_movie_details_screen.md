@@ -70,7 +70,7 @@
 ```mermaid
 flowchart TD
     OpenScreen["فتح شاشة الفيلم"] --> TapPlay["لمس زر التشغيل الرئيسي -> فتح المشغل بملء الشاشة"]
-    OpenScreen --> TapDownload["لمس زر التنزيل -> بدء حفظ الفيلم محلياً مع مؤشر دائري"]
+    OpenScreen --> TapFavorite["لمس زر المفضلة -> حفظ الفيلم في المفضلة المحلية"]
     OpenScreen --> TapTrailer["لمس التريلر -> تشغيل المقطع الدعائي داخل نافذة عائمة PiP"]
     OpenScreen --> TapMore["لمس زر الخيارات -> سحب اللوحة السفلية (Bottom Sheet) لمسارات الترجمة والصوت"]
     OpenScreen --> ScrollDown["التمرير لأسفل -> تقلص الغلاف وثبات شريط الأدوات العلوي"]

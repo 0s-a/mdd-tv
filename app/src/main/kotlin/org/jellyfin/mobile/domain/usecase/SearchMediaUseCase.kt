@@ -10,7 +10,7 @@ import org.jellyfin.mobile.domain.repository.SearchRepository
 class SearchMediaUseCase(
     private val searchRepository: SearchRepository
 ) {
-    suspend operator fun invoke(query: String): Result<SearchResultSummary> {
-        return searchRepository.search(query)
+    suspend operator fun invoke(query: String, genres: Set<String> = emptySet()): Result<SearchResultSummary> {
+        return searchRepository.search(query, genres)
     }
 }

@@ -70,7 +70,7 @@ class HomeViewModel(
                 viewModelScope.launch {
                     localProfileRepository?.markWatched(intent.mediaId)
                     homeRepository.markItemWatched(intent.mediaId)
-                    _effects.send(HomeEffect.ShowToast("تم التحديد كمشاهد ✓"))
+                    _effects.send(HomeEffect.ShowToast("تم التحديد كمشاهد"))
                 }
             }
         }

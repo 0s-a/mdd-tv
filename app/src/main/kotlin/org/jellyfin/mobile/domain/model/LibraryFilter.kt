@@ -20,7 +20,7 @@ typealias SortOption = LibrarySortBy
 enum class LibraryFilterChip(val title: String) {
     UNWATCHED("غير المشاهد"),
     ONLY_4K("4K UHD فقط"),
-    HIGH_RATING("⭐ +8.0 تقييم"),
+    HIGH_RATING("تقييم +8.0"),
     FAVORITES("المفضلة")
 }
 

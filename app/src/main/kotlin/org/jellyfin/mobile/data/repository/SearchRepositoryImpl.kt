@@ -29,9 +29,7 @@ class SearchRepositoryImpl(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : SearchRepository {
 
-    private val _recentQueries = MutableStateFlow<List<String>>(
-        listOf("4K Remux", "نولان", "خيال علمي")
-    )
+    private val _recentQueries = MutableStateFlow<List<String>>(emptyList())
 
     private suspend fun requireUserId(): String {
         val current = sessionManager.getUserId() ?: handshakeRepository.currentSession.value?.userId
@@ -41,17 +39,19 @@ class SearchRepositoryImpl(
         return handshakeResult.getOrThrow().userId
     }
 
-    override suspend fun search(query: String): Result<SearchResultSummary> = withContext(ioDispatcher) {
+    override suspend fun search(query: String, genres: Set<String>): Result<SearchResultSummary> = withContext(ioDispatcher) {
         runCatching {
             val trimmed = query.trim()
-            if (trimmed.isBlank()) {
+            if (trimmed.isBlank() && genres.isEmpty()) {
                 return@runCatching SearchResultSummary(query = "")
             }
 
             val userId = requireUserId()
+            val genresParam = if (genres.isNotEmpty()) genres.joinToString(",") else null
             val response = apiService.searchMedia(
                 userId = userId,
-                searchTerm = trimmed,
+                searchTerm = trimmed.ifBlank { null },
+                genres = genresParam,
                 includeItemTypes = "Movie,Series,Episode,Person",
                 recursive = true,
                 limit = 30
@@ -85,9 +85,13 @@ class SearchRepositoryImpl(
             }
 
             // Identify top match (exact match on name or first media item)
-            val topMatch = mediaItems.firstOrNull {
-                it.name.equals(trimmed, ignoreCase = true)
-            } ?: mediaItems.firstOrNull()
+            val topMatch = if (trimmed.isNotBlank()) {
+                mediaItems.firstOrNull {
+                    it.name.equals(trimmed, ignoreCase = true)
+                } ?: mediaItems.firstOrNull()
+            } else {
+                mediaItems.firstOrNull()
+            }
 
             val remainingMedia = if (topMatch != null) {
                 mediaItems.filterNot { it.id == topMatch.id }
@@ -102,6 +106,22 @@ class SearchRepositoryImpl(
                 peopleResults = peopleItems.toImmutableList(),
                 totalCount = response.totalRecordCount ?: (mediaItems.size + peopleItems.size)
             )
+        }
+    }
+
+    override suspend fun getAvailableGenres(): Result<List<String>> = withContext(ioDispatcher) {
+        runCatching {
+            val userId = requireUserId()
+            val response = apiService.getGenres(userId = userId, recursive = true)
+            response.items?.mapNotNull { it.name }?.filter { it.isNotBlank() } ?: emptyList()
+        }
+    }
+
+    override suspend fun getRandomSpotlight(): Result<MediaItemSummary?> = withContext(ioDispatcher) {
+        runCatching {
+            val userId = requireUserId()
+            val response = apiService.getSpotlightItems(userId = userId, limit = 1)
+            response.items?.firstOrNull()?.toMediaItemSummary()
         }
     }
 

@@ -83,10 +83,19 @@ interface JellyfinApiService {
         @Query("nameStartsWith") nameStartsWith: String? = null
     ): ItemsResponseDto
 
+    @GET("Genres")
+    suspend fun getGenres(
+        @Query("userId") userId: String? = null,
+        @Query("parentId") parentId: String? = null,
+        @Query("recursive") recursive: Boolean = true,
+        @Query("sortBy") sortBy: String = "SortName"
+    ): ItemsResponseDto
+
     @GET("Users/{userId}/Items")
     suspend fun searchMedia(
         @Path("userId") userId: String,
-        @Query("searchTerm") searchTerm: String,
+        @Query("searchTerm") searchTerm: String? = null,
+        @Query("genres") genres: String? = null,
         @Query("includeItemTypes") includeItemTypes: String = "Movie,Series,Episode,Person",
         @Query("recursive") recursive: Boolean = true,
         @Query("limit") limit: Int = 30,
