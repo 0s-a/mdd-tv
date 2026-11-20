@@ -265,7 +265,7 @@ private fun DynamicSpotlightCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = String.format("%.1f", item.communityRating),
+                        text = String.format(java.util.Locale.US, "%.1f", item.communityRating),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = JellyfinColors.RatingGold

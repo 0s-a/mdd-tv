@@ -1,5 +1,6 @@
 package org.jellyfin.mobile.presentation.search
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -65,6 +66,11 @@ fun SearchScreen(
     // Smoked Obsidian Glass Scrim
     val overlayScrim = JellyfinColors.PureBlack.copy(alpha = 0.90f)
 
+    // Intercept back press when dynamic genre picker bottom sheet is open
+    BackHandler(enabled = uiState.isGenrePickerOpen) {
+        viewModel.processIntent(SearchIntent.CloseGenrePicker)
+    }
+
     LaunchedEffect(Unit) {
         viewModel.effects.collectLatest { effect ->
             when (effect) {
@@ -91,6 +97,13 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        keyboardController?.hide()
+                    }
+                )
         ) {
             // 1. Frosted Search Bar Header with Trailing Filter Button
             FrostedSearchBar(
