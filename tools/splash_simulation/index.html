@@ -12,29 +12,22 @@
       60% { opacity: 1; }
       100% { transform: scaleX(3) translateX(250%); opacity: 0; }
     }
-    @keyframes specularSweep {
-      0% { transform: translateX(-160%) skewX(-30deg); }
-      100% { transform: translateX(260%) skewX(-30deg); }
-    }
     @keyframes ambientBreath {
-      0%, 100% { transform: scale(1); opacity: 0.25; }
-      50% { transform: scale(1.25); opacity: 0.65; }
+      0%, 100% { transform: scale(1); opacity: 0.2; }
+      50% { transform: scale(1.2); opacity: 0.5; }
     }
-    @keyframes pulseRing {
-      0% { transform: scale(0.9); opacity: 0.8; }
-      100% { transform: scale(2.2); opacity: 0; }
+    @keyframes serverPulse {
+      0%, 100% { opacity: 0.7; transform: scaleX(0.98); }
+      50% { opacity: 1; transform: scaleX(1); }
     }
     .anamorphic-beam {
-      animation: anamorphicLaser 1.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    .specular-pass {
-      animation: specularSweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: anamorphicLaser 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
     .glow-core {
       animation: ambientBreath 3.5s infinite ease-in-out;
     }
     .phone-chassis {
-      box-shadow: 0 35px 85px rgba(0, 0, 0, 0.95), 0 0 45px rgba(56, 189, 248, 0.18);
+      box-shadow: 0 35px 85px rgba(0, 0, 0, 0.95), 0 0 45px rgba(56, 189, 248, 0.15);
     }
     .full-screen-page {
       position: absolute;
@@ -48,6 +41,9 @@
     }
     .text-glow {
       text-shadow: 0 0 25px rgba(56, 189, 248, 0.45);
+    }
+    .server-glow {
+      animation: serverPulse 2.2s infinite ease-in-out;
     }
   </style>
 </head>
@@ -149,104 +145,88 @@
         <!-- ======================================================== -->
         <!-- PHASE 2: THE FINAL SETTLED LANDING INTERFACE             -->
         <!-- ======================================================== -->
-        <div id="settledLandingStage" class="absolute inset-0 w-full h-full flex flex-col justify-between p-5 pt-11 pb-6 z-20 opacity-0 pointer-events-none transition-all duration-700 bg-[#05070B] overflow-hidden">
+        <div id="settledLandingStage" class="absolute inset-0 w-full h-full flex flex-col justify-between p-5 pt-12 pb-6 z-20 opacity-0 pointer-events-none transition-all duration-700 bg-[#05070B] overflow-hidden">
           
           <!-- Background Ambient Nebula Glows -->
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full bg-[#38BDF8] opacity-25 blur-[90px] pointer-events-none glow-core"></div>
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full bg-[#6366F1] opacity-30 blur-[75px] pointer-events-none glow-core" style="animation-delay: -1.5s;"></div>
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full bg-[#38BDF8] opacity-20 blur-[90px] pointer-events-none glow-core"></div>
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full bg-[#6366F1] opacity-25 blur-[75px] pointer-events-none glow-core" style="animation-delay: -1.5s;"></div>
 
           <!-- Anamorphic Blue Laser Flare across phone width -->
           <div id="anamorphicBeam" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-1.5 bg-gradient-to-r from-transparent via-[#93C5FD] to-transparent opacity-0 pointer-events-none shadow-[0_0_25px_#38BDF8] z-30"></div>
           <div id="anamorphicStar" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white opacity-0 blur-[2px] shadow-[0_0_20px_#93C5FD] z-30"></div>
 
           <!-- ────────────────────────────────────────── -->
-          <!-- 1. TOP CORNER: أيقونة التطبيق الصغيرة "مدد TV" -->
+          <!-- 1. TOP CORNER: شعار التطبيق الحقيقي بمفرده   -->
           <!-- ────────────────────────────────────────── -->
           <div class="relative z-30 flex items-center justify-between w-full">
             
-            <!-- Compact App Icon Badge in Top Right Corner -->
-            <div id="topAppBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#0F1422]/90 border border-[#38BDF8]/40 shadow-[0_0_15px_rgba(56,189,248,0.2)] backdrop-blur-md opacity-0 transition-all duration-500 transform -translate-y-2">
-              <div class="w-6 h-6 rounded-lg bg-[#38BDF8]/10 border border-[#38BDF8]/60 flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-[#38BDF8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="7" width="20" height="15" rx="3" ry="3"></rect>
-                  <polyline points="17 2 12 7 7 2"></polyline>
-                </svg>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-xs font-black text-white tracking-wider leading-none">مدد TV</span>
-                <span class="text-[9px] text-[#38BDF8] font-mono leading-tight mt-0.5">V2.0</span>
-              </div>
+            <!-- Real Official App Icon in Top Right Corner (Without Text) -->
+            <div id="topAppIcon" class="w-10 h-10 rounded-2xl bg-[#080B10] border border-[#1E293B]/80 shadow-[0_4px_16px_rgba(0,0,0,0.6)] flex items-center justify-center p-1.5 opacity-0 transition-all duration-500 transform -translate-y-2">
+              <svg viewBox="0 0 1024 1024" fill="none" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(512, 512) scale(0.8) translate(-512, -512)">
+                  <!-- Kufic Logo Body + Antennas + Legs (Crisp White #FFFFFF) -->
+                  <path fill="#FFFFFF" fill-rule="evenodd" d="M 293.1 385.7 L 293.1 461.2 L 341.9 461.2 L 390.6 461.2 L 390.6 487.4 L 390.6 513.6 L 341.9 513.6 L 293.1 513.6 L 293.1 589.9 L 293.1 666.2 L 341.9 666.2 L 390.6 666.2 L 390.6 689.9 L 390.6 713.7 L 415.6 713.7 L 440.7 713.7 L 440.7 664.9 L 440.7 616.1 L 391.9 616.1 L 343.1 616.1 L 343.1 589.9 L 343.1 563.7 L 416.9 563.7 L 490.7 563.7 L 490.7 614.9 L 490.7 666.2 L 610.8 666.2 L 730.9 666.2 L 730.9 538.6 L 730.9 411.1 L 610.8 411.1 L 490.7 411.1 L 490.7 462.4 L 490.7 513.6 L 465.7 513.6 L 440.7 513.6 L 440.7 462.4 L 440.7 411.1 L 391.9 411.1 L 343.1 411.1 L 343.1 385.8 L 343.1 360.5 L 416.0 360.1 C 456.1 360.1 489.2 359.6 489.6 359.2 C 489.9 358.8 490.4 347.7 490.5 334.4 L 490.8 310.3 L 392.0 310.3 L 293.1 310.3 L 293.1 385.7 Z M 680.9 538.6 L 680.9 616.1 L 610.6 616.0 L 540.3 615.7 L 540.0 538.4 L 539.9 461.2 L 610.4 461.2 L 680.9 461.2 L 680.9 538.6 Z M 489.9 665.3 h 50.0 v 48.4 h -50.0 Z M 680.9 665.3 h 49.2 v 48.4 h -49.2 Z M 585.8 404.6 L 602.2 404.6 L 553.0 322.6 L 536.6 322.6 Z M 528.4 310.3 h 20.5 v 20.5 h -20.5 Z M 635.0 404.6 L 618.6 404.6 L 667.8 322.6 L 684.2 322.6 Z M 671.9 310.3 h 20.5 v 20.5 h -20.5 Z" />
+                  <!-- Jellyfin Core Triangle (TechSky #38BDF8) -->
+                  <g transform="translate(610.4, 538.2) scale(0.2296) translate(-256, -248)">
+                    <path fill="#38BDF8" d="M256 23.3c-61.6 0-259.8 359.4-229.6 420.1s429.3 60 459.2 0S317.6 23.3 256 23.3zm150.5 367.5c-19.6 39.3-281.1 39.8-300.9 0S215.7 115.5 256 115.5s170.1 235.9 150.5 275.3z" />
+                    <path fill="#38BDF8" d="M256 201.6c-20.4 0-86.2 119.3-76.2 139.4s142.5 19.9 152.4 0-55.7-139.4-76.2-139.4z" />
+                  </g>
+                </g>
+              </svg>
             </div>
 
-            <!-- Server Connection Status Pill in Top Left Corner -->
-            <div id="topServerPill" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0F172A]/80 border border-[#10B981]/50 backdrop-blur-md opacity-0 transition-all duration-500">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-ping"></span>
-              <span class="w-1.5 h-1.5 rounded-full bg-[#10B981] -mr-3"></span>
-              <span class="text-[10px] text-[#E2E8F0] font-mono">12ms متصل</span>
-            </div>
+            <!-- Top Left Blank Space (Maintains Balanced Clean View) -->
+            <div></div>
 
           </div>
 
           <!-- ────────────────────────────────────────── -->
-          <!-- 2. MAIN CENTERPIECE: اسم الشبكة "استراحة الرصاص" -->
+          <!-- 2. MAIN CENTERPIECE: اسم الشبكة وشريط السيرفر-->
           <!-- ────────────────────────────────────────── -->
-          <div class="relative z-30 flex flex-col items-center justify-center text-center my-auto px-2">
+          <div class="relative z-30 flex flex-col items-center justify-center text-center my-auto px-4 w-full">
             
-            <!-- Stylized Ambient Crest Icon -->
-            <div id="networkCrest" class="w-16 h-16 rounded-3xl bg-[#0A0E17]/90 border border-[#38BDF8]/50 shadow-[0_0_35px_rgba(56,189,248,0.3)] flex items-center justify-center mb-4 backdrop-blur-xl relative overflow-hidden opacity-0 transition-all duration-700 transform scale-75">
-              <svg class="w-8 h-8 text-[#38BDF8] filter drop-shadow-[0_0_8px_#38BDF8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-              </svg>
-              <!-- Specular Shimmer on Crest -->
-              <div id="crestShimmer" class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/70 to-transparent transform -skew-x-30 -translate-x-full pointer-events-none"></div>
-            </div>
-
             <!-- Primary Network Title: استراحة الرصاص -->
-            <div class="relative overflow-hidden">
+            <div class="relative overflow-hidden mb-1">
               <h1 id="networkTitle" class="text-glow text-4xl sm:text-5xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-[#BAE6FD] to-white opacity-0 transition-all duration-700 transform translate-y-3">
                 استراحة الرصاص
               </h1>
             </div>
 
-            <p id="networkSubtitle" class="text-xs sm:text-sm font-semibold text-[#94A3B8] tracking-widest mt-2 opacity-0 transition-all duration-700 transform translate-y-2">
+            <p id="networkSubtitle" class="text-xs sm:text-sm font-medium text-[#94A3B8] tracking-widest mt-1.5 opacity-0 transition-all duration-700 transform translate-y-2">
               سينما منزلية فائقة السرعة
             </p>
 
-            <!-- Decorative Horizon Line with Glowing Node -->
-            <div id="horizonLine" class="flex items-center justify-center w-44 my-3 opacity-0 transition-opacity duration-700">
-              <div class="flex-1 h-[1px] bg-gradient-to-r from-transparent to-[#38BDF8]/60"></div>
-              <div class="w-1.5 h-1.5 rounded-full bg-[#38BDF8] shadow-[0_0_8px_#38BDF8] mx-2"></div>
-              <div class="flex-1 h-[1px] bg-gradient-to-l from-transparent to-[#38BDF8]/60"></div>
-            </div>
+            <!-- Decorative Subtle Accent Line -->
+            <div id="accentLine" class="w-16 h-[1.5px] bg-[#38BDF8]/40 rounded-full my-4 opacity-0 transition-opacity duration-700"></div>
 
-            <!-- Action Prompt Button -->
-            <div id="enterHallBtn" class="mt-2 px-5 py-2 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#0284C7] text-white text-xs font-bold shadow-[0_0_25px_rgba(99,102,241,0.5)] border border-[#38BDF8]/40 hover:scale-105 active:scale-95 transition-all opacity-0 cursor-pointer">
-              دخول صالة العرض
+            <!-- ────────────────────────────────────────── -->
+            <!-- Minimalist Server Connection Bar           -->
+            <!-- ────────────────────────────────────────── -->
+            <div id="serverStatusBar" class="w-full max-w-[220px] flex flex-col items-center gap-1.5 opacity-0 transition-all duration-700">
+              <div class="flex items-center justify-between w-full text-[11px] text-[#94A3B8]">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-[#10B981] shadow-[0_0_8px_#10B981] animate-pulse"></span>
+                  <span class="text-[#E2E8F0] font-medium text-[11px]">سيرفر الاستراحة</span>
+                </div>
+                <span class="font-mono text-[10px] text-[#38BDF8]">12ms متصل</span>
+              </div>
+              <div class="w-full h-1 bg-[#1E293B] rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-[#38BDF8] via-[#60A5FA] to-[#10B981] w-full rounded-full server-glow"></div>
+              </div>
             </div>
 
           </div>
 
           <!-- ────────────────────────────────────────── -->
-          <!-- 3. BOTTOM SECTION: اسم المطور "المطور: حسام الرصاص" -->
+          <!-- 3. BOTTOM SECTION: اسم المطور بنص بسيط وعادي  -->
           <!-- ────────────────────────────────────────── -->
-          <div id="bottomDeveloperBox" class="relative z-30 flex flex-col items-center justify-center text-center w-full pb-2 opacity-0 transition-all duration-700 transform translate-y-3">
-            
-            <!-- Glassmorphic Developer Pill -->
-            <div class="flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#0F1422]/90 border border-[#1E293B] shadow-[0_4px_20px_rgba(0,0,0,0.6)] backdrop-blur-md">
-              <div class="w-5 h-5 rounded-full bg-[#6366F1]/20 border border-[#6366F1]/50 flex items-center justify-center">
-                <svg class="w-3 h-3 text-[#38BDF8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="16 18 22 12 16 6"></polyline>
-                  <polyline points="8 6 2 12 8 18"></polyline>
-                </svg>
-              </div>
-
-              <span class="text-xs font-bold text-[#E2E8F0]">المطور: حسام الرصاص</span>
-              
-              <span class="text-[9px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#1E293B] text-[#38BDF8]">
-                إصدار الاستراحة V2.0
-              </span>
-            </div>
-
+          <div id="bottomDeveloperBox" class="relative z-30 flex flex-col items-center justify-center text-center w-full pb-3 opacity-0 transition-all duration-700 transform translate-y-2">
+            <p class="text-xs text-[#94A3B8] font-medium tracking-wide">
+              المطور: حسام الرصاص
+            </p>
+            <span class="text-[10px] font-mono text-[#475569] mt-0.5">
+              إصدار الاستراحة V2.0
+            </span>
           </div>
 
         </div>
@@ -259,7 +239,7 @@
             </svg>
           </div>
           <h3 class="text-lg font-black text-white mb-1">المس شاشة الهاتف لبدء العرض</h3>
-          <p class="text-[11px] text-[#94A3B8] leading-relaxed">مونتاج سينمائي لـ 16 بوستراً عالمياً ثم الاستقرار في واجهة (استراحة الرصاص) الرسمية.</p>
+          <p class="text-[11px] text-[#94A3B8] leading-relaxed">مونتاج سينمائي لـ 16 بوستراً عالمياً ثم الاستقرار في واجهة (استراحة الرصاص) المبسطة.</p>
         </div>
 
       </div>
@@ -273,7 +253,7 @@
       <span>0.0s مونتاج متسارع (16 بوستر)</span>
       <span>1.4s الانكماش والارتطام</span>
       <span>1.8s استقرار "استراحة الرصاص"</span>
-      <span>2.5s صالة العرض</span>
+      <span>2.2s شريط الاتصال بالسيرفر</span>
     </div>
     <div class="w-full bg-[#1E293B] h-2 rounded-full overflow-hidden">
       <div id="timelineProgress" class="h-full bg-gradient-to-r from-[#38BDF8] via-[#6366F1] to-[#10B981] w-0 transition-all duration-100"></div>
@@ -449,74 +429,66 @@
         title: "Fight Club (نادي القتال)",
         genre: "السينما الأيقونية الخالدة",
         badge: "CULT CLASSIC",
-        url: "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg"
+        url: "https://image.tmdb.org/t/p/w500/bptfVGEQuv6vDTIMVCHjJ9Dz8PX.jpg"
       },
       {
         title: "Pulp Fiction (خيال رخيص)",
-        genre: "روائع كوينتن تارانتينو",
-        badge: "CINEMA VAULT",
+        genre: "تحفة كوينتن تارانتينو",
+        badge: "CINEMA LEGEND",
         url: "https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg"
       },
       {
         title: "Gladiator (المحارب)",
-        genre: "الملاحم التاريخية الرومانية",
+        genre: "الدراما والحروب الرومانية 4K",
         badge: "OSCAR WINNER",
         url: "https://image.tmdb.org/t/p/w500/ty8TGRuvJLPUmAR1H1nRIsgwvim.jpg"
       },
       {
         title: "Your Name (اسمك)",
-        genre: "أنمي ماكوتو شينكاي البديع",
-        badge: "ANIME CINEMA",
+        genre: "أنمي رومانسي وخيال علمي",
+        badge: "MAKOTO SHINKAI",
         url: "https://image.tmdb.org/t/p/w500/q719jXXEzOoYaps6babgKnONONX.jpg"
       },
       {
         title: "Avatar (أفاتار)",
-        genre: "الخيال العلمي وعوالم باندورا",
-        badge: "20TH CENTURY",
+        genre: "عالم باندورا الخيالي ثلاثي الأبعاد",
+        badge: "JAMES CAMERON",
         url: "https://image.tmdb.org/t/p/w500/kyeqWdyUXW608qlYkRqosgbbJyK.jpg"
       },
       {
-        title: "Inception (استهلال)",
-        genre: "سينما العوالم والأحلام",
-        badge: "WARNER BROS",
-        url: "https://image.tmdb.org/t/p/w500/ljsZTbVsrQSqZgWeep2B1QiDKuh.jpg"
+        title: "Inception (بداية)",
+        genre: "عوالم الأحلام المتداخلة والغموض",
+        badge: "CHRISTOPHER NOLAN",
+        url: "https://image.tmdb.org/t/p/w500/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg"
       }
     ];
 
-    // Preload
-    grandPosterCollection.forEach(item => {
-      const img = new Image();
-      img.src = item.url;
-    });
-
     // DOM Elements
+    const phoneScreen = document.getElementById('phoneScreen');
     const fullScreenMontageStage = document.getElementById('fullScreenMontageStage');
     const activeSlideImg = document.getElementById('activeSlideImg');
-    const slideBadge = document.getElementById('slideBadge');
-    const slideTitle = document.getElementById('slideTitle');
-    const slideGenre = document.getElementById('slideGenre');
     const peelSheet = document.getElementById('peelSheet');
     const peelImg = document.getElementById('peelImg');
     const shutterFlash = document.getElementById('shutterFlash');
+    const slideBadge = document.getElementById('slideBadge');
+    const slideTitle = document.getElementById('slideTitle');
+    const slideGenre = document.getElementById('slideGenre');
 
     const settledLandingStage = document.getElementById('settledLandingStage');
-    const topAppBadge = document.getElementById('topAppBadge');
-    const topServerPill = document.getElementById('topServerPill');
-    const networkCrest = document.getElementById('networkCrest');
-    const crestShimmer = document.getElementById('crestShimmer');
+    const topAppIcon = document.getElementById('topAppIcon');
     const networkTitle = document.getElementById('networkTitle');
     const networkSubtitle = document.getElementById('networkSubtitle');
-    const horizonLine = document.getElementById('horizonLine');
-    const enterHallBtn = document.getElementById('enterHallBtn');
+    const accentLine = document.getElementById('accentLine');
+    const serverStatusBar = document.getElementById('serverStatusBar');
     const bottomDeveloperBox = document.getElementById('bottomDeveloperBox');
+
     const anamorphicBeam = document.getElementById('anamorphicBeam');
     const anamorphicStar = document.getElementById('anamorphicStar');
     const timelineProgress = document.getElementById('timelineProgress');
     const initialOverlay = document.getElementById('initialOverlay');
-    const phoneScreen = document.getElementById('phoneScreen');
 
-    let isRunning = false;
     let sequenceTimers = [];
+    let isRunning = false;
 
     function clearAllTimers() {
       sequenceTimers.forEach(t => clearTimeout(t));
@@ -533,7 +505,7 @@
     setSlideData(grandPosterCollection[0]);
 
     // ========================================================
-    // MAIN CINEMATIC PIPELINE: 16 POSTERS TO RESTING INTERFACE
+    // MAIN CINEMATIC PIPELINE: 16 POSTERS TO MINIMALIST INTERFACE
     // ========================================================
     function startFullCinemaSequence() {
       if (isRunning) clearAllTimers();
@@ -551,21 +523,18 @@
       fullScreenMontageStage.style.filter = 'none';
 
       settledLandingStage.style.opacity = '0';
-      topAppBadge.style.opacity = '0';
-      topServerPill.style.opacity = '0';
-      networkCrest.style.opacity = '0';
+      topAppIcon.style.opacity = '0';
       networkTitle.style.opacity = '0';
       networkSubtitle.style.opacity = '0';
-      horizonLine.style.opacity = '0';
-      enterHallBtn.style.opacity = '0';
+      accentLine.style.opacity = '0';
+      serverStatusBar.style.opacity = '0';
       bottomDeveloperBox.style.opacity = '0';
 
-      crestShimmer.classList.remove('specular-pass');
       anamorphicBeam.classList.remove('anamorphic-beam');
       anamorphicStar.style.opacity = '0';
 
       setTimeout(() => {
-        timelineProgress.style.transitionDuration = `${3200 / playbackSpeed}ms`;
+        timelineProgress.style.transitionDuration = `${3000 / playbackSpeed}ms`;
         timelineProgress.style.width = '100%';
       }, 50);
 
@@ -576,6 +545,7 @@
       let accumulatedTime = 40;
 
       for (let i = 0; i < totalCuts; i++) {
+        // Accelerating curve: 130ms down to 45ms
         const stepDuration = Math.max(45, (130 - (i * 6))) / playbackSpeed;
         const poster = grandPosterCollection[i];
 
@@ -630,25 +600,26 @@
       // PHASE 3: SETTLE ON RESTING BRANDED UI (1.8s)
       // ----------------------------------------------------
       const phase3Timer = setTimeout(() => {
-        topAppBadge.style.opacity = '1';
-        topAppBadge.style.transform = 'translateY(0)';
-        topServerPill.style.opacity = '1';
+        // 1. Reveal Top Corner App Icon (Real logo alone, no text)
+        topAppIcon.style.opacity = '1';
+        topAppIcon.style.transform = 'translateY(0)';
 
-        networkCrest.style.opacity = '1';
-        networkCrest.style.transform = 'scale(1)';
-        crestShimmer.classList.add('specular-pass');
-
+        // 2. Reveal Center Hero Network Name ("استراحة الرصاص")
         networkTitle.style.opacity = '1';
         networkTitle.style.transform = 'translateY(0)';
         networkSubtitle.style.opacity = '1';
         networkSubtitle.style.transform = 'translateY(0)';
-        horizonLine.style.opacity = '1';
-        enterHallBtn.style.opacity = '1';
+        accentLine.style.opacity = '1';
 
+        // Anamorphic Laser Sweep across phone width
         anamorphicBeam.classList.add('anamorphic-beam');
         anamorphicStar.style.opacity = '1';
         setTimeout(() => anamorphicStar.style.opacity = '0', 400);
 
+        // 3. Reveal Minimalist Server Connection Bar
+        serverStatusBar.style.opacity = '1';
+
+        // 4. Reveal Bottom Developer Info (Simple, normal text without glass card)
         bottomDeveloperBox.style.opacity = '1';
         bottomDeveloperBox.style.transform = 'translateY(0)';
 
@@ -663,10 +634,6 @@
     document.getElementById('btnReplay').addEventListener('click', () => {
       initialOverlay.style.display = 'none';
       startFullCinemaSequence();
-    });
-
-    enterHallBtn.addEventListener('click', () => {
-      alert("الانتقال إلى صالة العرض الرئيسية لتطبيق مدد TV (استراحة الرصاص)");
     });
 
     phoneScreen.addEventListener('click', () => {
