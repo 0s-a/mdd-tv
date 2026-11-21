@@ -52,7 +52,7 @@ class SearchRepositoryImpl(
                 userId = userId,
                 searchTerm = trimmed.ifBlank { null },
                 genres = genresParam,
-                includeItemTypes = "Movie,Series,Episode,Person",
+                includeItemTypes = "Movie,Series,Person",
                 recursive = true,
                 limit = 30
             )
@@ -64,7 +64,8 @@ class SearchRepositoryImpl(
             val peopleItems = mutableListOf<CastMember>()
 
             rawItems.forEach { itemDto ->
-                if (itemDto.type.equals("Person", ignoreCase = true)) {
+                val itemType = itemDto.type.orEmpty()
+                if (itemType.equals("Person", ignoreCase = true)) {
                     val personId = itemDto.id.orEmpty()
                     val img = if (personId.isNotBlank()) {
                         JellyfinApiService.buildPrimaryImageUrl(personId, maxWidth = 300, maxHeight = 300)
@@ -79,7 +80,7 @@ class SearchRepositoryImpl(
                             imageUrl = img
                         )
                     )
-                } else {
+                } else if (!itemType.equals("Episode", ignoreCase = true) && !itemType.equals("Season", ignoreCase = true)) {
                     mediaItems.add(itemDto.toMediaItemSummary())
                 }
             }

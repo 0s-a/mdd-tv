@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -193,6 +194,7 @@ private fun DynamicSpotlightCard(
     onDetailsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isSeries = item.type.equals("Series", ignoreCase = true)
     val imageUrl = JellyfinApiService.buildPrimaryImageUrl(
         itemId = item.id,
         maxWidth = 400,
@@ -290,13 +292,13 @@ private fun DynamicSpotlightCard(
                     modifier = Modifier.defaultMinSize(minHeight = 36.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
+                        imageVector = if (isSeries) Icons.Rounded.Tv else Icons.Rounded.PlayArrow,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "تشغيل",
+                        text = if (isSeries) "استعراض" else "تشغيل",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )

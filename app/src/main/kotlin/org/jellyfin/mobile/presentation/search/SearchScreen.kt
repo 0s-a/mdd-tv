@@ -76,7 +76,9 @@ fun SearchScreen(
             when (effect) {
                 is SearchEffect.NavigateToDetails -> onNavigateToDetails(effect.mediaId)
                 is SearchEffect.LaunchPlayer -> onLaunchPlayer(effect.mediaId)
-                is SearchEffect.NavigateToPersonFilmography -> { /* Person profile */ }
+                is SearchEffect.NavigateToPersonFilmography -> {
+                    viewModel.processIntent(SearchIntent.UpdateQuery(effect.name))
+                }
                 is SearchEffect.ShowToast -> { /* Notification */ }
                 is SearchEffect.Dismiss -> onNavigateBack()
             }

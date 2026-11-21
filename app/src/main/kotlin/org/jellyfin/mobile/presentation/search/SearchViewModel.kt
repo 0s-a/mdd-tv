@@ -238,7 +238,33 @@ class SearchViewModel(
             }
             is SearchIntent.QuickPlay -> {
                 viewModelScope.launch {
-                    _effects.send(SearchEffect.LaunchPlayer(intent.mediaId))
+                    val currentUiState = _uiState.value
+                    val targetItem: MediaItemSummary? = when (currentUiState) {
+                        is SearchUiState.Success -> {
+                            if (currentUiState.topMatch?.id == intent.mediaId) {
+                                currentUiState.topMatch
+                            } else {
+                                currentUiState.mediaResults.firstOrNull { it.id == intent.mediaId }
+                                    ?: if (_spotlightItem.value?.id == intent.mediaId) _spotlightItem.value else null
+                            }
+                        }
+                        is SearchUiState.Idle -> {
+                            if (currentUiState.spotlightItem?.id == intent.mediaId) {
+                                currentUiState.spotlightItem
+                            } else {
+                                if (_spotlightItem.value?.id == intent.mediaId) _spotlightItem.value else null
+                            }
+                        }
+                        else -> {
+                            if (_spotlightItem.value?.id == intent.mediaId) _spotlightItem.value else null
+                        }
+                    }
+
+                    if (targetItem?.type.equals("Series", ignoreCase = true)) {
+                        _effects.send(SearchEffect.NavigateToDetails(intent.mediaId))
+                    } else {
+                        _effects.send(SearchEffect.LaunchPlayer(intent.mediaId))
+                    }
                 }
             }
             is SearchIntent.OpenDetails, is SearchIntent.OpenMediaDetails -> {

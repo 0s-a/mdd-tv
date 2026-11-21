@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -321,6 +322,7 @@ private fun TopMatchHeroCard(
     onDetailsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isSeries = item.type.equals("Series", ignoreCase = true)
     val talkBackDesc = "النتيجة الأبرز: ${item.title}، تقييم ${item.communityRating ?: ""}."
 
     Box(
@@ -444,12 +446,15 @@ private fun TopMatchHeroCard(
                             .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
+                            imageVector = if (isSeries) Icons.Rounded.Tv else Icons.Rounded.PlayArrow,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "تشغيل", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = if (isSeries) "استعراض المسلسل" else "تشغيل",
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
 
                     OutlinedButton(

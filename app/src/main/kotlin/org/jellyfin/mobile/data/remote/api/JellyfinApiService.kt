@@ -96,7 +96,7 @@ interface JellyfinApiService {
         @Path("userId") userId: String,
         @Query("searchTerm") searchTerm: String? = null,
         @Query("genres") genres: String? = null,
-        @Query("includeItemTypes") includeItemTypes: String = "Movie,Series,Episode,Person",
+        @Query("includeItemTypes") includeItemTypes: String = "Movie,Series,Person",
         @Query("recursive") recursive: Boolean = true,
         @Query("limit") limit: Int = 30,
         @Query("fields") fields: String = "PrimaryImageAspectRatio,UserData,Overview,Genres,People"

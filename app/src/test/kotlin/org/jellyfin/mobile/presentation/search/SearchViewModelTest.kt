@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -231,5 +232,260 @@ class SearchViewModelTest {
         val success = successState as SearchUiState.Success
         assertEquals("Batman", success.query)
         assertEquals("Batman", success.topMatch?.name)
+    }
+
+    @Test
+    fun quickPlay_whenTargetIsSeries_emitsNavigateToDetails() = runTest {
+        searchRepo.searchResult = SearchResultSummary(
+            query = "Breaking Bad",
+            topMatch = MediaItemSummary(id = "s-101", name = "Breaking Bad", type = "Series"),
+            mediaResults = persistentListOf(),
+            peopleResults = persistentListOf(),
+            totalCount = 1
+        )
+
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        viewModel.processIntent(SearchIntent.UpdateQuery("Breaking Bad"))
+        advanceTimeBy(350)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.QuickPlay("s-101"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertTrue(effects.first() is SearchEffect.NavigateToDetails)
+        assertEquals("s-101", (effects.first() as SearchEffect.NavigateToDetails).mediaId)
+
+        job.cancel()
+    }
+
+    @Test
+    fun quickPlay_whenTargetIsMovie_emitsLaunchPlayer() = runTest {
+        searchRepo.searchResult = SearchResultSummary(
+            query = "Inception",
+            topMatch = MediaItemSummary(id = "m-202", name = "Inception", type = "Movie"),
+            mediaResults = persistentListOf(),
+            peopleResults = persistentListOf(),
+            totalCount = 1
+        )
+
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        viewModel.processIntent(SearchIntent.UpdateQuery("Inception"))
+        advanceTimeBy(350)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.QuickPlay("m-202"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertTrue(effects.first() is SearchEffect.LaunchPlayer)
+        assertEquals("m-202", (effects.first() as SearchEffect.LaunchPlayer).mediaId)
+
+        job.cancel()
+    }
+
+    @Test
+    fun quickPlay_whenTargetIsSeriesInMediaResults_emitsNavigateToDetails() = runTest {
+        searchRepo.searchResult = SearchResultSummary(
+            query = "Dark",
+            topMatch = MediaItemSummary(id = "m-top", name = "Dark Knight", type = "Movie"),
+            mediaResults = persistentListOf(
+                MediaItemSummary(id = "s-dark", name = "Dark", type = "Series")
+            ),
+            peopleResults = persistentListOf(),
+            totalCount = 2
+        )
+
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        viewModel.processIntent(SearchIntent.UpdateQuery("Dark"))
+        advanceTimeBy(350)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.QuickPlay("s-dark"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertTrue(effects.first() is SearchEffect.NavigateToDetails)
+        assertEquals("s-dark", (effects.first() as SearchEffect.NavigateToDetails).mediaId)
+
+        job.cancel()
+    }
+
+    @Test
+    fun quickPlay_whenTargetIsMovieInMediaResults_emitsLaunchPlayer() = runTest {
+        searchRepo.searchResult = SearchResultSummary(
+            query = "Matrix",
+            topMatch = MediaItemSummary(id = "m-top", name = "Matrix Reloaded", type = "Movie"),
+            mediaResults = persistentListOf(
+                MediaItemSummary(id = "m-sub", name = "The Matrix", type = "Movie")
+            ),
+            peopleResults = persistentListOf(),
+            totalCount = 2
+        )
+
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        viewModel.processIntent(SearchIntent.UpdateQuery("Matrix"))
+        advanceTimeBy(350)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.QuickPlay("m-sub"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertTrue(effects.first() is SearchEffect.LaunchPlayer)
+        assertEquals("m-sub", (effects.first() as SearchEffect.LaunchPlayer).mediaId)
+
+        job.cancel()
+    }
+
+    @Test
+    fun quickPlay_whenInIdleStateAndSpotlightIsSeries_emitsNavigateToDetails() = runTest {
+        searchRepo.spotlightItem = MediaItemSummary(id = "s-spotlight", name = "Succession", type = "Series")
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.QuickPlay("s-spotlight"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertTrue(effects.first() is SearchEffect.NavigateToDetails)
+        assertEquals("s-spotlight", (effects.first() as SearchEffect.NavigateToDetails).mediaId)
+
+        job.cancel()
+    }
+
+    @Test
+    fun quickPlay_whenInIdleStateAndSpotlightIsMovie_emitsLaunchPlayer() = runTest {
+        searchRepo.spotlightItem = MediaItemSummary(id = "m-spotlight", name = "Oppenheimer", type = "Movie")
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.QuickPlay("m-spotlight"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertTrue(effects.first() is SearchEffect.LaunchPlayer)
+        assertEquals("m-spotlight", (effects.first() as SearchEffect.LaunchPlayer).mediaId)
+
+        job.cancel()
+    }
+
+    @Test
+    fun openPersonProfile_emitsNavigateToPersonFilmography_andUpdatesSearchQuery() = runTest {
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.OpenPersonProfile("p-42", "Cillian Murphy"))
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        val effect = effects.first()
+        assertTrue(effect is SearchEffect.NavigateToPersonFilmography)
+        val navEffect = effect as SearchEffect.NavigateToPersonFilmography
+        assertEquals("p-42", navEffect.personId)
+        assertEquals("Cillian Murphy", navEffect.name)
+
+        // When the screen handles this effect, it dispatches UpdateQuery(effect.name)
+        viewModel.processIntent(SearchIntent.UpdateQuery(navEffect.name))
+        advanceTimeBy(350)
+        advanceUntilIdle()
+
+        assertEquals("Cillian Murphy", viewModel.query.value)
+
+        job.cancel()
+    }
+
+    @Test
+    fun openDetails_and_dismissSearch_emitExpectedEffects() = runTest {
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<SearchEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.processIntent(SearchIntent.OpenDetails("m-300"))
+        advanceUntilIdle()
+
+        viewModel.processIntent(SearchIntent.DismissSearch)
+        advanceUntilIdle()
+
+        assertEquals(2, effects.size)
+        assertTrue(effects[0] is SearchEffect.NavigateToDetails)
+        assertEquals("m-300", (effects[0] as SearchEffect.NavigateToDetails).mediaId)
+        assertTrue(effects[1] is SearchEffect.Dismiss)
+
+        job.cancel()
+    }
+
+    @Test
+    fun recentQueries_addSelectDeleteAndClear_updatesHistoryCorrectly() = runTest {
+        searchRepo.recentQueries.value = listOf("Batman", "Interstellar", "Dune")
+        val viewModel = SearchViewModel(useCase, searchRepo, handshakeRepo)
+        advanceUntilIdle()
+
+        // Select a recent query
+        viewModel.processIntent(SearchIntent.SelectRecentQuery("Batman"))
+        assertEquals("Batman", viewModel.query.value)
+
+        // Delete a query
+        viewModel.processIntent(SearchIntent.DeleteRecentQuery("Interstellar"))
+        advanceUntilIdle()
+        assertFalse(searchRepo.recentQueries.value.contains("Interstellar"))
+
+        // Clear query resets query to blank and transitions to Idle
+        viewModel.processIntent(SearchIntent.ClearQuery)
+        assertEquals("", viewModel.query.value)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value is SearchUiState.Idle)
+
+        // Clear all history
+        viewModel.processIntent(SearchIntent.ClearHistory)
+        advanceUntilIdle()
+        assertTrue(searchRepo.recentQueries.value.isEmpty())
     }
 }
