@@ -17,10 +17,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
+import org.jellyfin.mobile.domain.repository.SplashPosterRepository
 
 class SplashViewModel(
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository,
+    private val splashPosterRepository: SplashPosterRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val minDisplayDurationMs: Long = 1800L
 ) : ViewModel() {
@@ -32,7 +34,17 @@ class SplashViewModel(
     val effects = _effects.receiveAsFlow()
 
     init {
+        loadCachedPosters()
         handleIntent(SplashIntent.Initialize)
+    }
+
+    private fun loadCachedPosters() {
+        viewModelScope.launch(ioDispatcher) {
+            val cached = splashPosterRepository.getCachedPosters()
+            if (cached.isNotEmpty()) {
+                _uiState.update { it.copy(posters = cached) }
+            }
+        }
     }
 
     fun handleIntent(intent: SplashIntent) {
@@ -96,6 +108,15 @@ class SplashViewModel(
                         serverStatus = ServerStatus.Connected(serverName, latencyMs.coerceAtLeast(1L)),
                         hasProfile = hasProfile
                     )
+                }
+
+                // Sync fresh posters in background from the local Jellyfin server
+                viewModelScope.launch(ioDispatcher) {
+                    splashPosterRepository.syncPostersFromServer().onSuccess { freshPosters ->
+                        if (freshPosters.isNotEmpty()) {
+                            _uiState.update { it.copy(posters = freshPosters) }
+                        }
+                    }
                 }
 
                 // If the montage has already settled, transition to home after comfortable display

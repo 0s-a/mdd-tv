@@ -90,7 +90,7 @@ fun SplashScreen(
         when (uiState.montagePhase) {
             MontagePhase.RUNNING -> {
                 PosterMontageLayer(
-                    posters = SplashPosterCatalog,
+                    posters = uiState.posters,
                     onMontageComplete = {
                         viewModel.handleIntent(SplashIntent.MontageFinished)
                     },
@@ -145,7 +145,7 @@ private fun SettledLandingScreen(
 
         // 2. Character Side-Art Layers (Left and Right)
         CharacterSideArt(
-            posters = SplashPosterCatalog,
+            posters = uiState.posters,
             modifier = Modifier.fillMaxSize()
         )
 

@@ -80,6 +80,19 @@ class SearchRepositoryImplTest {
             return ItemsResponseDto(items = spotlightResponseItems, totalRecordCount = spotlightResponseItems.size)
         }
 
+        override suspend fun getSplashItems(
+            userId: String,
+            sortBy: String,
+            sortOrder: String,
+            includeItemTypes: String,
+            imageTypes: String,
+            recursive: Boolean,
+            limit: Int,
+            fields: String
+        ): ItemsResponseDto {
+            return ItemsResponseDto(items = emptyList(), totalRecordCount = 0)
+        }
+
         override suspend fun getItemsByGenre(
             userId: String,
             genres: String,

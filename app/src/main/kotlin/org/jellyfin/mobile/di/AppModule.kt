@@ -18,12 +18,14 @@ import org.jellyfin.mobile.data.repository.LibraryRepositoryImpl
 import org.jellyfin.mobile.data.repository.LocalProfileRepositoryImpl
 import org.jellyfin.mobile.data.repository.MediaDetailsRepositoryImpl
 import org.jellyfin.mobile.data.repository.SearchRepositoryImpl
+import org.jellyfin.mobile.data.repository.SplashPosterRepositoryImpl
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.HomeRepository
 import org.jellyfin.mobile.domain.repository.LibraryRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
 import org.jellyfin.mobile.domain.repository.SearchRepository
+import org.jellyfin.mobile.domain.repository.SplashPosterRepository
 import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
 import org.jellyfin.mobile.domain.usecase.GetLibraryItemsUseCase
 import org.jellyfin.mobile.domain.usecase.GetMediaDetailsUseCase
@@ -146,6 +148,14 @@ val repositoryModule = module {
         )
     }
 
+    single<SplashPosterRepository> {
+        SplashPosterRepositoryImpl(
+            splashPosterDao = get(),
+            apiService = get(),
+            sessionManager = get()
+        )
+    }
+
     single<PreloadManager> {
         Media3PreloadManagerImpl(
             context = androidContext()
@@ -166,6 +176,7 @@ val databaseModule = module {
     single { get<AppDatabase>().localFavoriteDao() }
     single { get<AppDatabase>().watchedArchiveDao() }
     single { get<AppDatabase>().localWatchProgressDao() }
+    single { get<AppDatabase>().splashPosterDao() }
 }
 
 val useCaseModule = module {
@@ -288,7 +299,8 @@ val viewModelModule = module {
     viewModel {
         SplashViewModel(
             handshakeRepository = get(),
-            localProfileRepository = get()
+            localProfileRepository = get(),
+            splashPosterRepository = get()
         )
     }
 }

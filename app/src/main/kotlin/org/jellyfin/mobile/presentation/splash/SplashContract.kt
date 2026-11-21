@@ -1,6 +1,8 @@
 package org.jellyfin.mobile.presentation.splash
 
 import androidx.compose.runtime.Immutable
+import org.jellyfin.mobile.presentation.splash.model.SplashPoster
+import org.jellyfin.mobile.presentation.splash.model.SplashPosterCatalog
 
 /**
  * Server connection status on splash launch.
@@ -29,7 +31,8 @@ data class SplashUiState(
     val serverStatus: ServerStatus = ServerStatus.Checking,
     val isMinimumTimeElapsed: Boolean = false,
     val hasProfile: Boolean = false,
-    val montagePhase: MontagePhase = MontagePhase.RUNNING
+    val montagePhase: MontagePhase = MontagePhase.RUNNING,
+    val posters: List<SplashPoster> = SplashPosterCatalog
 )
 
 /**

@@ -24,6 +24,8 @@ import org.jellyfin.mobile.domain.model.ServerInfo
 import org.jellyfin.mobile.domain.model.UserSession
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
+import org.jellyfin.mobile.domain.repository.SplashPosterRepository
+import org.jellyfin.mobile.presentation.splash.model.SplashPoster
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -103,6 +105,21 @@ class SplashViewModelTest {
         override suspend fun markWatched(itemId: String) {}
     }
 
+    private class FakeSplashPosterRepository : SplashPosterRepository {
+        var postersList = listOf(
+            SplashPoster("Server Movie 1", "ACTION", "http://192.168.200.200:80/Items/1/Images/Primary"),
+            SplashPoster("Server Series 1", "DRAMA", "http://192.168.200.200:80/Items/2/Images/Primary")
+        )
+        var shouldSyncSucceed = true
+
+        override fun observePosters(): Flow<List<SplashPoster>> = flowOf(postersList)
+        override suspend fun getCachedPosters(): List<SplashPoster> = postersList
+        override suspend fun syncPostersFromServer(userId: String?): Result<List<SplashPoster>> {
+            return if (shouldSyncSucceed) Result.success(postersList)
+            else Result.failure(Exception("Sync failed"))
+        }
+    }
+
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
@@ -117,10 +134,12 @@ class SplashViewModelTest {
     fun `when handshake succeeds and profile exists, navigates to Home after min time`() = runTest(testDispatcher) {
         val fakeHandshake = FakeHandshakeRepository()
         val fakeProfile = FakeLocalProfileRepository().apply { hasProfileValue = true }
+        val fakePoster = FakeSplashPosterRepository()
 
         val viewModel = SplashViewModel(
             fakeHandshake,
             fakeProfile,
+            fakePoster,
             testDispatcher,
             500L
         )
@@ -142,10 +161,12 @@ class SplashViewModelTest {
     fun `when handshake succeeds and no profile exists, navigates to Onboarding`() = runTest(testDispatcher) {
         val fakeHandshake = FakeHandshakeRepository()
         val fakeProfile = FakeLocalProfileRepository().apply { hasProfileValue = false }
+        val fakePoster = FakeSplashPosterRepository()
 
         val viewModel = SplashViewModel(
             fakeHandshake,
             fakeProfile,
+            fakePoster,
             testDispatcher,
             500L
         )
@@ -167,10 +188,12 @@ class SplashViewModelTest {
     fun `when handshake fails, updates status to Offline and does not navigate automatically`() = runTest(testDispatcher) {
         val fakeHandshake = FakeHandshakeRepository().apply { shouldSucceed = false }
         val fakeProfile = FakeLocalProfileRepository()
+        val fakePoster = FakeSplashPosterRepository()
 
         val viewModel = SplashViewModel(
             fakeHandshake,
             fakeProfile,
+            fakePoster,
             testDispatcher,
             500L
         )
@@ -192,5 +215,25 @@ class SplashViewModelTest {
 
         assertEquals(listOf(SplashEffect.NavigateToHome), effects)
         job.cancel()
+    }
+
+    @Test
+    fun `when initialized, loads cached posters and updates uiState`() = runTest(testDispatcher) {
+        val fakeHandshake = FakeHandshakeRepository()
+        val fakeProfile = FakeLocalProfileRepository()
+        val fakePoster = FakeSplashPosterRepository()
+
+        val viewModel = SplashViewModel(
+            fakeHandshake,
+            fakeProfile,
+            fakePoster,
+            testDispatcher,
+            500L
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.posters.size)
+        assertEquals("Server Movie 1", viewModel.uiState.value.posters[0].title)
     }
 }
