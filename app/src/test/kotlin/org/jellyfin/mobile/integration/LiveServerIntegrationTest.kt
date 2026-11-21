@@ -14,10 +14,13 @@ import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.util.concurrent.TimeUnit
 
 /**
@@ -36,6 +39,16 @@ class LiveServerIntegrationTest {
 
     @Before
     fun setUp() {
+        val isReachable = try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress("192.168.200.200", 80), 1500)
+                true
+            }
+        } catch (e: Exception) {
+            false
+        }
+        assumeTrue("Skipping integration test: Live Jellyfin server at 192.168.200.200:80 is unreachable in this environment.", isReachable)
+
         sessionManager = SessionManager()
         val authInterceptor = AuthInterceptor(sessionManager)
 
