@@ -217,6 +217,9 @@ fun MainNavGraph(
                 },
                 onNavigateToSearch = {
                     navController.navigate(Screen.Search.route)
+                },
+                onLaunchPlayer = { mediaId, positionMs ->
+                    navController.navigate(Screen.Player.createRoute(mediaId, positionMs))
                 }
             )
         }

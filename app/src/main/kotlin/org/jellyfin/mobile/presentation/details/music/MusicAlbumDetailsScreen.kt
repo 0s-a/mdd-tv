@@ -1,5 +1,8 @@
 package org.jellyfin.mobile.presentation.details.music
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -117,6 +120,7 @@ fun MusicAlbumDetailsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinPrimitives.Obsidian950
+    val context = LocalContext.current
 
     LaunchedEffect(albumId) {
         viewModel.processIntent(MusicAlbumIntent.LoadAlbum(albumId))
@@ -135,13 +139,19 @@ fun MusicAlbumDetailsScreen(
                     onNavigateToArtist(effect.artistId, effect.artistName)
                 }
                 is MusicAlbumEffect.ShowToast -> {
-                    // Handled by global host or notification
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
                 is MusicAlbumEffect.ShowSnackbar -> {
-                    // Handled by global snackbar host
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
                 is MusicAlbumEffect.ShareAlbum -> {
-                    // Share intent triggered
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, "${effect.title} - ${effect.artist}")
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, "مشاركة الألبوم")
+                    context.startActivity(shareIntent)
                 }
             }
         }
@@ -560,7 +570,7 @@ private fun AlbumPrimaryActionsRow(
                 containerColor = JellyfinPrimitives.Graphite800,
                 contentColor = JellyfinColors.TextPrimary
             ),
-            border = ButtonDefaults.outlinedButtonBorder.copy(
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                 brush = Brush.horizontalGradient(
                     listOf(JellyfinColors.BorderHairline, JellyfinColors.BorderHairline)
                 )

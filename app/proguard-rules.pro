@@ -62,11 +62,15 @@
 -keep class org.koin.** { *; }
 -keep class io.insert.koin.** { *; }
 
-# 8. Media3 (ExoPlayer, Session, UI)
+# 8. Media3 (ExoPlayer, Session, UI, Cache & Extractors)
 -keep class androidx.media3.exoplayer.** { *; }
 -keep class androidx.media3.session.** { *; }
 -keep class androidx.media3.ui.** { *; }
 -keep class androidx.media3.common.** { *; }
+-keep class androidx.media3.datasource.** { *; }
+-keep class androidx.media3.database.** { *; }
+-keep class androidx.media3.extractor.** { *; }
+-keep class androidx.media3.decoder.** { *; }
 
 # 9. Coil Image Loader
 -keep class coil.** { *; }

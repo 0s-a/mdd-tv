@@ -1,5 +1,8 @@
 package org.jellyfin.mobile.presentation.details.boxset
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,6 +69,7 @@ fun BoxSetDetailsScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(boxSetId) {
         viewModel.processIntent(BoxSetIntent.LoadBoxSet(boxSetId))
@@ -76,9 +80,21 @@ fun BoxSetDetailsScreen(
             when (effect) {
                 is BoxSetEffect.LaunchPlayer -> onPlayMovie(effect.mediaId, effect.resumePositionMs)
                 is BoxSetEffect.NavigateToMovieDetails -> onOpenMovieDetails(effect.movieId)
-                is BoxSetEffect.ShowToast -> { /* Show feedback */ }
-                is BoxSetEffect.ShowSnackbar -> { /* Show feedback */ }
-                is BoxSetEffect.ShareText -> { /* Share */ }
+                is BoxSetEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+                is BoxSetEffect.ShowSnackbar -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+                is BoxSetEffect.ShareText -> {
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, effect.text)
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, "مشاركة المجموعة")
+                    context.startActivity(shareIntent)
+                }
             }
         }
     }

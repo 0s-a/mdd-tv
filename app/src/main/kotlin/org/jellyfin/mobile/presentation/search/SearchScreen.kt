@@ -1,5 +1,7 @@
 package org.jellyfin.mobile.presentation.search
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,6 +64,7 @@ fun SearchScreen(
     val uiState by viewModel.uiState.collectAsState()
     val availableGenres by viewModel.availableGenres.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
 
     // Smoked Obsidian Glass Scrim
     val overlayScrim = JellyfinColors.PureBlack.copy(alpha = 0.90f)
@@ -79,7 +82,9 @@ fun SearchScreen(
                 is SearchEffect.NavigateToPersonFilmography -> {
                     viewModel.processIntent(SearchIntent.UpdateQuery(effect.name))
                 }
-                is SearchEffect.ShowToast -> { /* Notification */ }
+                is SearchEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
                 is SearchEffect.Dismiss -> onNavigateBack()
             }
         }

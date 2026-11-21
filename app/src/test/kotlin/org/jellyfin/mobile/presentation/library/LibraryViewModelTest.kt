@@ -236,4 +236,29 @@ class LibraryViewModelTest {
         assertTrue(effects.contains(LibraryEffect.ScrollToIndex(0)))
         job.cancel()
     }
+
+    @Test
+    fun navigateIntoEmptyFolder_maintainsSuccessStateWithBreadcrumbs() = runTest(testDispatcher) {
+        val fakeHandshake = FakeHandshakeRepository()
+        val fakeRepo = FakeLibraryRepository()
+        val useCase = GetLibraryItemsUseCase(fakeRepo)
+
+        val viewModel = LibraryViewModel(
+            getLibraryItemsUseCase = useCase,
+            handshakeRepository = fakeHandshake
+        )
+        advanceUntilIdle()
+
+        fakeRepo.itemsToReturn = emptyList()
+        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("empty-folder", "Empty Subfolder"))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue("State must be Success even for empty folders to preserve navigation", state is LibraryUiState.Success)
+        val success = state as LibraryUiState.Success
+        assertTrue(success.items.isEmpty())
+        assertEquals(2, success.breadcrumbs.size)
+        assertEquals("Empty Subfolder", success.breadcrumbs.last().name)
+        org.junit.Assert.assertFalse(success.isAtRoot)
+    }
 }

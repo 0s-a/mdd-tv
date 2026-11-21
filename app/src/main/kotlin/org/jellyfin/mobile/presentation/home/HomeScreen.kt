@@ -1,5 +1,7 @@
 package org.jellyfin.mobile.presentation.home
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -120,6 +122,7 @@ fun HomeScreen(
 
     // Contextual bottom sheet for Continue Watching item options
     var selectedContinueItem by remember { mutableStateOf<ContinueWatchingItem?>(null) }
+    val context = LocalContext.current
 
     // Collect single-event side effects
     LaunchedEffect(Unit) {
@@ -128,7 +131,9 @@ fun HomeScreen(
                 is HomeEffect.NavigateToDetails -> onNavigateToDetails(effect.mediaId)
                 is HomeEffect.LaunchPlayer -> onLaunchPlayer(effect.mediaId, effect.resumePositionMs)
                 is HomeEffect.NavigateToLibraryBrowser -> onNavigateToLibrary(effect.libraryId, effect.title)
-                is HomeEffect.ShowToast -> { /* Handle notification or toast */ }
+                is HomeEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

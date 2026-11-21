@@ -1,5 +1,7 @@
 package org.jellyfin.mobile.presentation.library
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,6 +89,7 @@ fun LibraryScreen(
     onNavigateToDetails: (String) -> Unit,
     onNavigateBack: (() -> Unit)? = null,
     onNavigateToSearch: (() -> Unit)? = null,
+    onLaunchPlayer: ((String, Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -94,6 +97,14 @@ fun LibraryScreen(
     val coroutineScope = rememberCoroutineScope()
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
+    val context = LocalContext.current
+
+    val isAtRoot = (uiState as? LibraryUiState.Success)?.isAtRoot ?: true
+
+    // Intercept Android hardware & gesture back button for hierarchical navigation
+    BackHandler(enabled = !isAtRoot) {
+        viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
+    }
 
     OnTabReselected(NavigationTab.LIBRARY) {
         coroutineScope.launch {
@@ -105,22 +116,21 @@ fun LibraryScreen(
         viewModel.effects.collectLatest { effect ->
             when (effect) {
                 is LibraryEffect.NavigateToDetails -> onNavigateToDetails(effect.mediaId)
-                is LibraryEffect.LaunchPlayer -> { /* Player invocation */ }
+                is LibraryEffect.LaunchPlayer -> {
+                    onLaunchPlayer?.invoke(effect.mediaId, effect.resumePositionMs)
+                }
                 is LibraryEffect.ScrollToIndex -> {
                     gridState.animateScrollToItem(effect.index)
                 }
-                is LibraryEffect.ShowToast -> { /* Toast notification */ }
+                is LibraryEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
     if (uiState is LibraryUiState.Success) {
         val successState = uiState as LibraryUiState.Success
-
-        // Intercept Android hardware & gesture back button for hierarchical navigation
-        BackHandler(enabled = !successState.isAtRoot) {
-            viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
-        }
 
         val shouldLoadMore by remember {
             derivedStateOf {
@@ -295,19 +305,19 @@ fun LibraryScreen(
                         }
                     }
                 }
-
-                // 4. Floating Frosted Top Bar (Detached / بشكل غير متصل)
-                LibraryFloatingTopBar(
-                    title = state.currentFolderTitle,
-                    totalCount = state.totalItemCount,
-                    onBackClick = if (!state.isAtRoot) {
-                        { viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy) }
-                    } else onNavigateBack,
-                    onSearchClick = onNavigateToSearch,
-                    modifier = Modifier.align(Alignment.TopCenter)
-                )
             }
         }
+
+        // Floating Frosted Top Bar (Detached / بشكل غير متصل) - Always on top
+        LibraryFloatingTopBar(
+            title = (uiState as? LibraryUiState.Success)?.currentFolderTitle ?: "المكتبة",
+            totalCount = (uiState as? LibraryUiState.Success)?.totalItemCount ?: 0,
+            onBackClick = if (!isAtRoot) {
+                { viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy) }
+            } else onNavigateBack,
+            onSearchClick = onNavigateToSearch,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 

@@ -179,23 +179,19 @@ class LibraryViewModel(
                 limit = 60,
                 isHierarchical = true
             ).onSuccess { page ->
-                if (page.items.isEmpty()) {
-                    _uiState.value = LibraryUiState.Empty("هذا القسم فارغ حالياً على الخادم")
-                } else {
-                    _uiState.value = LibraryUiState.Success(
-                        items = page.items,
-                        totalCount = page.totalCount,
-                        currentLibraryId = currentLibraryId,
-                        currentLibraryName = currentLibraryName,
-                        availableLibraries = cachedLibraries,
-                        selectedLibraryId = currentLibraryId,
-                        selectedSort = currentFilter.sortBy,
-                        isRefreshing = false,
-                        isLoadingMore = false,
-                        hasMoreItems = page.items.size < page.totalCount,
-                        breadcrumbs = breadcrumbTrail
-                    )
-                }
+                _uiState.value = LibraryUiState.Success(
+                    items = page.items,
+                    totalCount = page.totalCount,
+                    currentLibraryId = currentLibraryId,
+                    currentLibraryName = currentLibraryName,
+                    availableLibraries = cachedLibraries,
+                    selectedLibraryId = currentLibraryId,
+                    selectedSort = currentFilter.sortBy,
+                    isRefreshing = false,
+                    isLoadingMore = false,
+                    hasMoreItems = page.items.size < page.totalCount,
+                    breadcrumbs = breadcrumbTrail
+                )
             }.onFailure { error ->
                 _uiState.value = LibraryUiState.Error(
                     message = error.localizedMessage ?: "حدث خطأ أثناء تحميل محتوى المكتبة"

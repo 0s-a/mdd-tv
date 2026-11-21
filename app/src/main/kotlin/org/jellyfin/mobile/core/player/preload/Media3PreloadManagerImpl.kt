@@ -60,6 +60,7 @@ class Media3PreloadManagerImpl(
 
     private val evictor = LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES)
     val simpleCache: SimpleCache by lazy {
+        @Suppress("DEPRECATION")
         SimpleCache(cacheDir, evictor)
     }
 

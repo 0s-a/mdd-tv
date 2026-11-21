@@ -102,9 +102,7 @@ fun PlayerSurface(
                     player.setVideoSurfaceView(this)
                 }
             },
-            update = { surfaceView ->
-                player.setVideoSurfaceView(surfaceView)
-            },
+            update = {},
             onRelease = { surfaceView ->
                 player.clearVideoSurfaceView(surfaceView)
             },

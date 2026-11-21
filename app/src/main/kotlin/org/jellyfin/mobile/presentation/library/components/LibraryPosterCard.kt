@@ -250,7 +250,7 @@ fun LibraryPosterCard(
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(
-                        text = String.format("%.1f", item.communityRating),
+                        text = String.format(java.util.Locale.ROOT, "%.1f", item.communityRating),
                         style = MaterialTheme.typography.labelSmall,
                         color = JellyfinColors.RatingGold,
                         fontWeight = FontWeight.Bold

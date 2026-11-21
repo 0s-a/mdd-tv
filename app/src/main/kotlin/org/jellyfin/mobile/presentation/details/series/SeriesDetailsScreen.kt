@@ -1,5 +1,7 @@
 package org.jellyfin.mobile.presentation.details.series
 
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -113,6 +115,7 @@ fun SeriesDetailsScreen(
     val scrollState = rememberScrollState()
     val isOled = LocalOledTrueBlack.current
     val backgroundColor = if (isOled) JellyfinColors.PureBlack else JellyfinColors.Background
+    val context = LocalContext.current
 
     var isOverviewExpanded by remember { mutableStateOf(false) }
 
@@ -133,10 +136,10 @@ fun SeriesDetailsScreen(
                     // Navigate to actor filmography when screen route is available
                 }
                 is SeriesEffect.ShowToast -> {
-                    // Notification handled by host or snackbar
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
                 is SeriesEffect.ShowSnackbar -> {
-                    // Notification handled by host or snackbar
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
             }
         }
