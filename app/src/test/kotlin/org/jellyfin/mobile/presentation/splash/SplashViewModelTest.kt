@@ -119,10 +119,10 @@ class SplashViewModelTest {
         val fakeProfile = FakeLocalProfileRepository().apply { hasProfileValue = true }
 
         val viewModel = SplashViewModel(
-            handshakeRepository = fakeHandshake,
-            localProfileRepository = fakeProfile,
-            ioDispatcher = testDispatcher,
-            minDisplayDurationMs = 500L
+            fakeHandshake,
+            fakeProfile,
+            testDispatcher,
+            500L
         )
 
         val effects = mutableListOf<SplashEffect>()
@@ -130,6 +130,7 @@ class SplashViewModelTest {
             viewModel.effects.collect { effects.add(it) }
         }
 
+        viewModel.handleIntent(SplashIntent.MontageFinished)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.serverStatus is ServerStatus.Connected)
@@ -143,10 +144,10 @@ class SplashViewModelTest {
         val fakeProfile = FakeLocalProfileRepository().apply { hasProfileValue = false }
 
         val viewModel = SplashViewModel(
-            handshakeRepository = fakeHandshake,
-            localProfileRepository = fakeProfile,
-            ioDispatcher = testDispatcher,
-            minDisplayDurationMs = 500L
+            fakeHandshake,
+            fakeProfile,
+            testDispatcher,
+            500L
         )
 
         val effects = mutableListOf<SplashEffect>()
@@ -154,6 +155,7 @@ class SplashViewModelTest {
             viewModel.effects.collect { effects.add(it) }
         }
 
+        viewModel.handleIntent(SplashIntent.MontageFinished)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.serverStatus is ServerStatus.Connected)
@@ -167,10 +169,10 @@ class SplashViewModelTest {
         val fakeProfile = FakeLocalProfileRepository()
 
         val viewModel = SplashViewModel(
-            handshakeRepository = fakeHandshake,
-            localProfileRepository = fakeProfile,
-            ioDispatcher = testDispatcher,
-            minDisplayDurationMs = 500L
+            fakeHandshake,
+            fakeProfile,
+            testDispatcher,
+            500L
         )
 
         val effects = mutableListOf<SplashEffect>()
@@ -178,6 +180,7 @@ class SplashViewModelTest {
             viewModel.effects.collect { effects.add(it) }
         }
 
+        viewModel.handleIntent(SplashIntent.MontageFinished)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.serverStatus is ServerStatus.Offline)

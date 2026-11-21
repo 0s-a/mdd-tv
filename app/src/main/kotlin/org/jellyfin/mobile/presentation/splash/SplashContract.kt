@@ -13,13 +13,23 @@ sealed interface ServerStatus {
 }
 
 /**
+ * Phase of the cinematic intro montage.
+ */
+enum class MontagePhase {
+    RUNNING,
+    IMPLODING,
+    SETTLED
+}
+
+/**
  * State for SplashScreen.
  */
 @Immutable
 data class SplashUiState(
     val serverStatus: ServerStatus = ServerStatus.Checking,
     val isMinimumTimeElapsed: Boolean = false,
-    val hasProfile: Boolean = false
+    val hasProfile: Boolean = false,
+    val montagePhase: MontagePhase = MontagePhase.RUNNING
 )
 
 /**
@@ -29,6 +39,7 @@ sealed interface SplashIntent {
     data object Initialize : SplashIntent
     data object Retry : SplashIntent
     data object ContinueOffline : SplashIntent
+    data object MontageFinished : SplashIntent
 }
 
 /**

@@ -22,7 +22,7 @@ class SplashViewModel(
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val minDisplayDurationMs: Long = 2200L
+    private val minDisplayDurationMs: Long = 1800L
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SplashUiState())
@@ -39,6 +39,7 @@ class SplashViewModel(
         when (intent) {
             SplashIntent.Initialize -> performStartupHandshake()
             SplashIntent.Retry -> performStartupHandshake()
+            SplashIntent.MontageFinished -> onMontageFinished()
             SplashIntent.ContinueOffline -> {
                 viewModelScope.launch {
                     if (_uiState.value.hasProfile) {
@@ -51,15 +52,28 @@ class SplashViewModel(
         }
     }
 
+    fun onMontageFinished() {
+        if (_uiState.value.montagePhase != MontagePhase.RUNNING) return
+        _uiState.update { it.copy(montagePhase = MontagePhase.IMPLODING) }
+        viewModelScope.launch {
+            delay(400L)
+            _uiState.update { it.copy(montagePhase = MontagePhase.SETTLED) }
+
+            // If server is connected and profile exists, give the user minimum display duration before navigating
+            if (_uiState.value.serverStatus is ServerStatus.Connected) {
+                delay(minDisplayDurationMs)
+                if (_uiState.value.hasProfile) {
+                    _effects.send(SplashEffect.NavigateToHome)
+                } else {
+                    _effects.send(SplashEffect.NavigateToOnboarding)
+                }
+            }
+        }
+    }
+
     private fun performStartupHandshake() {
         viewModelScope.launch {
             _uiState.update { it.copy(serverStatus = ServerStatus.Checking) }
-
-            // 1. Concurrently run minimum visual display delay and server handshake
-            val minTimeDeferred = async {
-                delay(minDisplayDurationMs)
-                true
-            }
 
             val handshakeDeferred = async(ioDispatcher) {
                 val start = System.currentTimeMillis()
@@ -76,7 +90,6 @@ class SplashViewModel(
             }
 
             if (handshakeResult != null && handshakeResult.isSuccess) {
-                val session = handshakeResult.getOrNull()
                 val serverName = handshakeRepository.serverInfo.value?.name ?: "Jellyfin"
                 _uiState.update {
                     it.copy(
@@ -85,17 +98,16 @@ class SplashViewModel(
                     )
                 }
 
-                // Wait for minimum display time so branding is appreciated smoothly
-                minTimeDeferred.await()
-
-                if (hasProfile) {
-                    _effects.send(SplashEffect.NavigateToHome)
-                } else {
-                    _effects.send(SplashEffect.NavigateToOnboarding)
+                // If the montage has already settled, transition to home after comfortable display
+                if (_uiState.value.montagePhase == MontagePhase.SETTLED) {
+                    delay(minDisplayDurationMs)
+                    if (hasProfile) {
+                        _effects.send(SplashEffect.NavigateToHome)
+                    } else {
+                        _effects.send(SplashEffect.NavigateToOnboarding)
+                    }
                 }
             } else {
-                // Server unreachable or timed out
-                minTimeDeferred.await()
                 val errorMsg = handshakeResult?.exceptionOrNull()?.localizedMessage
                     ?: "انتهت مهلة الاتصال بالخادم"
                 _uiState.update {

@@ -7,44 +7,92 @@
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
     @keyframes anamorphicLaser {
-      0% { transform: scaleX(0.05) translateX(-250%); opacity: 0; }
-      20% { opacity: 1; }
-      60% { opacity: 1; }
+      0%   { transform: scaleX(0.05) translateX(-250%); opacity: 0; }
+      20%  { opacity: 1; }
+      60%  { opacity: 1; }
       100% { transform: scaleX(3) translateX(250%); opacity: 0; }
     }
     @keyframes ambientBreath {
-      0%, 100% { transform: scale(1); opacity: 0.2; }
-      50% { transform: scale(1.2); opacity: 0.5; }
+      0%, 100% { transform: scale(1);    opacity: 0.18; }
+      50%       { transform: scale(1.2); opacity: 0.46; }
     }
     @keyframes serverPulse {
-      0%, 100% { opacity: 0.7; transform: scaleX(0.98); }
-      50% { opacity: 1; transform: scaleX(1); }
+      0%, 100% { opacity: 0.75; }
+      50%       { opacity: 1;    }
     }
-    .anamorphic-beam {
-      animation: anamorphicLaser 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    @keyframes kenBurnsChar {
+      0%   { transform: scale(1.0) translateY(0%);   }
+      100% { transform: scale(1.1) translateY(-4%);  }
     }
-    .glow-core {
-      animation: ambientBreath 3.5s infinite ease-in-out;
+    @keyframes chromaticBurst {
+      0%   { filter: blur(0px)  hue-rotate(0deg)   saturate(1); }
+      30%  { filter: blur(3px)  hue-rotate(50deg)  saturate(2.5); }
+      70%  { filter: blur(8px)  hue-rotate(-30deg) saturate(3); }
+      100% { filter: blur(14px) opacity(0); }
     }
+    @keyframes kenBurnsMain {
+      0%   { transform: scale(1.0); }
+      100% { transform: scale(1.07); }
+    }
+    @keyframes starTwinkle {
+      0%, 100% { opacity: 0.08; }
+      50%       { opacity: 0.55; }
+    }
+    @keyframes replayPulse {
+      0%, 100% { opacity: 0.4; transform: scale(1);    }
+      50%       { opacity: 0.9; transform: scale(1.04); }
+    }
+
+    .anamorphic-beam  { animation: anamorphicLaser 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .glow-core        { animation: ambientBreath 3.5s infinite ease-in-out; }
+    .server-glow      { animation: serverPulse 2.2s infinite ease-in-out; }
+    .chromatic-exit   { animation: chromaticBurst 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .ken-burns-char   { animation: kenBurnsChar 10s ease-in-out infinite alternate; }
+    .ken-burns-main   { animation: kenBurnsMain 0.4s linear forwards; }
+    .star-particle    {
+      position: absolute;
+      width: 2px; height: 2px;
+      border-radius: 50%;
+      background: white;
+      animation: starTwinkle var(--dur) infinite ease-in-out;
+      animation-delay: var(--delay);
+    }
+    .replay-hint      { animation: replayPulse 1.6s infinite ease-in-out; }
+
     .phone-chassis {
-      box-shadow: 0 35px 85px rgba(0, 0, 0, 0.95), 0 0 45px rgba(56, 189, 248, 0.15);
+      box-shadow: 0 35px 85px rgba(0,0,0,0.95), 0 0 45px rgba(56,189,248,0.15);
     }
     .full-screen-page {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
       transform-origin: left center;
       backface-visibility: hidden;
       will-change: transform, opacity;
       transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s linear;
     }
-    .text-glow {
-      text-shadow: 0 0 25px rgba(56, 189, 248, 0.45);
+    .text-glow { text-shadow: 0 0 25px rgba(56,189,248,0.45); }
+
+    .char-side {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 95px;
+      overflow: hidden;
     }
-    .server-glow {
-      animation: serverPulse 2.2s infinite ease-in-out;
+    .char-side img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: top center;
     }
+    .char-side-left  { left: 0; }
+    .char-side-right { right: 0; }
+    .char-fade-left  {
+      position: absolute; inset: 0;
+      background: linear-gradient(to right, transparent 0%, #000000 90%);
+    }
+    .char-fade-right {
+      position: absolute; inset: 0;
+      background: linear-gradient(to left, transparent 0%, #000000 90%);
+    }
+    .char-transition { transition: opacity 1.0s ease-in-out; }
   </style>
 </head>
 <body class="bg-[#06080D] text-[#E2E8F0] antialiased p-3 m-0 min-h-screen flex flex-col items-center justify-center select-none font-sans overflow-x-hidden">
@@ -55,440 +103,347 @@
       <div class="w-3 h-3 rounded-full bg-[#38BDF8] shadow-[0_0_10px_#38BDF8]"></div>
       <h1 class="text-sm font-bold text-white tracking-wide">استراحة الرصاص — شاشة البداية المعتمدة</h1>
     </div>
-
-    <!-- Action Tools -->
     <div class="flex items-center gap-1.5">
-      <button id="btnPlay" class="px-3.5 py-1.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-bold rounded-lg shadow-md transition-all active:scale-95">
-        تشغيل العرض
-      </button>
-      <button id="btnReplay" class="px-3 py-1.5 bg-[#1E293B] hover:bg-[#334155] text-[#CBD5E1] text-xs font-medium rounded-lg transition-all active:scale-95">
-        إعادة
-      </button>
-      <button id="btnSpeed" class="px-2.5 py-1.5 bg-[#1E293B] hover:bg-[#334155] text-[#38BDF8] text-xs font-medium rounded-lg transition-all">
-        1.0x
-      </button>
-      <button id="btnAudio" class="px-2.5 py-1.5 bg-[#1E293B] hover:bg-[#334155] text-[#10B981] text-xs font-medium rounded-lg transition-all">
-        الصوت: مفعّل
-      </button>
+      <button id="btnPlay"   class="px-3.5 py-1.5 bg-[#EDEAE5] hover:bg-white text-[#0B0C0E] text-xs font-bold rounded-lg shadow-md transition-all active:scale-95">تشغيل</button>
+      <button id="btnReplay" class="px-3    py-1.5 bg-[#1E293B] hover:bg-[#334155] text-[#CBD5E1] text-xs font-medium rounded-lg transition-all active:scale-95">إعادة</button>
+      <button id="btnSpeed"  class="px-2.5 py-1.5 bg-[#1E293B] hover:bg-[#334155] text-[#38BDF8] text-xs font-medium rounded-lg transition-all">1.0x</button>
     </div>
   </div>
 
   <!-- Ambient Glow Behind Phone Mockup -->
   <div class="relative flex items-center justify-center">
     <div class="absolute w-[450px] h-[720px] rounded-full bg-[#38BDF8] opacity-15 blur-[120px] pointer-events-none glow-core"></div>
-    <div class="absolute w-[400px] h-[670px] rounded-full bg-[#6366F1] opacity-20 blur-[100px] pointer-events-none glow-core" style="animation-delay: -1.5s;"></div>
+    <div class="absolute w-[400px] h-[670px] rounded-full bg-[#6366F1] opacity-14 blur-[100px] pointer-events-none glow-core" style="animation-delay:-1.5s;"></div>
 
-    <!-- ======================================================== -->
-    <!-- REALISTIC SMARTPHONE CHASSIS (19.5:9 SCREEN PROPORTION) -->
-    <!-- ======================================================== -->
+    <!-- Smartphone Chassis -->
     <div class="phone-chassis relative w-[340px] sm:w-[380px] h-[680px] sm:h-[760px] rounded-[52px] p-[10px] bg-gradient-to-b from-[#2E3442] via-[#141822] to-[#2E3442] border border-[#475569]/60 flex flex-col items-center">
-      
-      <!-- Side Physical Buttons on Metal Band -->
-      <div class="absolute -left-[3px] top-28 w-[3px] h-12 bg-[#475569] rounded-l"></div>
-      <div class="absolute -left-[3px] top-44 w-[3px] h-12 bg-[#475569] rounded-l"></div>
+
+      <!-- Side Buttons -->
+      <div class="absolute -left-[3px]  top-28 w-[3px] h-12 bg-[#475569] rounded-l"></div>
+      <div class="absolute -left-[3px]  top-44 w-[3px] h-12 bg-[#475569] rounded-l"></div>
       <div class="absolute -right-[3px] top-36 w-[3px] h-16 bg-[#475569] rounded-r"></div>
 
-      <!-- ======================================================== -->
-      <!-- INNER PHONE DISPLAY VIEWPORT                             -->
-      <!-- ======================================================== -->
-      <div id="phoneScreen" class="relative w-full h-full rounded-[42px] overflow-hidden bg-black flex flex-col justify-between cursor-pointer border border-[#1E293B]/70">
-        
-        <!-- Dynamic Island Cutout (Top Bezel) -->
+      <!-- Phone Screen -->
+      <div id="phoneScreen" class="relative w-full h-full rounded-[42px] overflow-hidden bg-black cursor-pointer border border-[#1E293B]/70">
+
+        <!-- Dynamic Island -->
         <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-50 flex items-center justify-between px-3 border border-white/10 shadow-md pointer-events-none">
           <div class="w-2.5 h-2.5 rounded-full bg-[#0F172A] border border-[#334155] flex items-center justify-center">
             <div class="w-1 h-1 rounded-full bg-[#38BDF8]/60"></div>
           </div>
-          <div class="w-1.5 h-1.5 rounded-full bg-[#10B981]/80 animate-pulse"></div>
+          <div class="w-1.5 h-1.5 rounded-full bg-[#2D8A66]/80 animate-pulse"></div>
         </div>
 
-        <!-- Phone Gesture Home Indicator Bar (Bottom) -->
+        <!-- Home Indicator -->
         <div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/40 rounded-full z-50 pointer-events-none"></div>
 
-        <!-- ======================================================== -->
-        <!-- PHASE 1: FULL SCREEN RAPID CINEMATIC MONTAGE (16 POSTERS)-->
-        <!-- ======================================================== -->
+        <!-- ============================================================ -->
+        <!-- PHASE 1: MONTAGE STAGE                                       -->
+        <!-- ============================================================ -->
         <div id="fullScreenMontageStage" class="absolute inset-0 w-full h-full overflow-hidden z-10 bg-black">
-          
-          <!-- Active Poster Layer Filling Entire Screen -->
           <div id="activeSlideContainer" class="absolute inset-0 w-full h-full">
-            <img id="activeSlideImg" src="https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg" class="w-full h-full object-cover transition-transform duration-150" alt="Scene">
-            
-            <!-- Cinema Vignettes on Display -->
+            <img id="activeSlideImg" src="https://image.tmdb.org/t/p/w780/or06FN3Dka5tukK1e9sl16pB3iy.jpg" class="w-full h-full object-cover" alt="Scene">
             <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/70 pointer-events-none"></div>
             <div class="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-black/50 pointer-events-none"></div>
-
-            <!-- Poster Dynamic Info Overlay -->
-            <div class="absolute bottom-16 right-5 left-5 z-20 pointer-events-none transition-all duration-100" id="slideInfoBox">
-              <span id="slideBadge" class="text-[10px] font-mono font-bold tracking-widest text-[#38BDF8] bg-black/70 px-2 py-0.5 rounded backdrop-blur-md border border-[#38BDF8]/40">
-                MARVEL CINEMATIC
-              </span>
-              <h2 id="slideTitle" class="text-2xl font-black text-white mt-1.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate">
-                Avengers: Endgame
-              </h2>
-              <p id="slideGenre" class="text-[11px] text-[#94A3B8] font-medium mt-0.5 drop-shadow truncate">
-                سينما هوليوود العالمية 4K
-              </p>
+            <div class="absolute bottom-16 right-5 left-5 z-20 pointer-events-none" id="slideInfoBox">
+              <span id="slideBadge" class="text-[10px] font-mono font-bold tracking-widest text-[#38BDF8] bg-black/70 px-2 py-0.5 rounded border border-[#38BDF8]/40">MARVEL CINEMATIC</span>
+              <h2 id="slideTitle" class="text-2xl font-black text-white mt-1.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] truncate">Avengers: Endgame</h2>
+              <p  id="slideGenre" class="text-[11px] text-[#94A3B8] font-medium mt-0.5 truncate">سينما هوليوود العالمية 4K</p>
             </div>
           </div>
-
-          <!-- 3D Peel Sheet -->
+          <!-- Peel Sheet -->
           <div id="peelSheet" class="full-screen-page pointer-events-none z-30 opacity-0">
-            <img id="peelImg" src="" class="w-full h-full object-cover" alt="Peel">
-            <div class="absolute inset-0 bg-black/40 pointer-events-none"></div>
+            <img id="peelImg" src="" class="w-full h-full object-cover" alt="">
+            <div class="absolute inset-0 bg-black/40"></div>
           </div>
-
           <!-- Shutter Flash -->
           <div id="shutterFlash" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-40 transition-opacity duration-100"></div>
-
         </div>
 
-        <!-- ======================================================== -->
-        <!-- PHASE 2: THE FINAL SETTLED LANDING INTERFACE             -->
-        <!-- ======================================================== -->
-        <div id="settledLandingStage" class="absolute inset-0 w-full h-full flex flex-col justify-between p-5 pt-12 pb-6 z-20 opacity-0 pointer-events-none transition-all duration-700 bg-[#05070B] overflow-hidden">
+        <!-- ============================================================ -->
+        <!-- PHASE 2: SETTLED LANDING STAGE (not a final stop — it loops) -->
+        <!-- ============================================================ -->
+        <div id="settledLandingStage" class="absolute inset-0 w-full h-full z-20 opacity-0 pointer-events-none transition-opacity duration-700 bg-black overflow-hidden">
+
+          <!-- ── Ambient Nebula (bottom layer) ── -->
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full bg-[#38BDF8] opacity-14 blur-[85px] pointer-events-none glow-core"></div>
           
-          <!-- Background Ambient Nebula Glows -->
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] rounded-full bg-[#38BDF8] opacity-20 blur-[90px] pointer-events-none glow-core"></div>
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full bg-[#6366F1] opacity-25 blur-[75px] pointer-events-none glow-core" style="animation-delay: -1.5s;"></div>
 
-          <!-- Anamorphic Blue Laser Flare across phone width -->
-          <div id="anamorphicBeam" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-1.5 bg-gradient-to-r from-transparent via-[#93C5FD] to-transparent opacity-0 pointer-events-none shadow-[0_0_25px_#38BDF8] z-30"></div>
-          <div id="anamorphicStar" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white opacity-0 blur-[2px] shadow-[0_0_20px_#93C5FD] z-30"></div>
+          <!-- ── Star Particles ── injected by JS ── -->
+          <div id="starContainer" class="absolute inset-0 pointer-events-none z-[2]"></div>
 
-          <!-- ────────────────────────────────────────── -->
-          <!-- 1. TOP CORNER: شعار التطبيق الحقيقي بمفرده   -->
-          <!-- ────────────────────────────────────────── -->
-          <div class="relative z-30 flex items-center justify-between w-full">
-            
-            <!-- Real Official App Icon in Top Right Corner (Without Text) -->
-            <div id="topAppIcon" class="w-10 h-10 rounded-2xl bg-[#080B10] border border-[#1E293B]/80 shadow-[0_4px_16px_rgba(0,0,0,0.6)] flex items-center justify-center p-1.5 opacity-0 transition-all duration-500 transform -translate-y-2">
-              <svg viewBox="0 0 1024 1024" fill="none" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                <g transform="translate(512, 512) scale(0.8) translate(-512, -512)">
-                  <!-- Kufic Logo Body + Antennas + Legs (Crisp White #FFFFFF) -->
-                  <path fill="#FFFFFF" fill-rule="evenodd" d="M 293.1 385.7 L 293.1 461.2 L 341.9 461.2 L 390.6 461.2 L 390.6 487.4 L 390.6 513.6 L 341.9 513.6 L 293.1 513.6 L 293.1 589.9 L 293.1 666.2 L 341.9 666.2 L 390.6 666.2 L 390.6 689.9 L 390.6 713.7 L 415.6 713.7 L 440.7 713.7 L 440.7 664.9 L 440.7 616.1 L 391.9 616.1 L 343.1 616.1 L 343.1 589.9 L 343.1 563.7 L 416.9 563.7 L 490.7 563.7 L 490.7 614.9 L 490.7 666.2 L 610.8 666.2 L 730.9 666.2 L 730.9 538.6 L 730.9 411.1 L 610.8 411.1 L 490.7 411.1 L 490.7 462.4 L 490.7 513.6 L 465.7 513.6 L 440.7 513.6 L 440.7 462.4 L 440.7 411.1 L 391.9 411.1 L 343.1 411.1 L 343.1 385.8 L 343.1 360.5 L 416.0 360.1 C 456.1 360.1 489.2 359.6 489.6 359.2 C 489.9 358.8 490.4 347.7 490.5 334.4 L 490.8 310.3 L 392.0 310.3 L 293.1 310.3 L 293.1 385.7 Z M 680.9 538.6 L 680.9 616.1 L 610.6 616.0 L 540.3 615.7 L 540.0 538.4 L 539.9 461.2 L 610.4 461.2 L 680.9 461.2 L 680.9 538.6 Z M 489.9 665.3 h 50.0 v 48.4 h -50.0 Z M 680.9 665.3 h 49.2 v 48.4 h -49.2 Z M 585.8 404.6 L 602.2 404.6 L 553.0 322.6 L 536.6 322.6 Z M 528.4 310.3 h 20.5 v 20.5 h -20.5 Z M 635.0 404.6 L 618.6 404.6 L 667.8 322.6 L 684.2 322.6 Z M 671.9 310.3 h 20.5 v 20.5 h -20.5 Z" />
-                  <!-- Jellyfin Core Triangle (TechSky #38BDF8) -->
-                  <g transform="translate(610.4, 538.2) scale(0.2296) translate(-256, -248)">
-                    <path fill="#38BDF8" d="M256 23.3c-61.6 0-259.8 359.4-229.6 420.1s429.3 60 459.2 0S317.6 23.3 256 23.3zm150.5 367.5c-19.6 39.3-281.1 39.8-300.9 0S215.7 115.5 256 115.5s170.1 235.9 150.5 275.3z" />
-                    <path fill="#38BDF8" d="M256 201.6c-20.4 0-86.2 119.3-76.2 139.4s142.5 19.9 152.4 0-55.7-139.4-76.2-139.4z" />
-                  </g>
-                </g>
-              </svg>
-            </div>
-
-            <!-- Top Left Blank Space (Maintains Balanced Clean View) -->
-            <div></div>
-
+          <!-- ── Character Side Art Layer ── -->
+          <div id="charLayerLeft" class="char-side char-side-left char-transition z-[3] opacity-0">
+            <img id="charImgLeft" src="" class="ken-burns-char" alt="">
+            <div class="char-fade-left"></div>
+          </div>
+          <div id="charLayerRight" class="char-side char-side-right char-transition z-[3] opacity-0">
+            <img id="charImgRight" src="" class="ken-burns-char" alt="">
+            <div class="char-fade-right"></div>
           </div>
 
-          <!-- ────────────────────────────────────────── -->
-          <!-- 2. MAIN CENTERPIECE: اسم الشبكة وشريط السيرفر-->
-          <!-- ────────────────────────────────────────── -->
-          <div class="relative z-30 flex flex-col items-center justify-center text-center my-auto px-4 w-full">
-            
-            <!-- Primary Network Title: استراحة الرصاص -->
-            <div class="relative overflow-hidden mb-1">
-              <h1 id="networkTitle" class="text-glow text-4xl sm:text-5xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-[#BAE6FD] to-white opacity-0 transition-all duration-700 transform translate-y-3">
-                استراحة الرصاص
-              </h1>
+          <!-- ── Anamorphic Beam ── -->
+          <div id="anamorphicBeam" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-1.5 bg-gradient-to-r from-transparent via-[#93C5FD] to-transparent opacity-0 pointer-events-none shadow-[0_0_25px_#38BDF8] z-[25]"></div>
+          <div id="anamorphicStar" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white opacity-0 blur-[2px] shadow-[0_0_20px_#93C5FD] z-[25]"></div>
+
+          <!-- ── Main Content (centered, above characters) ── -->
+          <div class="absolute inset-0 flex flex-col justify-between p-5 pt-12 pb-6 z-30">
+
+            <!-- TOP: Real App Icon -->
+            <div class="flex items-center justify-between w-full">
+              <div id="topAppIcon" class="w-16 h-16 opacity-0 transition-all duration-500 transform -translate-y-2 drop-shadow-[0_4px_20px_rgba(56,189,248,0.25)]">
+                <img src="data:image/png;base64,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" class="w-full h-full" alt="مدد TV">
+              </div>
+              <!-- Replay hint (shows during auto-replay countdown) -->
+              <div id="replayHint" class="opacity-0 transition-opacity duration-700 replay-hint">
+                <span class="text-[9px] font-mono text-[#475569] tracking-wide">عرض جديد قريباً</span>
+              </div>
             </div>
 
-            <p id="networkSubtitle" class="text-xs sm:text-sm font-medium text-[#94A3B8] tracking-widest mt-1.5 opacity-0 transition-all duration-700 transform translate-y-2">
-              سينما منزلية فائقة السرعة
-            </p>
+            <!-- CENTER: Network Name + Server Bar -->
+            <div class="flex flex-col items-center justify-center text-center w-full px-4">
 
-            <!-- Decorative Subtle Accent Line -->
-            <div id="accentLine" class="w-16 h-[1.5px] bg-[#38BDF8]/40 rounded-full my-4 opacity-0 transition-opacity duration-700"></div>
+              <!-- Title via Typewriter (JS writes chars here) -->
+              <h1 id="networkTitle" class="text-glow text-4xl sm:text-5xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-[#EDEAE5] to-white opacity-0 transition-opacity duration-300 transform translate-y-3 leading-snug" dir="rtl"></h1>
 
-            <!-- ────────────────────────────────────────── -->
-            <!-- Minimalist Server Connection Bar           -->
-            <!-- ────────────────────────────────────────── -->
-            <div id="serverStatusBar" class="w-full max-w-[220px] flex flex-col items-center gap-1.5 opacity-0 transition-all duration-700">
-              <div class="flex items-center justify-between w-full text-[11px] text-[#94A3B8]">
-                <div class="flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-[#10B981] shadow-[0_0_8px_#10B981] animate-pulse"></span>
-                  <span class="text-[#E2E8F0] font-medium text-[11px]">سيرفر الاستراحة</span>
+              <p id="networkSubtitle" class="text-xs sm:text-sm font-medium text-[#94A3B8] tracking-widest mt-2 opacity-0 transition-all duration-700 transform translate-y-2">سينما منزلية فائقة السرعة</p>
+
+              <div id="accentLine" class="w-16 h-[1.5px] bg-[#38BDF8]/40 rounded-full my-4 opacity-0 transition-opacity duration-700"></div>
+
+              <!-- Server Bar -->
+              <div id="serverStatusBar" class="w-full max-w-[220px] flex flex-col items-center gap-1.5 opacity-0 transition-all duration-700">
+                <div class="flex items-center justify-between w-full">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-[#2D8A66] shadow-[0_0_8px_#2D8A66] animate-pulse"></span>
+                    <span class="text-[#E2E8F0] font-medium text-[11px]">سيرفر الاستراحة</span>
+                  </div>
+                  <span id="latencyValue" class="font-mono text-[10px] text-[#38BDF8] transition-colors duration-500">12ms متصل</span>
                 </div>
-                <span class="font-mono text-[10px] text-[#38BDF8]">12ms متصل</span>
+                <div class="w-full h-1 bg-[#1B1E26] rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-[#38BDF8] via-[#60A5FA] to-[#2D8A66] w-full rounded-full server-glow"></div>
+                </div>
               </div>
-              <div class="w-full h-1 bg-[#1E293B] rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-[#38BDF8] via-[#60A5FA] to-[#10B981] w-full rounded-full server-glow"></div>
-              </div>
+
+            </div>
+
+            <!-- BOTTOM: Developer -->
+            <div id="bottomDeveloperBox" class="flex flex-col items-center justify-center text-center w-full pb-3 opacity-0 transition-all duration-700 transform translate-y-2">
+              <p class="text-xs text-[#94A3B8] font-medium tracking-wide">المطور: حسام الرصاص</p>
+              <span class="text-[10px] font-mono text-[#475569] mt-0.5">إصدار الاستراحة V2.0</span>
             </div>
 
           </div>
-
-          <!-- ────────────────────────────────────────── -->
-          <!-- 3. BOTTOM SECTION: اسم المطور بنص بسيط وعادي  -->
-          <!-- ────────────────────────────────────────── -->
-          <div id="bottomDeveloperBox" class="relative z-30 flex flex-col items-center justify-center text-center w-full pb-3 opacity-0 transition-all duration-700 transform translate-y-2">
-            <p class="text-xs text-[#94A3B8] font-medium tracking-wide">
-              المطور: حسام الرصاص
-            </p>
-            <span class="text-[10px] font-mono text-[#475569] mt-0.5">
-              إصدار الاستراحة V2.0
-            </span>
-          </div>
-
         </div>
 
-        <!-- Initial Screen Touch Overlay Inside Phone -->
-        <div id="initialOverlay" class="absolute inset-0 bg-black/85 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center">
-          <div class="w-16 h-16 rounded-full bg-[#6366F1] flex items-center justify-center shadow-[0_0_35px_#6366F1] mb-4 transform active:scale-95 transition-transform" id="overlayPlayBtn">
+        <!-- Touch Overlay -->
+        <div id="initialOverlay" class="absolute inset-0 bg-black/88 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center">
+          <div class="w-16 h-16 rounded-full bg-[#6366F1] flex items-center justify-center shadow-[0_0_35px_#6366F1] mb-4 active:scale-95 transition-transform" id="overlayPlayBtn">
             <svg class="w-8 h-8 text-white ml-0.5" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5 3 19 12 5 21 5 3"></polygon>
             </svg>
           </div>
-          <h3 class="text-lg font-black text-white mb-1">المس شاشة الهاتف لبدء العرض</h3>
-          <p class="text-[11px] text-[#94A3B8] leading-relaxed">مونتاج سينمائي لـ 16 بوستراً عالمياً ثم الاستقرار في واجهة (استراحة الرصاص) المبسطة.</p>
+          <h3 class="text-lg font-black text-white mb-1">المس الشاشة لبدء العرض</h3>
+          <p class="text-[11px] text-[#94A3B8] leading-relaxed">مونتاج سينمائي لـ 16 بوستراً ثم استقرار مع تقليب الشخصيات، ثم يعود من جديد.</p>
         </div>
 
       </div>
-
     </div>
   </div>
 
-  <!-- Bottom Timeline Progress Bar Under Phone -->
+  <!-- Timeline Under Phone -->
   <div class="w-full max-w-xl mt-3 bg-[#0D111A] border border-[#1E293B] rounded-2xl p-3 shadow-lg z-50">
     <div class="flex items-center justify-between text-xs text-[#94A3B8] mb-1.5 font-mono px-1">
-      <span>0.0s مونتاج متسارع (16 بوستر)</span>
-      <span>1.4s الانكماش والارتطام</span>
-      <span>1.8s استقرار "استراحة الرصاص"</span>
-      <span>2.2s شريط الاتصال بالسيرفر</span>
+      <span>0.0s المونتاج</span>
+      <span>1.4s الارتطام</span>
+      <span>1.8s الاستقرار</span>
+      <span>12s يعود</span>
     </div>
     <div class="w-full bg-[#1E293B] h-2 rounded-full overflow-hidden">
-      <div id="timelineProgress" class="h-full bg-gradient-to-r from-[#38BDF8] via-[#6366F1] to-[#10B981] w-0 transition-all duration-100"></div>
+      <div id="timelineProgress" class="h-full bg-gradient-to-r from-[#38BDF8] via-[#6366F1] to-[#2D8A66] w-0 transition-all duration-100"></div>
     </div>
   </div>
 
-  <!-- ======================================================== -->
-  <!-- JAVASCRIPT: 16 POSTERS ACCELERATING ENGINE & STABLE UI   -->
-  <!-- ======================================================== -->
   <script>
-    let audioCtx = null;
-    let isAudioEnabled = true;
-    let playbackSpeed = 1.0;
+    // ============================================================
+    // POSTER COLLECTIONS
+    // ============================================================
 
-    function initAudio() {
-      if (!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
-
-    function playProjectorShutterSound(pitch = 1.0) {
-      if (!isAudioEnabled || !audioCtx) return;
-      
-      const bufferSize = audioCtx.sampleRate * 0.04;
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
-      }
-
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = buffer;
-
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime((1400 + Math.random() * 500) * pitch, audioCtx.currentTime);
-      filter.Q.setValueAtTime(4.0, audioCtx.currentTime);
-
-      const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
-
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      noise.start();
-    }
-
-    function playMarvelCinematicHit() {
-      if (!isAudioEnabled || !audioCtx) return;
-
-      const now = audioCtx.currentTime;
-
-      // 1. Deep Sub-Bass Impact (Drop from 160Hz to 38Hz)
-      const subOsc = audioCtx.createOscillator();
-      const subGain = audioCtx.createGain();
-      subOsc.type = 'sine';
-      subOsc.frequency.setValueAtTime(160, now);
-      subOsc.frequency.exponentialRampToValueAtTime(38, now + 1.3);
-
-      subGain.gain.setValueAtTime(0.55, now);
-      subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
-
-      subOsc.connect(subGain);
-      subGain.connect(audioCtx.destination);
-      subOsc.start(now);
-      subOsc.stop(now + 1.3);
-
-      // 2. Brass Horn Chord Hit
-      const brassOsc = audioCtx.createOscillator();
-      const brassFilter = audioCtx.createBiquadFilter();
-      const brassGain = audioCtx.createGain();
-
-      brassOsc.type = 'sawtooth';
-      brassOsc.frequency.setValueAtTime(110, now);
-      
-      brassFilter.type = 'lowpass';
-      brassFilter.frequency.setValueAtTime(850, now);
-      brassFilter.frequency.exponentialRampToValueAtTime(180, now + 1.0);
-
-      brassGain.gain.setValueAtTime(0.3, now);
-      brassGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
-
-      brassOsc.connect(brassFilter);
-      brassFilter.connect(brassGain);
-      brassGain.connect(audioCtx.destination);
-      brassOsc.start(now);
-      brassOsc.stop(now + 1.0);
-
-      // 3. Shimmer Crystal Chime
-      const chimeOsc = audioCtx.createOscillator();
-      const chimeGain = audioCtx.createGain();
-      chimeOsc.type = 'triangle';
-      chimeOsc.frequency.setValueAtTime(1046.5, now + 0.2);
-      chimeGain.gain.setValueAtTime(0.001, now);
-      chimeGain.gain.setValueAtTime(0.14, now + 0.2);
-      chimeGain.exponentialRampToValueAtTime(0.001, now + 0.9);
-
-      chimeOsc.connect(chimeGain);
-      chimeGain.connect(audioCtx.destination);
-      chimeOsc.start(now + 0.2);
-      chimeOsc.stop(now + 0.9);
-    }
-
-    // 16 Verified Genuine High-Resolution Posters
+    // 16 verified w780 posters for the main montage
     const grandPosterCollection = [
-      {
-        title: "Attack on Titan (هجوم العمالقة)",
-        genre: "أنمي ياباني أسطوري 4K",
-        badge: "EPIC ANIME",
-        url: "https://image.tmdb.org/t/p/w500/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg"
-      },
-      {
-        title: "Spider-Man: Into the Spider-Verse",
-        genre: "أنيميشن الكوميكس والسرعة",
-        badge: "MARVEL ANIMATION",
-        url: "https://image.tmdb.org/t/p/w500/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg"
-      },
-      {
-        title: "Interstellar (إنترستيلار)",
-        genre: "خيال علمي وفضاء عميق 60fps",
-        badge: "SCI-FI CINEMA",
-        url: "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
-      },
-      {
-        title: "Demon Slayer (قاتل الشياطين)",
-        genre: "تحفة السيوف البصرية الخارقة",
-        badge: "ANIME MASTERPIECE",
-        url: "https://image.tmdb.org/t/p/w500/xUfRZu2mi8jH6SzQEJGP6tjBuYj.jpg"
-      },
-      {
-        title: "Avengers: Endgame",
-        genre: "ملحمة مارفل السينمائية",
-        badge: "MARVEL STUDIOS",
-        url: "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg"
-      },
-      {
-        title: "The Dark Knight (فارس الظلام)",
-        genre: "سينما باتمان وهوليوود",
-        badge: "DC CINEMATIC",
-        url: "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
-      },
-      {
-        title: "Breaking Bad (بريكينج باد)",
-        genre: "المسلسل الأسطوري الأعلى تقييماً",
-        badge: "MASTERPIECE SERIES",
-        url: "https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGt.jpg"
-      },
-      {
-        title: "Game of Thrones (صراع العروش)",
-        genre: "الفانتازيا الملحمية والتنانين",
-        badge: "HBO ORIGINAL",
-        url: "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg"
-      },
-      {
-        title: "Spirited Away (المخطوفة)",
-        genre: "روائع استوديو غيبلي الياباني",
-        badge: "GHIBLI CLASSIC",
-        url: "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg"
-      },
-      {
-        title: "Dune (كثبان)",
-        genre: "الخيال العلمي الملحمي",
-        badge: "WARNER BROS",
-        url: "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg"
-      },
-      {
-        title: "Fight Club (نادي القتال)",
-        genre: "السينما الأيقونية الخالدة",
-        badge: "CULT CLASSIC",
-        url: "https://image.tmdb.org/t/p/w500/bptfVGEQuv6vDTIMVCHjJ9Dz8PX.jpg"
-      },
-      {
-        title: "Pulp Fiction (خيال رخيص)",
-        genre: "تحفة كوينتن تارانتينو",
-        badge: "CINEMA LEGEND",
-        url: "https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg"
-      },
-      {
-        title: "Gladiator (المحارب)",
-        genre: "الدراما والحروب الرومانية 4K",
-        badge: "OSCAR WINNER",
-        url: "https://image.tmdb.org/t/p/w500/ty8TGRuvJLPUmAR1H1nRIsgwvim.jpg"
-      },
-      {
-        title: "Your Name (اسمك)",
-        genre: "أنمي رومانسي وخيال علمي",
-        badge: "MAKOTO SHINKAI",
-        url: "https://image.tmdb.org/t/p/w500/q719jXXEzOoYaps6babgKnONONX.jpg"
-      },
-      {
-        title: "Avatar (أفاتار)",
-        genre: "عالم باندورا الخيالي ثلاثي الأبعاد",
-        badge: "JAMES CAMERON",
-        url: "https://image.tmdb.org/t/p/w500/kyeqWdyUXW608qlYkRqosgbbJyK.jpg"
-      },
-      {
-        title: "Inception (بداية)",
-        genre: "عوالم الأحلام المتداخلة والغموض",
-        badge: "CHRISTOPHER NOLAN",
-        url: "https://image.tmdb.org/t/p/w500/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg"
-      }
+      { title:"Attack on Titan (هجوم العمالقة)",   genre:"أنمي ياباني أسطوري",         badge:"EPIC ANIME",        url:"https://image.tmdb.org/t/p/w780/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg" },
+      { title:"Spider-Man: Into the Spider-Verse",  genre:"أنيميشن الكوميكس والسرعة",   badge:"MARVEL ANIMATION",  url:"https://image.tmdb.org/t/p/w780/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg" },
+      { title:"Interstellar (إنترستيلار)",          genre:"خيال علمي وفضاء عميق",       badge:"SCI-FI CINEMA",     url:"https://image.tmdb.org/t/p/w780/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg" },
+      { title:"Demon Slayer (قاتل الشياطين)",       genre:"تحفة السيوف البصرية",        badge:"ANIME MASTERPIECE", url:"https://image.tmdb.org/t/p/w780/xUfRZu2mi8jH6SzQEJGP6tjBuYj.jpg" },
+      { title:"Avengers: Endgame",                  genre:"ملحمة مارفل السينمائية",     badge:"MARVEL STUDIOS",   url:"https://image.tmdb.org/t/p/w780/or06FN3Dka5tukK1e9sl16pB3iy.jpg" },
+      { title:"The Dark Knight (فارس الظلام)",      genre:"سينما باتمان وهوليوود",      badge:"DC CINEMATIC",      url:"https://image.tmdb.org/t/p/w780/qJ2tW6WMUDux911r6m7haRef0WH.jpg" },
+      { title:"Breaking Bad (بريكينج باد)",          genre:"المسلسل الأعلى تقييماً",    badge:"MASTERPIECE",       url:"https://image.tmdb.org/t/p/w780/ggFHVNu6YYI5L9pCfOacjizRGt.jpg" },
+      { title:"Game of Thrones (صراع العروش)",       genre:"الفانتازيا والتنانين",       badge:"HBO ORIGINAL",      url:"https://image.tmdb.org/t/p/w780/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg" },
+      { title:"Spirited Away (المخطوفة)",            genre:"روائع استوديو غيبلي",       badge:"GHIBLI CLASSIC",   url:"https://image.tmdb.org/t/p/w780/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg" },
+      { title:"Dune (كثبان)",                        genre:"الخيال العلمي الملحمي",      badge:"WARNER BROS",       url:"https://image.tmdb.org/t/p/w780/d5NXSklXo0qyIYkgV94XAgMIckC.jpg" },
+      { title:"Fight Club (نادي القتال)",             genre:"السينما الأيقونية الخالدة", badge:"CULT CLASSIC",      url:"https://image.tmdb.org/t/p/w780/bptfVGEQuv6vDTIMVCHjJ9Dz8PX.jpg" },
+      { title:"Pulp Fiction (خيال رخيص)",            genre:"تحفة كوينتن تارانتينو",     badge:"CINEMA LEGEND",     url:"https://image.tmdb.org/t/p/w780/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg" },
+      { title:"Gladiator (المحارب)",                 genre:"الدراما الرومانية",          badge:"OSCAR WINNER",      url:"https://image.tmdb.org/t/p/w780/ty8TGRuvJLPUmAR1H1nRIsgwvim.jpg" },
+      { title:"Your Name (اسمك)",                    genre:"أنمي رومانسي وخيال علمي",  badge:"MAKOTO SHINKAI",    url:"https://image.tmdb.org/t/p/w780/q719jXXEzOoYaps6babgKnONONX.jpg" },
+      { title:"Avatar (أفاتار)",                     genre:"عالم باندورا الخيالي",      badge:"JAMES CAMERON",     url:"https://image.tmdb.org/t/p/w780/kyeqWdyUXW608qlYkRqosgbbJyK.jpg" },
+      { title:"Inception (بداية)",                   genre:"عوالم الأحلام المتداخلة",   badge:"NOLAN",             url:"https://image.tmdb.org/t/p/w780/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg" },
     ];
 
-    // DOM Elements
-    const phoneScreen = document.getElementById('phoneScreen');
+    // Extended pool for character side-art (20 posters — 4 extra verified)
+    const characterPool = [
+      ...grandPosterCollection.map(p => p.url),
+      "https://image.tmdb.org/t/p/w780/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg", // Oppenheimer
+      "https://image.tmdb.org/t/p/w780/bQXAqRx2Fgc46uCVWgoPz5L5Dtr.jpg", // Shawshank Redemption
+      "https://image.tmdb.org/t/p/w780/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg", // Schindler's List
+      "https://image.tmdb.org/t/p/w780/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg", // Parasite
+    ];
+
+    // Preload all posters immediately
+    function preloadAll() {
+      [...grandPosterCollection.map(p => p.url), ...characterPool].forEach(url => {
+        const img = new Image();
+        img.src = url;
+      });
+    }
+    preloadAll();
+
+    // ============================================================
+    // DOM REFS
+    // ============================================================
+    const phoneScreen            = document.getElementById('phoneScreen');
     const fullScreenMontageStage = document.getElementById('fullScreenMontageStage');
-    const activeSlideImg = document.getElementById('activeSlideImg');
-    const peelSheet = document.getElementById('peelSheet');
-    const peelImg = document.getElementById('peelImg');
-    const shutterFlash = document.getElementById('shutterFlash');
-    const slideBadge = document.getElementById('slideBadge');
-    const slideTitle = document.getElementById('slideTitle');
-    const slideGenre = document.getElementById('slideGenre');
+    const activeSlideImg         = document.getElementById('activeSlideImg');
+    const peelSheet              = document.getElementById('peelSheet');
+    const peelImg                = document.getElementById('peelImg');
+    const shutterFlash           = document.getElementById('shutterFlash');
+    const slideBadge             = document.getElementById('slideBadge');
+    const slideTitle             = document.getElementById('slideTitle');
+    const slideGenre             = document.getElementById('slideGenre');
 
-    const settledLandingStage = document.getElementById('settledLandingStage');
-    const topAppIcon = document.getElementById('topAppIcon');
-    const networkTitle = document.getElementById('networkTitle');
-    const networkSubtitle = document.getElementById('networkSubtitle');
-    const accentLine = document.getElementById('accentLine');
-    const serverStatusBar = document.getElementById('serverStatusBar');
-    const bottomDeveloperBox = document.getElementById('bottomDeveloperBox');
+    const settledLandingStage    = document.getElementById('settledLandingStage');
+    const topAppIcon             = document.getElementById('topAppIcon');
+    const networkTitle           = document.getElementById('networkTitle');
+    const networkSubtitle        = document.getElementById('networkSubtitle');
+    const accentLine             = document.getElementById('accentLine');
+    const serverStatusBar        = document.getElementById('serverStatusBar');
+    const latencyValue           = document.getElementById('latencyValue');
+    const bottomDeveloperBox     = document.getElementById('bottomDeveloperBox');
+    const replayHint             = document.getElementById('replayHint');
 
-    const anamorphicBeam = document.getElementById('anamorphicBeam');
-    const anamorphicStar = document.getElementById('anamorphicStar');
-    const timelineProgress = document.getElementById('timelineProgress');
-    const initialOverlay = document.getElementById('initialOverlay');
+    const charLayerLeft          = document.getElementById('charLayerLeft');
+    const charImgLeft            = document.getElementById('charImgLeft');
+    const charLayerRight         = document.getElementById('charLayerRight');
+    const charImgRight           = document.getElementById('charImgRight');
 
+    const anamorphicBeam         = document.getElementById('anamorphicBeam');
+    const anamorphicStar         = document.getElementById('anamorphicStar');
+    const timelineProgress       = document.getElementById('timelineProgress');
+    const initialOverlay         = document.getElementById('initialOverlay');
+    const starContainer          = document.getElementById('starContainer');
+
+    // ============================================================
+    // STAR PARTICLES — generated once
+    // ============================================================
+    (function generateStars() {
+      for (let i = 0; i < 45; i++) {
+        const s = document.createElement('div');
+        s.className = 'star-particle';
+        s.style.left = `${Math.random() * 100}%`;
+        s.style.top  = `${Math.random() * 100}%`;
+        s.style.setProperty('--dur',   `${2 + Math.random() * 4}s`);
+        s.style.setProperty('--delay', `${Math.random() * 4}s`);
+        starContainer.appendChild(s);
+      }
+    })();
+
+    // ============================================================
+    // CHARACTER SIDE-ART CYCLE
+    // ============================================================
+    let charIndex     = 0;
+    let charInterval  = null;
+
+    function cycleCharacters() {
+      const leftUrl  = characterPool[ charIndex       % characterPool.length];
+      const rightUrl = characterPool[(charIndex + 5)  % characterPool.length];
+
+      // Fade out
+      charLayerLeft.style.opacity  = '0';
+      charLayerRight.style.opacity = '0';
+
+      setTimeout(() => {
+        charImgLeft.src  = leftUrl;
+        charImgRight.src = rightUrl;
+
+        // Restart Ken Burns by toggling class
+        charImgLeft.classList.remove('ken-burns-char');
+        charImgRight.classList.remove('ken-burns-char');
+        void charImgLeft.offsetWidth;
+        void charImgRight.offsetWidth;
+        charImgLeft.classList.add('ken-burns-char');
+        charImgRight.classList.add('ken-burns-char');
+
+        charLayerLeft.style.opacity  = '0.55';
+        charLayerRight.style.opacity = '0.55';
+        charIndex++;
+      }, 900);
+    }
+
+    function startCharacterCycle() {
+      cycleCharacters();
+      charInterval = setInterval(cycleCharacters, 4500);
+    }
+
+    function stopCharacterCycle() {
+      if (charInterval) { clearInterval(charInterval); charInterval = null; }
+      charLayerLeft.style.opacity  = '0';
+      charLayerRight.style.opacity = '0';
+    }
+
+    // ============================================================
+    // LATENCY DYNAMIC ANIMATION
+    // ============================================================
+    let latencyTimer = null;
+
+    function startLatencyAnimation() {
+      function update() {
+        const ms = Math.floor(Math.random() * 16) + 8;
+        latencyValue.textContent = `${ms}ms متصل`;
+        if      (ms < 12) latencyValue.style.color = '#2D8A66';
+        else if (ms < 20) latencyValue.style.color = '#38BDF8';
+        else              latencyValue.style.color = '#D4A373';
+        latencyTimer = setTimeout(update, 2500 + Math.random() * 2000);
+      }
+      update();
+    }
+
+    function stopLatencyAnimation() {
+      if (latencyTimer) { clearTimeout(latencyTimer); latencyTimer = null; }
+    }
+
+    // ============================================================
+    // TYPEWRITER for Arabic RTL text
+    // ============================================================
+    function typewriteRTL(el, text, msPerChar, onDone) {
+      el.textContent = '';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+      let i = 0;
+      const id = setInterval(() => {
+        el.textContent += text[i];
+        i++;
+        if (i >= text.length) {
+          clearInterval(id);
+          if (onDone) onDone();
+        }
+      }, msPerChar);
+    }
+
+    // ============================================================
+    // STATE
+    // ============================================================
     let sequenceTimers = [];
-    let isRunning = false;
+    let isRunning      = false;
+    let autoReplayTimer = null;
+    let playbackSpeed  = 1.0;
 
     function clearAllTimers() {
       sequenceTimers.forEach(t => clearTimeout(t));
@@ -496,138 +451,165 @@
     }
 
     function setSlideData(poster) {
-      activeSlideImg.src = poster.url;
+      activeSlideImg.src     = poster.url;
       slideBadge.textContent = poster.badge;
-      slideTitle.textContent = poster.title;
-      slideGenre.textContent = poster.genre;
+      slideTitle.textContent  = poster.title;
+      slideGenre.textContent  = poster.genre;
     }
-
     setSlideData(grandPosterCollection[0]);
 
-    // ========================================================
-    // MAIN CINEMATIC PIPELINE: 16 POSTERS TO MINIMALIST INTERFACE
-    // ========================================================
+    // ============================================================
+    // MAIN SEQUENCE
+    // ============================================================
     function startFullCinemaSequence() {
       if (isRunning) clearAllTimers();
       isRunning = true;
-      initAudio();
 
+      // Cancel any pending auto-replay
+      if (autoReplayTimer) { clearTimeout(autoReplayTimer); autoReplayTimer = null; }
+      stopCharacterCycle();
+      stopLatencyAnimation();
+
+      // Dismiss overlay
       initialOverlay.style.opacity = '0';
-      setTimeout(() => initialOverlay.style.display = 'none', 500);
+      setTimeout(() => { initialOverlay.style.display = 'none'; }, 500);
 
+      // Reset timeline
       timelineProgress.style.transitionDuration = '0s';
       timelineProgress.style.width = '0%';
 
-      fullScreenMontageStage.style.opacity = '1';
-      fullScreenMontageStage.style.transform = 'scale(1)';
-      fullScreenMontageStage.style.filter = 'none';
+      // Reset montage stage
+      fullScreenMontageStage.classList.remove('chromatic-exit');
+      fullScreenMontageStage.style.transition  = 'none';
+      fullScreenMontageStage.style.transform   = 'scale(1)';
+      fullScreenMontageStage.style.opacity     = '1';
+      fullScreenMontageStage.style.filter      = 'none';
 
-      settledLandingStage.style.opacity = '0';
-      topAppIcon.style.opacity = '0';
-      networkTitle.style.opacity = '0';
-      networkSubtitle.style.opacity = '0';
-      accentLine.style.opacity = '0';
-      serverStatusBar.style.opacity = '0';
-      bottomDeveloperBox.style.opacity = '0';
+      // Reset settled stage
+      settledLandingStage.style.opacity   = '0';
+      topAppIcon.style.opacity            = '0';
+      topAppIcon.style.transform          = 'translateY(-8px)';
+      networkTitle.style.opacity          = '0';
+      networkTitle.textContent            = '';
+      networkSubtitle.style.opacity       = '0';
+      networkSubtitle.style.transform     = 'translateY(8px)';
+      accentLine.style.opacity            = '0';
+      serverStatusBar.style.opacity       = '0';
+      bottomDeveloperBox.style.opacity    = '0';
+      bottomDeveloperBox.style.transform  = 'translateY(8px)';
+      replayHint.style.opacity            = '0';
 
       anamorphicBeam.classList.remove('anamorphic-beam');
       anamorphicStar.style.opacity = '0';
 
+      // Start timeline bar
       setTimeout(() => {
-        timelineProgress.style.transitionDuration = `${3000 / playbackSpeed}ms`;
+        timelineProgress.style.transitionDuration = `${3200 / playbackSpeed}ms`;
         timelineProgress.style.width = '100%';
       }, 50);
 
-      // ----------------------------------------------------
-      // PHASE 1: ACCELERATING SPEED RAMP CUTS (16 POSTERS)
-      // ----------------------------------------------------
-      const totalCuts = grandPosterCollection.length;
+      // ── PHASE 1: 16 POSTER RAPID CUTS ──────────────────────────
       let accumulatedTime = 40;
 
-      for (let i = 0; i < totalCuts; i++) {
-        // Accelerating curve: 130ms down to 45ms
-        const stepDuration = Math.max(45, (130 - (i * 6))) / playbackSpeed;
+      for (let i = 0; i < grandPosterCollection.length; i++) {
+        const dur    = Math.max(45, 130 - i * 6) / playbackSpeed;
         const poster = grandPosterCollection[i];
+        const dir    = (i % 2 === 0) ? -1 : 1; // alternate direction
 
-        const cutTimer = setTimeout(() => {
-          playProjectorShutterSound(1.0 + (i * 0.05));
-
+        const t = setTimeout(() => {
+          // Shutter flash every 3rd cut
           if (i % 3 === 0) {
-            shutterFlash.style.opacity = '0.35';
-            setTimeout(() => shutterFlash.style.opacity = '0', 35);
+            shutterFlash.style.opacity = '0.3';
+            setTimeout(() => { shutterFlash.style.opacity = '0'; }, 35);
           }
 
+          // Peel from alternating side
           peelImg.src = activeSlideImg.src;
+          peelSheet.style.transformOrigin = dir < 0 ? 'left center' : 'right center';
           peelSheet.style.opacity = '1';
-          peelSheet.style.transform = 'rotateY(0deg)';
-          
+          peelSheet.style.transform = `rotateY(0deg)`;
+
           setSlideData(poster);
 
           requestAnimationFrame(() => {
-            peelSheet.style.transform = 'rotateY(-90deg)';
-            setTimeout(() => {
-              peelSheet.style.opacity = '0';
-            }, 160);
+            peelSheet.style.transform = `rotateY(${dir * -90}deg)`;
+            setTimeout(() => { peelSheet.style.opacity = '0'; }, 160);
           });
 
-          activeSlideImg.style.transform = 'scale(1.06)';
-          setTimeout(() => activeSlideImg.style.transform = 'scale(1.0)', 80);
+          // Ken Burns punch
+          activeSlideImg.classList.remove('ken-burns-main');
+          void activeSlideImg.offsetWidth;
+          activeSlideImg.classList.add('ken-burns-main');
 
         }, accumulatedTime);
 
-        sequenceTimers.push(cutTimer);
-        accumulatedTime += stepDuration;
+        sequenceTimers.push(t);
+        accumulatedTime += dur;
       }
 
-      // ----------------------------------------------------
-      // PHASE 2: IMPLOSION & HANS ZIMMER BASS DROP (1.4s)
-      // ----------------------------------------------------
-      const phase2Timer = setTimeout(() => {
-        fullScreenMontageStage.style.transition = `transform ${450 / playbackSpeed}ms cubic-bezier(0.16, 1, 0.3, 1), opacity ${350 / playbackSpeed}ms ease-out, filter ${350 / playbackSpeed}ms ease-out`;
-        fullScreenMontageStage.style.transform = 'scale(0.1)';
-        fullScreenMontageStage.style.opacity = '0';
-        fullScreenMontageStage.style.filter = 'blur(10px)';
+      // ── PHASE 2: CHROMATIC IMPLOSION ──────────────────────────
+      const t2 = setTimeout(() => {
+        fullScreenMontageStage.style.transition = 'none';
+        fullScreenMontageStage.classList.add('chromatic-exit');
+
+        // Also scale it in via style for the implosion feel
+        setTimeout(() => {
+          fullScreenMontageStage.style.transform = 'scale(0.08)';
+        }, 50);
 
         settledLandingStage.style.transition = `opacity ${400 / playbackSpeed}ms ease-out`;
         settledLandingStage.style.opacity = '1';
 
-        playMarvelCinematicHit();
-
       }, accumulatedTime + 30);
-      sequenceTimers.push(phase2Timer);
+      sequenceTimers.push(t2);
 
-      // ----------------------------------------------------
-      // PHASE 3: SETTLE ON RESTING BRANDED UI (1.8s)
-      // ----------------------------------------------------
-      const phase3Timer = setTimeout(() => {
-        // 1. Reveal Top Corner App Icon (Real logo alone, no text)
-        topAppIcon.style.opacity = '1';
+      // ── PHASE 3: SETTLED RESTING UI ───────────────────────────
+      const t3 = setTimeout(() => {
+
+        // 1. App icon
+        topAppIcon.style.opacity   = '1';
         topAppIcon.style.transform = 'translateY(0)';
 
-        // 2. Reveal Center Hero Network Name ("استراحة الرصاص")
-        networkTitle.style.opacity = '1';
-        networkTitle.style.transform = 'translateY(0)';
-        networkSubtitle.style.opacity = '1';
-        networkSubtitle.style.transform = 'translateY(0)';
-        accentLine.style.opacity = '1';
+        // 2. Typewriter for main title
+        typewriteRTL(networkTitle, 'استراحة الرصاص', 60, () => {
+          // After title finishes, reveal subtitle, etc.
+          networkSubtitle.style.opacity   = '1';
+          networkSubtitle.style.transform = 'translateY(0)';
+          accentLine.style.opacity        = '1';
+          serverStatusBar.style.opacity   = '1';
+          startLatencyAnimation();
+        });
 
-        // Anamorphic Laser Sweep across phone width
+        // 3. Anamorphic laser
         anamorphicBeam.classList.add('anamorphic-beam');
         anamorphicStar.style.opacity = '1';
-        setTimeout(() => anamorphicStar.style.opacity = '0', 400);
+        setTimeout(() => { anamorphicStar.style.opacity = '0'; }, 400);
 
-        // 3. Reveal Minimalist Server Connection Bar
-        serverStatusBar.style.opacity = '1';
-
-        // 4. Reveal Bottom Developer Info (Simple, normal text without glass card)
-        bottomDeveloperBox.style.opacity = '1';
+        // 4. Developer text
+        bottomDeveloperBox.style.opacity   = '1';
         bottomDeveloperBox.style.transform = 'translateY(0)';
 
+        // 5. Start character side-art cycle
+        startCharacterCycle();
+
         isRunning = false;
+
+        // 6. Auto-replay after 12s — the page is NOT a final stop
+        const restingDelay = Math.round(12000 / playbackSpeed);
+        autoReplayTimer = setTimeout(() => {
+          replayHint.style.opacity = '1';
+          setTimeout(() => {
+            startFullCinemaSequence();
+          }, 1800);
+        }, restingDelay - 1800);
+
       }, accumulatedTime + 450);
-      sequenceTimers.push(phase3Timer);
+      sequenceTimers.push(t3);
     }
 
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
     initialOverlay.addEventListener('click', startFullCinemaSequence);
     document.getElementById('overlayPlayBtn').addEventListener('click', startFullCinemaSequence);
     document.getElementById('btnPlay').addEventListener('click', startFullCinemaSequence);
@@ -649,17 +631,6 @@
         playbackSpeed = 1.0;
         e.target.textContent = '1.0x';
         e.target.classList.replace('text-[#F59E0B]', 'text-[#38BDF8]');
-      }
-    });
-
-    document.getElementById('btnAudio').addEventListener('click', (e) => {
-      isAudioEnabled = !isAudioEnabled;
-      if (isAudioEnabled) {
-        e.target.textContent = 'الصوت: مفعّل';
-        e.target.classList.replace('text-[#EF4444]', 'text-[#10B981]');
-      } else {
-        e.target.textContent = 'الصوت: معطّل';
-        e.target.classList.replace('text-[#10B981]', 'text-[#EF4444]');
       }
     });
   </script>
