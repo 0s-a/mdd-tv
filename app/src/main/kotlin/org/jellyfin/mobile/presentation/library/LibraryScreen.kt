@@ -27,13 +27,11 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.FolderSpecial
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tv
-import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,9 +59,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.presentation.core.components.CinemaChildTopBar
-import org.jellyfin.mobile.presentation.library.components.AlphabetScrubber
 import org.jellyfin.mobile.presentation.library.components.BreadcrumbsBar
-import org.jellyfin.mobile.presentation.library.components.FilterChipsRow
 import org.jellyfin.mobile.presentation.library.components.FolderCard
 import org.jellyfin.mobile.presentation.library.components.LibraryPosterCard
 import org.jellyfin.mobile.presentation.main.LocalBottomClearance
@@ -75,14 +71,15 @@ import org.jellyfin.mobile.ui.theme.JellyfinDimens
 import org.jellyfin.mobile.ui.theme.LocalOledTrueBlack
 
 /**
- * LibraryScreen implements the massive catalog infinite 3-column grid.
- * Strictly adheres to docs/v2/02_LIBRARY_BROWSER_V2.md:
+ * LibraryScreen implements the pure hierarchical 3-column media grid.
+ * Strictly adheres to docs/current/screens/02_library_browser.md:
  * - Floating frosted glass header (detached / بشكل غير متصل).
- * - Primary screen title is ALWAYS "المكتبة" with item count badge.
+ * - Primary screen title dynamically reflects the current active folder.
  * - Dynamic Library Categories Row to switch between all server libraries seamlessly.
- * - Horizontal quick filter chips row.
- * - Trailing AlphabetScrubber with haptic feedback.
+ * - Hierarchical BreadcrumbsBar with one-tap navigation and instant back button.
+ * - Symmetrical 3-column poster grid with 16dp margins on both sides.
  * - OLED True Black background and WCAG 2.1 AA accessibility.
+ * - Zero emojis across all code and comments.
  */
 @Composable
 fun LibraryScreen(
@@ -195,28 +192,16 @@ fun LibraryScreen(
                         )
                     }
 
-                    // 1.5. Breadcrumbs Bar (مسار المجلدات والتبديل المزدوج)
+                    // 2. Breadcrumbs Bar (مسار المجلدات النقي مع زر الترتيب المدمج)
                     BreadcrumbsBar(
                         breadcrumbs = state.breadcrumbs,
-                        isHierarchicalMode = state.isHierarchicalMode,
                         onBreadcrumbClick = { index ->
                             viewModel.processIntent(LibraryIntent.JumpToBreadcrumb(index))
                         },
                         onBackClick = {
                             viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
                         },
-                        onToggleViewMode = {
-                            viewModel.processIntent(LibraryIntent.ToggleViewMode)
-                        }
-                    )
-
-                    // 2. Horizontal Filter Chips Row
-                    FilterChipsRow(
-                        activeFilters = state.activeFilters,
                         selectedSort = state.selectedSort,
-                        onToggleFilter = { filter ->
-                            viewModel.processIntent(LibraryIntent.ToggleFilter(filter))
-                        },
                         onSortClick = {
                             val nextSort = when (state.selectedSort) {
                                 org.jellyfin.mobile.domain.model.LibrarySortBy.DATE_ADDED -> org.jellyfin.mobile.domain.model.LibrarySortBy.PREMIERE_DATE
@@ -228,7 +213,7 @@ fun LibraryScreen(
                         }
                     )
 
-                    // 3. Grid + Alphabet Scrubber Area
+                    // 3. Grid Area
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         if (state.items.isEmpty()) {
                             Column(
@@ -239,20 +224,20 @@ fun LibraryScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "لا توجد أعمال تطابق الفلاتر المحددة",
+                                    text = "هذا المجلد فارغ حالياً على الخادم",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = JellyfinColors.TextSecondary,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
-                                    onClick = { viewModel.processIntent(LibraryIntent.ResetFilters) },
+                                    onClick = { viewModel.processIntent(LibraryIntent.Refresh) },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = JellyfinColors.PrimaryIndigo,
                                         contentColor = JellyfinColors.TextPrimary
                                     )
                                 ) {
-                                    Text("إعادة ضبط الفلاتر")
+                                    Text("تحديث")
                                 }
                             }
                         } else {
@@ -261,7 +246,7 @@ fun LibraryScreen(
                                 state = gridState,
                                 contentPadding = PaddingValues(
                                     start = JellyfinDimens.SpaceLarge,
-                                    end = 36.dp, // Clearance for trailing AlphabetScrubber
+                                    end = JellyfinDimens.SpaceLarge,
                                     top = JellyfinDimens.SpaceSmall,
                                     bottom = LocalBottomClearance.current + JellyfinDimens.SpaceMedium
                                 ),
@@ -306,17 +291,6 @@ fun LibraryScreen(
                                         }
                                     }
                                 }
-                            }
-
-                            // Fast Alphabetical Scrubber along the trailing edge (Only shown if items >= 25 and contains media)
-                            val showScrubber = state.items.size >= 25 && state.items.any { !it.isFolder }
-                            if (showScrubber) {
-                                AlphabetScrubber(
-                                    onLetterSelected = { char ->
-                                        viewModel.processIntent(LibraryIntent.JumpToLetter(char))
-                                    },
-                                    modifier = Modifier.align(Alignment.CenterEnd)
-                                )
                             }
                         }
                     }

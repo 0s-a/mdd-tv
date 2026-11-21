@@ -1,6 +1,7 @@
 package org.jellyfin.mobile.presentation.library.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,14 +30,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import org.jellyfin.mobile.domain.model.MediaItemSummary
 import org.jellyfin.mobile.ui.components.glassmorphism
@@ -41,12 +49,13 @@ import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
- * LibraryPosterCard renders a 2:3 poster item within the infinite catalog grid.
- * Strictly adheres to 02_LIBRARY_BROWSER.md Section 3:
- * - 2:3 aspect ratio.
- * - Tech badge overlay ([4K UHD]) on top-start.
- * - Watched indicator (green checkmark circle) on top-end.
- * - TalkBack semantics and ripple indication.
+ * LibraryPosterCard renders a 2:3 poster item within the hierarchical catalog grid.
+ * Adheres strictly to Obsidian 2.2.0 design tokens:
+ * - 2:3 aspect ratio with graceful fallback and placeholder layer.
+ * - Glowing cinema icon and title text when artwork is missing or loading.
+ * - Tech badge overlay on top-start.
+ * - Watched indicator on top-end.
+ * - TalkBack semantics and 48dp minimum click target.
  */
 @Composable
 fun LibraryPosterCard(
@@ -57,11 +66,13 @@ fun LibraryPosterCard(
     val quality = item.qualityBadges.firstOrNull() ?: "HD"
     val watchedStateText = if (item.isWatched) "مشاهد" else "غير مشاهد"
     val talkBackDesc = "${item.title}، ${item.productionYear ?: ""}، جودة $quality، حالة المشاهدة: $watchedStateText."
+    val shape = RoundedCornerShape(JellyfinDimens.RadiusMedium)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(JellyfinDimens.RadiusMedium))
+            .defaultMinSize(minWidth = JellyfinDimens.MinTouchTarget, minHeight = JellyfinDimens.MinTouchTarget)
+            .clip(shape)
             .clickable(
                 role = Role.Button,
                 onClick = onClick
@@ -76,15 +87,91 @@ fun LibraryPosterCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(JellyfinDimens.RadiusMedium))
-                .background(JellyfinColors.SurfaceDark)
+                .clip(shape)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            JellyfinColors.SurfaceDark,
+                            JellyfinColors.SurfaceGlass
+                        )
+                    )
+                )
+                .border(1.dp, JellyfinColors.BorderGlass, shape)
         ) {
-            AsyncImage(
-                model = item.posterUrl ?: item.backdropUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            // Fallback / Placeholder Layer (visible while loading or when artwork is absent)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                JellyfinColors.PrimaryIndigo.copy(alpha = 0.12f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+                    .padding(JellyfinDimens.SpaceSmall),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        JellyfinColors.PrimaryIndigo.copy(alpha = 0.25f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                            .border(1.dp, JellyfinColors.PrimaryIndigo.copy(alpha = 0.35f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val placeholderIcon = if (item.isSeries) {
+                            Icons.Rounded.Tv
+                        } else {
+                            Icons.Rounded.Movie
+                        }
+                        Icon(
+                            imageVector = placeholderIcon,
+                            contentDescription = null,
+                            tint = JellyfinColors.TechSky,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
+
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 14.sp
+                        ),
+                        color = JellyfinColors.TextSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                }
+            }
+
+            // Image Layer
+            val imageModel = item.posterUrl?.takeIf { it.isNotBlank() } ?: item.backdropUrl?.takeIf { it.isNotBlank() }
+            if (imageModel != null) {
+                AsyncImage(
+                    model = imageModel,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             // Top-Start Tech Badge Overlay (e.g. 4K UHD, HDR)
             if (item.qualityBadges.isNotEmpty()) {

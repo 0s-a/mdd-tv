@@ -49,16 +49,8 @@ class LibraryRepositoryImpl(
                 LibrarySortBy.PREMIERE_DATE -> "PremiereDate,SortName" to "Descending"
             }
 
-            val filterList = mutableListOf<String>()
-            if (filter.isUnwatchedOnly) filterList.add("IsUnplayed")
-            if (filter.isFavoriteOnly) filterList.add("IsFavorite")
-            val filters = if (filterList.isNotEmpty()) filterList.joinToString(",") else null
             val nameStartsWith = letter?.toString()
-
-            // Smart Scoped Recursion:
-            // When quality or rating filters are active, recurse transparently within the current folder
-            val isScopedFilterActive = filter.is4kOnly || filter.minRating != null
-            val shouldRecurse = if (isScopedFilterActive) true else !isHierarchical
+            val shouldRecurse = if (isHierarchical) false else true
 
             val itemTypes = if (shouldRecurse) {
                 "Movie,Series,Episode,Video,Audio"
@@ -72,33 +64,15 @@ class LibraryRepositoryImpl(
                 sortBy = sortBy,
                 sortOrder = sortOrder,
                 includeItemTypes = itemTypes,
-                filters = filters,
+                filters = null,
                 startIndex = startIndex,
                 limit = limit,
                 nameStartsWith = nameStartsWith,
                 recursive = shouldRecurse
             )
 
-            var domainItems = response.items?.map { it.toMediaItemSummary() } ?: emptyList()
-
-            // Client-side quality/rating filter refinements
-            if (filter.is4kOnly) {
-                domainItems = domainItems.filter { item ->
-                    item.qualityBadges.any { badge -> badge.contains("4K", ignoreCase = true) }
-                }
-            }
-
-            if (filter.minRating != null) {
-                domainItems = domainItems.filter { item ->
-                    (item.communityRating ?: 0f) >= filter.minRating
-                }
-            }
-
-            val totalCount = if (filter.is4kOnly || filter.minRating != null) {
-                domainItems.size
-            } else {
-                response.totalRecordCount ?: domainItems.size
-            }
+            val domainItems = response.items?.map { it.toMediaItemSummary() } ?: emptyList()
+            val totalCount = response.totalRecordCount ?: domainItems.size
 
             LibraryPage(
                 items = domainItems.toImmutableList(),

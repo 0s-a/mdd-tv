@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,13 +39,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import org.jellyfin.mobile.domain.model.MediaItemSummary
-import org.jellyfin.mobile.ui.components.glassmorphism
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
  * Luxury glassmorphic card for rendering folders/categories in the library browser grid.
- * Provides a graceful, polished fallback when folders lack artwork on the server.
+ * Adheres strictly to Obsidian 2.2.0 design tokens:
+ * - 2:3 aspect ratio matching poster cards in the 3-column grid.
+ * - SurfaceDark and SurfaceGlass vertical gradient.
+ * - Hairline BorderGlass border.
+ * - Glowing folder icon (Icons.Rounded.FolderSpecial) with subtle indigo radial glow.
+ * - Full TalkBack accessibility and 48dp minimum touch target.
  */
 @Composable
 fun FolderCard(
@@ -53,12 +58,18 @@ fun FolderCard(
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(JellyfinDimens.RadiusMedium)
-    val hasPoster = !item.posterImageUrl.isNullOrBlank()
+    val posterUrl = item.posterUrl?.takeIf { it.isNotBlank() } ?: item.backdropUrl?.takeIf { it.isNotBlank() }
+    val hasPoster = !posterUrl.isNullOrBlank()
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .defaultMinSize(minWidth = JellyfinDimens.MinTouchTarget, minHeight = JellyfinDimens.MinTouchTarget)
+            .clip(shape)
+            .clickable(
+                role = Role.Button,
+                onClick = onClick
+            )
             .semantics(mergeDescendants = true) {
                 role = Role.Button
                 contentDescription = "مجلد ${item.name}"
@@ -81,7 +92,7 @@ fun FolderCard(
         ) {
             if (hasPoster) {
                 AsyncImage(
-                    model = item.posterImageUrl,
+                    model = posterUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -101,7 +112,7 @@ fun FolderCard(
                 )
             }
 
-            // Glowing Icon & Badge
+            // Glowing Icon & Folder Title
             Column(
                 modifier = Modifier
                     .fillMaxSize()

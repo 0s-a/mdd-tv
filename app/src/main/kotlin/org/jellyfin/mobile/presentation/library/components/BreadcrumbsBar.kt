@@ -16,15 +16,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.ViewList
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,21 +35,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.collections.immutable.ImmutableList
 import org.jellyfin.mobile.domain.model.BreadcrumbItem
+import org.jellyfin.mobile.domain.model.LibrarySortBy
 import org.jellyfin.mobile.ui.theme.JellyfinColors
 import org.jellyfin.mobile.ui.theme.JellyfinDimens
 
 /**
  * BreadcrumbsBar displays the hierarchical navigation trail with one-tap ancestor jumping,
- * an instant back button, and a dual-mode switcher (Folders vs All Flat).
+ * an instant back button for parent folder navigation, and a compact sort toggle.
  */
 @Composable
 fun BreadcrumbsBar(
     breadcrumbs: ImmutableList<BreadcrumbItem>,
-    isHierarchicalMode: Boolean,
     onBreadcrumbClick: (Int) -> Unit,
     onBackClick: () -> Unit,
-    onToggleViewMode: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedSort: LibrarySortBy? = null,
+    onSortClick: (() -> Unit)? = null
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -63,11 +59,12 @@ fun BreadcrumbsBar(
             .fillMaxWidth()
             .padding(horizontal = JellyfinDimens.SpaceLarge, vertical = 4.dp)
     ) {
-        // Left: Back button (if inside subfolders) & Breadcrumbs scroll
+        // Leading section: Back button & Breadcrumbs trail
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
+            // Back button: shown when inside subfolders (depth > 1)
             if (breadcrumbs.size > 1) {
                 Box(
                     modifier = Modifier
@@ -75,7 +72,10 @@ fun BreadcrumbsBar(
                         .clip(CircleShape)
                         .background(JellyfinColors.SurfaceGlass)
                         .border(1.dp, JellyfinColors.BorderGlass, CircleShape)
-                        .clickable(onClick = onBackClick)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onBackClick
+                        )
                         .semantics {
                             role = Role.Button
                             contentDescription = "الرجوع للمجلد السابق"
@@ -92,6 +92,7 @@ fun BreadcrumbsBar(
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
+            // Clean breadcrumb trail
             LazyRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -104,8 +105,16 @@ fun BreadcrumbsBar(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .clickable(enabled = !isLast) { onBreadcrumbClick(index) }
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                            .clickable(
+                                enabled = !isLast,
+                                role = Role.Button,
+                                onClick = { onBreadcrumbClick(index) }
+                            )
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                            .semantics {
+                                role = Role.Button
+                                contentDescription = item.name
+                            }
                     ) {
                         Text(
                             text = item.name,
@@ -131,40 +140,41 @@ fun BreadcrumbsBar(
             }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Right: Dual-Mode Switcher (مجلدات / الكل)
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(JellyfinColors.SurfaceGlass)
-                .border(1.dp, JellyfinColors.BorderGlass, RoundedCornerShape(20.dp))
-                .clickable(onClick = onToggleViewMode)
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-                .semantics {
-                    role = Role.Button
-                    contentDescription = if (isHierarchicalMode) "التبديل إلى عرض الكل" else "التبديل إلى عرض المجلدات"
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+        // Trailing section: Compact Sort Selector
+        if (selectedSort != null && onSortClick != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(JellyfinDimens.RadiusPill))
+                    .background(JellyfinColors.SurfaceGlass)
+                    .border(1.dp, JellyfinColors.BorderGlass, RoundedCornerShape(JellyfinDimens.RadiusPill))
+                    .clickable(role = Role.Button, onClick = onSortClick)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "الترتيب حسب: ${selectedSort.title}"
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = if (isHierarchicalMode) Icons.Rounded.Folder else Icons.Rounded.GridView,
-                    contentDescription = null,
-                    tint = if (isHierarchicalMode) JellyfinColors.TechSky else JellyfinColors.PrimaryIndigo,
-                    modifier = Modifier.size(15.dp)
-                )
-                Text(
-                    text = if (isHierarchicalMode) "مجلدات" else "الكل",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
-                    ),
-                    color = JellyfinColors.TextPrimary
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.Sort,
+                        contentDescription = null,
+                        tint = JellyfinColors.TechSky,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = selectedSort.title,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
+                        ),
+                        color = JellyfinColors.TextPrimary
+                    )
+                }
             }
         }
     }

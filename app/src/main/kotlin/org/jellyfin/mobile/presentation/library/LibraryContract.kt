@@ -1,12 +1,8 @@
 package org.jellyfin.mobile.presentation.library
 
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.ImmutableSet
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.persistentSetOf
 import org.jellyfin.mobile.domain.model.BreadcrumbItem
-import org.jellyfin.mobile.domain.model.LibraryFilter
-import org.jellyfin.mobile.domain.model.LibraryFilterChip
 import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.domain.model.LibrarySortBy
 import org.jellyfin.mobile.domain.model.MediaItemSummary
@@ -20,21 +16,13 @@ sealed interface LibraryIntent {
     data class LoadLibrary(val parentId: String, val libraryName: String = "") : LibraryIntent
     data class SwitchLibrary(val libraryId: String, val libraryName: String = "") : LibraryIntent
     data class ChangeSort(val sortBy: LibrarySortBy, val isAscending: Boolean = false) : LibraryIntent
-    data object ToggleUnwatchedOnly : LibraryIntent
-    data object Toggle4kOnly : LibraryIntent
-    data class FilterByLetter(val letter: Char?) : LibraryIntent
-    data class JumpToLetter(val character: Char) : LibraryIntent
-    data class ToggleFilter(val filter: LibraryFilterChip) : LibraryIntent
     data class OpenMediaDetails(val mediaId: String) : LibraryIntent
     data class QuickPlay(val mediaId: String) : LibraryIntent
-    data class QuickPlayMedia(val mediaId: String) : LibraryIntent
-    data object ResetFilters : LibraryIntent
     data object Refresh : LibraryIntent
     data object LoadNextPage : LibraryIntent
     data class NavigateIntoFolder(val folderId: String, val folderName: String) : LibraryIntent
     data object NavigateBackInHierarchy : LibraryIntent
     data class JumpToBreadcrumb(val targetIndex: Int) : LibraryIntent
-    data object ToggleViewMode : LibraryIntent
 }
 
 typealias LibraryBrowserIntent = LibraryIntent
@@ -45,20 +33,16 @@ sealed interface LibraryUiState {
     data class Success(
         val items: ImmutableList<MediaItemSummary> = persistentListOf(),
         val totalCount: Int = 0,
-        val activeFilter: LibraryFilter = LibraryFilter(),
         val currentLibraryId: String = "",
         val currentLibraryName: String = "المكتبة",
         val availableLibraries: ImmutableList<LibraryFolder> = persistentListOf(),
         val selectedLibraryId: String? = null,
         val selectedSort: LibrarySortBy = LibrarySortBy.DATE_ADDED,
         val isSortAscending: Boolean = false,
-        val activeFilters: ImmutableSet<LibraryFilterChip> = persistentSetOf(),
-        val selectedLetter: Char? = null,
         val isRefreshing: Boolean = false,
         val isLoadingMore: Boolean = false,
         val hasMoreItems: Boolean = true,
-        val breadcrumbs: ImmutableList<BreadcrumbItem> = persistentListOf(),
-        val isHierarchicalMode: Boolean = true
+        val breadcrumbs: ImmutableList<BreadcrumbItem> = persistentListOf()
     ) : LibraryUiState {
         val totalItemCount: Int get() = totalCount
         val isAtRoot: Boolean get() = breadcrumbs.size <= 1
