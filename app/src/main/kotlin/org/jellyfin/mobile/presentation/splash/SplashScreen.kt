@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -195,11 +196,19 @@ private fun SettledLandingScreen(
                     .padding(top = 4.dp),
                 horizontalArrangement = Arrangement.End
             ) {
-                Image(
-                    painter = painterResource(id = R.mipmap.ic_launcher),
-                    contentDescription = null,
-                    modifier = Modifier.size(56.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF080B10)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             // Center Section: Primary Network Title + Subtitle + Server Status Bar

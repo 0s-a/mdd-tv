@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,9 +33,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.imageLoader
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import org.jellyfin.mobile.presentation.splash.model.SplashPoster
+
+private val PosterCinematicThemes = listOf(
+    Color(0xFF881337) to Color(0xFF1C1917), // Attack on Titan
+    Color(0xFF701A75) to Color(0xFF0F172A), // Spider-Man
+    Color(0xFF0369A1) to Color(0xFF020617), // Interstellar
+    Color(0xFFB45309) to Color(0xFF18181B), // Demon Slayer
+    Color(0xFF3730A3) to Color(0xFF09090B), // Avengers: Endgame
+    Color(0xFF334155) to Color(0xFF030712), // The Dark Knight
+    Color(0xFF047857) to Color(0xFF14532D), // Breaking Bad
+    Color(0xFF1E3A8A) to Color(0xFF082F49), // Game of Thrones
+    Color(0xFF0D9488) to Color(0xFF134E4A), // Spirited Away
+    Color(0xFFD97706) to Color(0xFF451A03), // Dune
+    Color(0xFF65A30D) to Color(0xFF27272A), // Fight Club
+    Color(0xFF991B1B) to Color(0xFF1C1917), // Pulp Fiction
+    Color(0xFFC2410C) to Color(0xFF431407), // Gladiator
+    Color(0xFF6D28D9) to Color(0xFF1E1B4B), // Your Name
+    Color(0xFF0284C7) to Color(0xFF064E3B), // Avatar
+    Color(0xFF475569) to Color(0xFF090D16), // Inception
+    Color(0xFFEA580C) to Color(0xFF18181B), // Oppenheimer
+    Color(0xFF78350F) to Color(0xFF0F172A)  // The Shawshank Redemption
+)
 
 @Composable
 fun PosterMontageLayer(
@@ -44,34 +65,65 @@ fun PosterMontageLayer(
     onMontageComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (posters.isEmpty()) {
+        LaunchedEffect(Unit) {
+            onMontageComplete()
+        }
+        return
+    }
+
+    val context = LocalContext.current
     var currentIndex by remember { mutableIntStateOf(0) }
-    val totalCuts = minOf(16, posters.size)
+    val totalCuts = minOf(14, posters.size)
 
     LaunchedEffect(Unit) {
+        // Pre-warm the image pipeline for initial cards
+        for (idx in 0 until minOf(4, posters.size)) {
+            val req = ImageRequest.Builder(context)
+                .data(posters[idx].imageUrl)
+                .build()
+            context.imageLoader.enqueue(req)
+        }
+
         for (i in 0 until totalCuts) {
-            val stepDuration = maxOf(45L, 130L - (i * 6L))
+            val stepDuration = maxOf(75L, 150L - (i * 6L))
             currentIndex = i
             delay(stepDuration)
         }
-        delay(80L)
+        delay(90L)
         onMontageComplete()
     }
 
     AnimatedContent(
         targetState = currentIndex,
         transitionSpec = {
-            fadeIn(animationSpec = tween(durationMillis = 40)) togetherWith
-                fadeOut(animationSpec = tween(durationMillis = 40))
+            fadeIn(animationSpec = tween(durationMillis = 50)) togetherWith
+                fadeOut(animationSpec = tween(durationMillis = 50))
         },
         modifier = modifier.fillMaxSize(),
         label = "poster_cut_transition"
     ) { index ->
         val poster = posters[index % posters.size]
-        Box(modifier = Modifier.fillMaxSize()) {
+        val (accentColor, darkBase) = PosterCinematicThemes[index % PosterCinematicThemes.size]
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.50f),
+                            darkBase.copy(alpha = 0.85f),
+                            Color(0xFF050811)
+                        ),
+                        radius = 1200f
+                    )
+                )
+        ) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
+                model = ImageRequest.Builder(context)
                     .data(poster.imageUrl)
-                    .crossfade(false)
+                    .crossfade(true)
                     .memoryCacheKey(poster.imageUrl)
                     .build(),
                 contentDescription = poster.title,
