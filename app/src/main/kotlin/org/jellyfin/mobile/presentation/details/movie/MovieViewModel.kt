@@ -1,9 +1,12 @@
 package org.jellyfin.mobile.presentation.details.movie
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,6 +14,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.preload.PreloadManager
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
@@ -28,7 +32,8 @@ class MovieViewModel(
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository? = null,
     private val apiService: JellyfinApiService? = null,
-    private val sessionManager: SessionManager? = null
+    private val sessionManager: SessionManager? = null,
+    private val preloadManager: PreloadManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MovieUiState>(MovieUiState.Loading)
@@ -155,6 +160,7 @@ class MovieViewModel(
                         isAudioSubtitleSheetVisible = false,
                         similarMovies = details.similarItems
                     )
+                    schedulePreload(movieId)
                 }
                 .onFailure { error ->
                     _uiState.value = MovieUiState.Error(
@@ -420,6 +426,31 @@ class MovieViewModel(
         viewModelScope.launch {
             val msg = if (track != null) "تم تفعيل الترجمة: ${track.title}" else "تم إيقاف الترجمة"
             _effects.send(MovieEffect.ShowToast(msg))
+        }
+    }
+
+    private var preloadJob: Job? = null
+
+    private fun schedulePreload(movieId: String) {
+        preloadJob?.cancel()
+        val manager = preloadManager ?: return
+        preloadJob = viewModelScope.launch {
+            delay(800L)
+            val token = sessionManager?.getToken() ?: handshakeRepository.currentSession.value?.token
+            val baseServer = AppConfig.SERVER_URL.trimEnd('/')
+            val streamUrl = StringBuilder("$baseServer/Videos/$movieId/stream?static=true")
+            if (!token.isNullOrBlank()) {
+                streamUrl.append("&api_key=$token")
+            }
+            manager.startPreload(movieId, Uri.parse(streamUrl.toString()))
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        preloadJob?.cancel()
+        currentMovieId?.let { movieId ->
+            preloadManager?.cancelPreload(movieId)
         }
     }
 }

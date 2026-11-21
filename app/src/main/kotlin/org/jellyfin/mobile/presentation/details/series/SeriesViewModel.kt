@@ -1,15 +1,20 @@
 package org.jellyfin.mobile.presentation.details.series
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.preload.PreloadManager
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.model.EpisodeSummary
 import org.jellyfin.mobile.domain.model.MediaDetails
@@ -28,7 +33,8 @@ class SeriesViewModel(
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository? = null,
     private val apiService: JellyfinApiService? = null,
-    private val sessionManager: SessionManager? = null
+    private val sessionManager: SessionManager? = null,
+    private val preloadManager: PreloadManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SeriesUiState>(SeriesUiState.Loading)
@@ -152,6 +158,7 @@ class SeriesViewModel(
                         isWatched = isWat,
                         isLoadingEpisodes = false
                     )
+                    nextUp?.let { schedulePreload(it.id) }
                 }
                 .onFailure { error ->
                     _uiState.value = SeriesUiState.Error(
@@ -402,7 +409,40 @@ class SeriesViewModel(
                     isFavorite = isFav,
                     episodesForSelectedSeason = updatedSeasonEpisodes.toImmutableList()
                 )
+                nextUp?.let { schedulePreload(it.id) }
             }
+        }
+    }
+
+    private var preloadJob: Job? = null
+    private var preloadedEpisodeId: String? = null
+
+    private fun schedulePreload(episodeId: String) {
+        preloadJob?.cancel()
+        preloadedEpisodeId?.let { oldId ->
+            if (oldId != episodeId) {
+                preloadManager?.cancelPreload(oldId)
+            }
+        }
+        preloadedEpisodeId = episodeId
+        val manager = preloadManager ?: return
+        preloadJob = viewModelScope.launch {
+            delay(800L)
+            val token = sessionManager?.getToken() ?: handshakeRepository.currentSession.value?.token
+            val baseServer = AppConfig.SERVER_URL.trimEnd('/')
+            val streamUrl = StringBuilder("$baseServer/Videos/$episodeId/stream?static=true")
+            if (!token.isNullOrBlank()) {
+                streamUrl.append("&api_key=$token")
+            }
+            manager.startPreload(episodeId, Uri.parse(streamUrl.toString()))
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        preloadJob?.cancel()
+        preloadedEpisodeId?.let { episodeId ->
+            preloadManager?.cancelPreload(episodeId)
         }
     }
 }

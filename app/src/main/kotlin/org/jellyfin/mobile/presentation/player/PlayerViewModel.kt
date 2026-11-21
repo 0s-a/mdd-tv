@@ -28,6 +28,7 @@ import org.jellyfin.mobile.core.player.AudioBoostEngine
 import org.jellyfin.mobile.core.player.AudioFocusManager
 import org.jellyfin.mobile.core.player.MxStyleRenderersFactory
 import org.jellyfin.mobile.core.player.TrickplayThumbnailManager
+import org.jellyfin.mobile.core.player.preload.PreloadManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -63,7 +64,8 @@ class PlayerViewModel(
     private val apiService: JellyfinApiService,
     private val sessionManager: SessionManager,
     private val handshakeRepository: HandshakeRepository,
-    private val localProfileRepository: LocalProfileRepository? = null
+    private val localProfileRepository: LocalProfileRepository? = null,
+    private val preloadManager: PreloadManager? = null
 ) : ViewModel() {
 
     private val tag = "PlayerViewModel"
@@ -79,7 +81,13 @@ class PlayerViewModel(
     val player: ExoPlayer = ExoPlayer.Builder(context)
         .setRenderersFactory(MxStyleRenderersFactory(context))
         .setTrackSelector(trackSelector)
-        .setMediaSourceFactory(DefaultMediaSourceFactory(context))
+        .setMediaSourceFactory(
+            if (preloadManager != null) {
+                DefaultMediaSourceFactory(preloadManager.cacheDataSourceFactory)
+            } else {
+                DefaultMediaSourceFactory(context)
+            }
+        )
         .build()
 
     private val audioFocusListener = object : AudioFocusManager.Listener {

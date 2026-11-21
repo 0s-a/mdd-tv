@@ -8,6 +8,8 @@ import okhttp3.logging.HttpLoggingInterceptor
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.network.AuthInterceptor
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.preload.Media3PreloadManagerImpl
+import org.jellyfin.mobile.core.player.preload.PreloadManager
 import org.jellyfin.mobile.data.local.AppDatabase
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.data.repository.HandshakeRepositoryImpl
@@ -143,6 +145,12 @@ val repositoryModule = module {
             localWatchProgressDao = get()
         )
     }
+
+    single<PreloadManager> {
+        Media3PreloadManagerImpl(
+            context = androidContext()
+        )
+    }
 }
 
 val databaseModule = module {
@@ -201,7 +209,8 @@ val viewModelModule = module {
             handshakeRepository = get(),
             localProfileRepository = get(),
             apiService = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            preloadManager = get()
         )
     }
 
@@ -212,7 +221,8 @@ val viewModelModule = module {
             handshakeRepository = get(),
             localProfileRepository = get(),
             apiService = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            preloadManager = get()
         )
     }
 
@@ -258,7 +268,8 @@ val viewModelModule = module {
             apiService = get(),
             sessionManager = get(),
             handshakeRepository = get(),
-            localProfileRepository = get()
+            localProfileRepository = get(),
+            preloadManager = get()
         )
     }
 

@@ -6,6 +6,15 @@
 ---
 
 ## الميزات الجديدة قيد الإعداد (Added)
+* محرك البدء الفوري للبث التكهني (Sub-50ms Speculative Pre-buffering Engine):
+  * واجهة وتطبيق التخزين المسبق (`PreloadManager` و `Media3PreloadManagerImpl`) باستخدام AndroidX Media3 `SimpleCache` مع سياج ذاكرة أقصى 24MB وسحب أول 4MB من دفق الوسائط الخام.
+  * حماية باقة بيانات الهاتف المحمول: تنفيذ التخزين المسبق حصراً على الشبكات غير المقيدة (Wi-Fi / Ethernet)، والإلغاء التلقائي الفوري على شبكات الجوال.
+  * تكامل تكهني ذكي ومستقر مع شاشات التفاصيل المستقلة (`MovieViewModel` و `SeriesViewModel`) بمهلة استقرار 800ms، مع إيقاف المهام فور مغادرة الشاشة (`onCleared`).
+  * تزويد مشغل `PlayerViewModel` بمصنع البيانات المؤقتة `cacheDataSourceFactory` للبدء الفوري بدون أي حلقات انتظار دوارة (Zero Buffering Spinner).
+* متصفح المكتبة الهرمي الصافي (Pure Hierarchical Library Browser):
+  * تحويل تصفح المكتبة بالكامل إلى النمط الهرمي النقي المتوافق مع هيكلية خادم Jellyfin ومسار المجلدات الفعلي.
+  * تحديث شريط مسار المجلدات (`BreadcrumbsBar`) مع دعم القفز لمستويات سابقة والرجوع السريع بلمسة واحدة.
+  * تناظر شبكة البوسترات ثلاثية الأعمدة بهوامش سينمائية متطابقة (16dp) متوافقة مع Obsidian 2.2.0.
 * منظومة شاشات التفاصيل المستقلة والموجه الذكي (`MediaDetailsDispatcher`): تفكيك الشاشة الموحدة الضخمة وبناء شاشات مستقلة متخصصة لكل نمط وسائط (`MovieDetailsScreen`, `SeriesDetailsScreen`, `BoxSetDetailsScreen`, `MusicAlbumDetailsScreen`) مع موجه ذكي ديناميكي يحدد الشاشة المناسبة في زمن استجابة صفري.
 * جناح المشغل السينمائي المتقدم (`AdvancedCinemaPlayer Suite`):
   * مصنع فك الترميز التكيفي (`MxStyleRenderersFactory`) مع السقوط الصامت التام (<300ms) لمحرك SW FFmpeg ARM NEON.
