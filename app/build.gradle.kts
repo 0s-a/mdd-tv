@@ -1,3 +1,7 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -14,8 +18,8 @@ android {
         applicationId = "org.jellyfin.mobile"
         minSdk = 24
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -121,3 +125,44 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }
+
+// أتمتة أرشفة إصدارات الإنتاج المحلية
+val releaseApkFile = layout.buildDirectory.file("outputs/apk/release/app-release.apk")
+val releasesTargetDir = rootProject.layout.projectDirectory.dir("releases").asFile
+val releaseVersionName = android.defaultConfig.versionName ?: "1.0.0"
+val releaseVersionCode = android.defaultConfig.versionCode ?: 1
+
+tasks.register("archiveReleaseApk") {
+    group = "distribution"
+    description = "Archives the release APK to the releases directory with standard naming."
+
+    val srcApkFile = releaseApkFile
+    val targetDir = releasesTargetDir
+    val vName = releaseVersionName
+    val vCode = releaseVersionCode
+
+    doLast {
+        val srcApk = srcApkFile.get().asFile
+        if (!srcApk.exists()) {
+            logger.warn("Release APK not found at ${srcApk.absolutePath}, skipping archive.")
+            return@doLast
+        }
+
+        if (!targetDir.exists()) {
+            targetDir.mkdirs()
+        }
+
+        val dateStr = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+        val targetFileName = "mdd_tv_v${vName}_b${vCode}_release_${dateStr}.apk"
+        val targetFile = File(targetDir, targetFileName)
+
+        srcApk.copyTo(targetFile, overwrite = true)
+
+        logger.lifecycle("Release APK successfully archived to: ${targetFile.absolutePath}")
+    }
+}
+
+afterEvaluate {
+    tasks.findByName("assembleRelease")?.finalizedBy("archiveReleaseApk")
+}
+

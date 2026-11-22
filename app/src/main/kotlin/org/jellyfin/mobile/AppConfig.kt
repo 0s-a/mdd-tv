@@ -10,7 +10,7 @@ object AppConfig {
     // 1. هوية التطبيق (App Identity)
     const val APP_NAME = "مدد TV"
     const val APP_NAME_EN = "mdd TV"
-    const val APP_VERSION = "1.0.1"
+    const val APP_VERSION = "1.1.0"
 
     // 2. نقطة الاتصال بالسيرفر والمستخدم المعتمد فقط (Server & User Endpoint)
     const val SERVER_URL = "http://192.168.200.200:80"
@@ -21,5 +21,8 @@ object AppConfig {
     const val FORCE_HARDWARE_DECODE = true
     const val ENABLE_DIRECT_PLAY = true
 
-    fun buildVideoStreamUrl(mediaId: String): String = "${SERVER_URL.trimEnd('/')}/Videos/$mediaId/stream?static=true"
+    fun buildVideoStreamUrl(mediaId: String, token: String? = null): String {
+        val base = "${SERVER_URL.trimEnd('/')}/Videos/$mediaId/stream?static=true"
+        return if (!token.isNullOrBlank()) "$base&api_key=$token" else base
+    }
 }

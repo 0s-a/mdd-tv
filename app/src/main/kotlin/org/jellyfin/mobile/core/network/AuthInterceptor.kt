@@ -2,10 +2,11 @@ package org.jellyfin.mobile.core.network
 
 import okhttp3.Interceptor
 import okhttp3.Response
+import org.jellyfin.mobile.AppConfig
 
 /**
  * OkHttp Interceptor that attaches standard Jellyfin authorization headers:
- * - X-Emby-Authorization: MediaBrowser Client="mdd TV", Device="Android", DeviceId="mdd-tv-android", Version="1.0.0"
+ * - X-Emby-Authorization: MediaBrowser Client="mdd TV", Device="Android", DeviceId="mdd-tv-android", Version="..."
  * - X-Emby-Token: <token> (appended when an active session token exists)
  */
 class AuthInterceptor(
@@ -16,7 +17,7 @@ class AuthInterceptor(
         const val CLIENT_NAME = "mdd TV"
         const val DEVICE_NAME = "Android"
         const val DEVICE_ID = "mdd-tv-android"
-        const val CLIENT_VERSION = "1.0.0"
+        const val CLIENT_VERSION = AppConfig.APP_VERSION
 
         val AUTH_HEADER_VALUE =
             """MediaBrowser Client="$CLIENT_NAME", Device="$DEVICE_NAME", DeviceId="$DEVICE_ID", Version="$CLIENT_VERSION""""
