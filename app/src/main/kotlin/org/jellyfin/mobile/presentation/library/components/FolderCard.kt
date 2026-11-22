@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FolderSpecial
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -60,6 +62,18 @@ fun FolderCard(
     val shape = RoundedCornerShape(JellyfinDimens.RadiusMedium)
     val posterUrl = item.posterUrl?.takeIf { it.isNotBlank() } ?: item.backdropUrl?.takeIf { it.isNotBlank() }
     val hasPoster = !posterUrl.isNullOrBlank()
+    val isMovieFolder = item.name.contains("فيلم", ignoreCase = true) || item.name.contains("أفلام", ignoreCase = true)
+    val isTvFolder = item.name.contains("مسلسل", ignoreCase = true) || item.name.contains("مسلسلات", ignoreCase = true)
+    val folderIcon = when {
+        isMovieFolder -> Icons.Rounded.Movie
+        isTvFolder -> Icons.Rounded.Tv
+        else -> Icons.Rounded.FolderSpecial
+    }
+    val badgeText = when {
+        isMovieFolder -> "أفلام"
+        isTvFolder -> "مسلسلات"
+        else -> "مجلد"
+    }
 
     Column(
         modifier = modifier
@@ -136,7 +150,7 @@ fun FolderCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.FolderSpecial,
+                        imageVector = folderIcon,
                         contentDescription = null,
                         tint = JellyfinColors.TechSky,
                         modifier = Modifier.size(26.dp)
@@ -160,7 +174,7 @@ fun FolderCard(
                 )
             }
 
-            // Top Badge: "مجلد"
+            // Top Badge
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -171,7 +185,7 @@ fun FolderCard(
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "مجلد",
+                    text = badgeText,
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                     color = JellyfinColors.TextSecondary
                 )

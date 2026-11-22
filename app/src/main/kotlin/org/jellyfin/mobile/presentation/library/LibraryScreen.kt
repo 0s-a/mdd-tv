@@ -20,20 +20,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FolderSpecial
-import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,7 +55,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.presentation.core.components.CinemaChildTopBar
 import org.jellyfin.mobile.presentation.library.components.BreadcrumbsBar
 import org.jellyfin.mobile.presentation.library.components.FolderCard
@@ -190,19 +185,7 @@ fun LibraryScreen(
                     // Clearance for floating top bar
                     Spacer(modifier = Modifier.height(72.dp))
 
-                    // 1. Library Categories Row (الأقسام والمكتبات الحية)
-                    if (state.availableLibraries.isNotEmpty()) {
-                        LibraryCategoriesRow(
-                            libraries = state.availableLibraries,
-                            selectedLibraryId = state.selectedLibraryId,
-                            onSelectLibrary = { libId, libName ->
-                                viewModel.processIntent(LibraryIntent.SwitchLibrary(libId, libName))
-                            },
-                            modifier = Modifier.padding(vertical = JellyfinDimens.SpaceExtraSmall)
-                        )
-                    }
-
-                    // 2. Breadcrumbs Bar (مسار المجلدات النقي مع زر الترتيب المدمج)
+                    // 1. Breadcrumbs Bar (مسار المجلدات النقي مع زر الترتيب المدمج)
                     BreadcrumbsBar(
                         breadcrumbs = state.breadcrumbs,
                         onBreadcrumbClick = { index ->
@@ -211,19 +194,21 @@ fun LibraryScreen(
                         onBackClick = {
                             viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
                         },
-                        selectedSort = state.selectedSort,
-                        onSortClick = {
-                            val nextSort = when (state.selectedSort) {
-                                org.jellyfin.mobile.domain.model.LibrarySortBy.DATE_ADDED -> org.jellyfin.mobile.domain.model.LibrarySortBy.PREMIERE_DATE
-                                org.jellyfin.mobile.domain.model.LibrarySortBy.PREMIERE_DATE -> org.jellyfin.mobile.domain.model.LibrarySortBy.NAME
-                                org.jellyfin.mobile.domain.model.LibrarySortBy.NAME -> org.jellyfin.mobile.domain.model.LibrarySortBy.RATING
-                                org.jellyfin.mobile.domain.model.LibrarySortBy.RATING -> org.jellyfin.mobile.domain.model.LibrarySortBy.DATE_ADDED
+                        selectedSort = if (state.isAtRoot) null else state.selectedSort,
+                        onSortClick = if (state.isAtRoot) null else {
+                            {
+                                val nextSort = when (state.selectedSort) {
+                                    org.jellyfin.mobile.domain.model.LibrarySortBy.DATE_ADDED -> org.jellyfin.mobile.domain.model.LibrarySortBy.PREMIERE_DATE
+                                    org.jellyfin.mobile.domain.model.LibrarySortBy.PREMIERE_DATE -> org.jellyfin.mobile.domain.model.LibrarySortBy.NAME
+                                    org.jellyfin.mobile.domain.model.LibrarySortBy.NAME -> org.jellyfin.mobile.domain.model.LibrarySortBy.RATING
+                                    org.jellyfin.mobile.domain.model.LibrarySortBy.RATING -> org.jellyfin.mobile.domain.model.LibrarySortBy.DATE_ADDED
+                                }
+                                viewModel.processIntent(LibraryIntent.ChangeSort(nextSort))
                             }
-                            viewModel.processIntent(LibraryIntent.ChangeSort(nextSort))
                         }
                     )
 
-                    // 3. Grid Area
+                    // 2. Grid Area
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         if (state.items.isEmpty()) {
                             Column(
@@ -234,7 +219,7 @@ fun LibraryScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "هذا المجلد فارغ حالياً على الخادم",
+                                    text = if (state.isAtRoot) "لا توجد مكتبات وسائط متوفرة حالياً على الخادم" else "هذا المجلد فارغ حالياً على الخادم",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = JellyfinColors.TextSecondary,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -308,10 +293,18 @@ fun LibraryScreen(
             }
         }
 
+        val successState = uiState as? LibraryUiState.Success
+        val topBarSubtitle = when {
+            successState == null -> null
+            successState.isAtRoot -> if (successState.totalCount > 0) "(${successState.totalCount} مكتبات)" else null
+            successState.totalCount > 0 -> "(${successState.totalCount} عملاً)"
+            else -> null
+        }
+
         // Floating Frosted Top Bar (Detached / بشكل غير متصل) - Always on top
         LibraryFloatingTopBar(
-            title = (uiState as? LibraryUiState.Success)?.currentFolderTitle ?: "المكتبة",
-            totalCount = (uiState as? LibraryUiState.Success)?.totalItemCount ?: 0,
+            title = successState?.currentFolderTitle ?: "المكتبة",
+            subtitle = topBarSubtitle,
             onBackClick = if (!isAtRoot) {
                 { viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy) }
             } else onNavigateBack,
@@ -324,14 +317,14 @@ fun LibraryScreen(
 @Composable
 private fun LibraryFloatingTopBar(
     title: String,
-    totalCount: Int,
+    subtitle: String?,
     onBackClick: (() -> Unit)?,
     onSearchClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     CinemaChildTopBar(
         title = title,
-        subtitle = if (totalCount > 0) "($totalCount عملاً)" else null,
+        subtitle = subtitle,
         onBackClick = onBackClick,
         modifier = modifier,
         actions = {
@@ -355,64 +348,6 @@ private fun LibraryFloatingTopBar(
             }
         }
     )
-}
-
-@Composable
-private fun LibraryCategoriesRow(
-    libraries: List<LibraryFolder>,
-    selectedLibraryId: String?,
-    onSelectLibrary: (String, String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = JellyfinDimens.SpaceLarge),
-        horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
-    ) {
-        items(libraries, key = { it.id }) { lib ->
-            val isSelected = lib.id == selectedLibraryId
-            val icon = when {
-                lib.name.contains("فيلم", ignoreCase = true) || lib.name.contains("أفلام", ignoreCase = true) || lib.type.equals("movies", ignoreCase = true) -> Icons.Rounded.Movie
-                lib.name.contains("مسلسل", ignoreCase = true) || lib.type.equals("tvshows", ignoreCase = true) -> Icons.Rounded.Tv
-                else -> Icons.Rounded.FolderSpecial
-            }
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(JellyfinDimens.RadiusPill))
-                    .border(
-                        width = 1.dp,
-                        color = if (isSelected) JellyfinColors.PrimaryIndigo else JellyfinColors.BorderGlass,
-                        shape = RoundedCornerShape(JellyfinDimens.RadiusPill)
-                    )
-                    .background(
-                        if (isSelected) JellyfinColors.PrimaryIndigo.copy(alpha = 0.25f)
-                        else JellyfinColors.SurfaceGlass
-                    )
-                    .clickable { onSelectLibrary(lib.id, lib.name) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = if (isSelected) JellyfinColors.PrimaryIndigo else JellyfinColors.TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = lib.name,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) JellyfinColors.TextPrimary else JellyfinColors.TextSecondary
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable

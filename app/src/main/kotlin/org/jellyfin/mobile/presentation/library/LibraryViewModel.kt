@@ -13,10 +13,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.model.BreadcrumbItem
 import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.jellyfin.mobile.domain.model.LibraryFolder
 import org.jellyfin.mobile.domain.model.LibrarySortBy
+import org.jellyfin.mobile.domain.model.MediaItemSummary
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.usecase.GetLibraryItemsUseCase
@@ -59,8 +61,10 @@ class LibraryViewModel(
                 activeParentId = intent.parentId
                 if (intent.libraryName.isNotBlank()) currentLibraryName = intent.libraryName
                 breadcrumbTrail = persistentListOf(
-                    BreadcrumbItem(id = intent.parentId, name = currentLibraryName, level = 0)
+                    BreadcrumbItem(id = "", name = "المكتبة", level = 0),
+                    BreadcrumbItem(id = intent.parentId, name = currentLibraryName, level = 1)
                 )
+                ensureCachedLibraries()
                 loadItems()
             }
             is LibraryIntent.SwitchLibrary -> {
@@ -69,33 +73,63 @@ class LibraryViewModel(
                 activeParentId = intent.libraryId
                 currentLibraryName = if (intent.libraryName.isNotBlank()) intent.libraryName else "المكتبة"
                 breadcrumbTrail = persistentListOf(
-                    BreadcrumbItem(id = intent.libraryId, name = currentLibraryName, level = 0)
+                    BreadcrumbItem(id = "", name = "المكتبة", level = 0),
+                    BreadcrumbItem(id = intent.libraryId, name = currentLibraryName, level = 1)
                 )
+                ensureCachedLibraries()
                 loadItems()
                 sendScrollToTop()
             }
             is LibraryIntent.NavigateIntoFolder -> {
-                activeParentId = intent.folderId
-                breadcrumbTrail = (breadcrumbTrail + BreadcrumbItem(
-                    id = intent.folderId,
-                    name = intent.folderName,
-                    level = breadcrumbTrail.size
-                )).toPersistentList()
+                if (breadcrumbTrail.size <= 1 && (currentLibraryId.isBlank() || breadcrumbTrail.firstOrNull()?.id.isNullOrBlank())) {
+                    currentLibraryId = intent.folderId
+                    currentLibraryName = intent.folderName
+                    activeParentId = intent.folderId
+                    breadcrumbTrail = persistentListOf(
+                        BreadcrumbItem(id = "", name = "المكتبة", level = 0),
+                        BreadcrumbItem(id = intent.folderId, name = intent.folderName, level = 1)
+                    )
+                } else {
+                    activeParentId = intent.folderId
+                    breadcrumbTrail = (breadcrumbTrail + BreadcrumbItem(
+                        id = intent.folderId,
+                        name = intent.folderName,
+                        level = breadcrumbTrail.size
+                    )).toPersistentList()
+                }
                 loadItems()
                 sendScrollToTop()
             }
             is LibraryIntent.NavigateBackInHierarchy -> {
-                if (breadcrumbTrail.size > 1) {
+                if (breadcrumbTrail.size > 2) {
                     breadcrumbTrail = breadcrumbTrail.dropLast(1).toPersistentList()
                     activeParentId = breadcrumbTrail.last().id
                     loadItems()
                     sendScrollToTop()
+                } else if (breadcrumbTrail.size == 2) {
+                    if (cachedLibraries.isNotEmpty()) {
+                        loadRootView(cachedLibraries)
+                    } else {
+                        loadInitialLibrary()
+                    }
+                    sendScrollToTop()
                 }
             }
             is LibraryIntent.JumpToBreadcrumb -> {
-                if (intent.targetIndex in 0 until breadcrumbTrail.size) {
+                if (intent.targetIndex == 0) {
+                    if (cachedLibraries.isNotEmpty()) {
+                        loadRootView(cachedLibraries)
+                    } else {
+                        loadInitialLibrary()
+                    }
+                    sendScrollToTop()
+                } else if (intent.targetIndex in 1 until breadcrumbTrail.size) {
                     breadcrumbTrail = breadcrumbTrail.take(intent.targetIndex + 1).toPersistentList()
                     activeParentId = breadcrumbTrail.last().id
+                    if (breadcrumbTrail.size >= 2) {
+                        currentLibraryId = breadcrumbTrail[1].id
+                        currentLibraryName = breadcrumbTrail[1].name
+                    }
                     loadItems()
                     sendScrollToTop()
                 }
@@ -106,7 +140,13 @@ class LibraryViewModel(
                 sendScrollToTop()
             }
             is LibraryIntent.Refresh -> {
-                loadItems(isRefresh = true)
+                if (breadcrumbTrail.size <= 1) {
+                    initialJob?.cancel()
+                    currentLibraryId = ""
+                    loadInitialLibrary()
+                } else {
+                    loadItems(isRefresh = true)
+                }
             }
             is LibraryIntent.LoadNextPage -> {
                 loadNextPage()
@@ -120,6 +160,15 @@ class LibraryViewModel(
                 viewModelScope.launch {
                     _effects.send(LibraryEffect.LaunchPlayer(intent.mediaId, 0L))
                 }
+            }
+        }
+    }
+
+    private fun ensureCachedLibraries() {
+        if (cachedLibraries.isEmpty()) {
+            viewModelScope.launch {
+                val viewsResult = handshakeRepository.getUserViews()
+                cachedLibraries = viewsResult.getOrDefault(emptyList()).toImmutableList()
             }
         }
     }
@@ -139,26 +188,58 @@ class LibraryViewModel(
             val viewsResult = handshakeRepository.getUserViews()
             val libraries = viewsResult.getOrDefault(emptyList())
             cachedLibraries = libraries.toImmutableList()
-            val firstLibrary = libraries.firstOrNull()
 
             if (currentLibraryId.isNotBlank()) return@launch
 
-            if (firstLibrary != null) {
-                currentLibraryId = firstLibrary.id
-                activeParentId = firstLibrary.id
-                currentLibraryName = firstLibrary.name
-                breadcrumbTrail = persistentListOf(
-                    BreadcrumbItem(id = firstLibrary.id, name = firstLibrary.name, level = 0)
-                )
-                loadItems()
+            if (libraries.isNotEmpty()) {
+                loadRootView(libraries)
             } else {
                 _uiState.value = LibraryUiState.Empty("لا توجد مكتبات وسائط متوفرة على السيرفر")
             }
         }
     }
 
+    private fun loadRootView(libraries: List<LibraryFolder>) {
+        currentLibraryId = ""
+        activeParentId = ""
+        currentLibraryName = "المكتبة"
+        breadcrumbTrail = persistentListOf(
+            BreadcrumbItem(id = "", name = "المكتبة", level = 0)
+        )
+        val folderItems = libraries.map { lib ->
+            MediaItemSummary(
+                id = lib.id,
+                name = lib.name,
+                type = "Folder",
+                posterImageUrl = JellyfinApiService.buildPrimaryImageUrl(lib.id)
+            )
+        }.toImmutableList()
+
+        _uiState.value = LibraryUiState.Success(
+            items = folderItems,
+            totalCount = folderItems.size,
+            currentLibraryId = "",
+            currentLibraryName = "المكتبة",
+            availableLibraries = cachedLibraries,
+            selectedLibraryId = null,
+            selectedSort = currentFilter.sortBy,
+            isRefreshing = false,
+            isLoadingMore = false,
+            hasMoreItems = false,
+            breadcrumbs = breadcrumbTrail,
+            isRoot = true
+        )
+    }
+
     private fun loadItems(isRefresh: Boolean = false) {
-        if (currentLibraryId.isBlank()) return
+        if (currentLibraryId.isBlank()) {
+            if (cachedLibraries.isNotEmpty()) {
+                loadRootView(cachedLibraries)
+            } else {
+                loadInitialLibrary()
+            }
+            return
+        }
 
         val queryParentId = activeParentId.ifBlank { currentLibraryId }
 
@@ -190,7 +271,8 @@ class LibraryViewModel(
                     isRefreshing = false,
                     isLoadingMore = false,
                     hasMoreItems = page.items.size < page.totalCount,
-                    breadcrumbs = breadcrumbTrail
+                    breadcrumbs = breadcrumbTrail,
+                    isRoot = false
                 )
             }.onFailure { error ->
                 _uiState.value = LibraryUiState.Error(
@@ -204,6 +286,7 @@ class LibraryViewModel(
 
     private fun loadNextPage() {
         val currentState = _uiState.value as? LibraryUiState.Success ?: return
+        if (currentState.isAtRoot) return
         if (isPaginating || !currentState.hasMoreItems || currentState.isLoadingMore) return
         if (currentLibraryId.isBlank()) return
 

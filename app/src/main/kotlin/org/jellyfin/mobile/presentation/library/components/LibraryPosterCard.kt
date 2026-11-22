@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -173,12 +174,33 @@ fun LibraryPosterCard(
                 )
             }
 
-            // Top-Start Tech Badge Overlay (e.g. 4K UHD, HDR)
-            if (item.qualityBadges.isNotEmpty()) {
+            // Subtle bottom contrast scrim
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(32.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.55f)
+                            )
+                        )
+                    )
+            )
+
+            // Top-Start Tech Badge Overlay (e.g. 4K UHD, HDR, or مسلسل)
+            val primaryBadge = when {
+                item.isSeries -> "مسلسل"
+                item.qualityBadges.isNotEmpty() -> item.qualityBadges.first()
+                else -> null
+            }
+            if (primaryBadge != null) {
                 Text(
-                    text = item.qualityBadges.first(),
+                    text = primaryBadge,
                     style = MaterialTheme.typography.labelSmall,
-                    color = JellyfinColors.TechSky,
+                    color = if (item.isSeries) JellyfinColors.AccentCyan else JellyfinColors.TechSky,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -211,6 +233,32 @@ fun LibraryPosterCard(
                     )
                 }
             }
+
+            // Bottom Edge Micro-Progress Bar (for partially watched media)
+            if (!item.isWatched && item.playbackPositionPercentage > 0.0) {
+                val progress = (item.playbackPositionPercentage / 100.0).toFloat().coerceIn(0f, 1f)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(JellyfinColors.SurfaceDark.copy(alpha = 0.7f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = progress)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        JellyfinColors.PrimaryIndigo,
+                                        JellyfinColors.TechSky
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -230,13 +278,22 @@ fun LibraryPosterCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Production Year
-            if (item.productionYear != null) {
+            // Production Year & Duration
+            val metadataText = when {
+                item.productionYear != null && !item.durationText.isNullOrBlank() && item.isMovie -> "${item.productionYear} • ${item.durationText}"
+                item.productionYear != null -> item.productionYear.toString()
+                !item.durationText.isNullOrBlank() -> item.durationText
+                else -> null
+            }
+
+            if (metadataText != null) {
                 Text(
-                    text = item.productionYear.toString(),
+                    text = metadataText,
                     style = MaterialTheme.typography.labelSmall,
                     color = JellyfinColors.TextSecondary
                 )
+            } else {
+                Spacer(modifier = Modifier.width(1.dp))
             }
 
             // Rating

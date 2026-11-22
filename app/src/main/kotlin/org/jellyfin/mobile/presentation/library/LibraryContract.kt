@@ -42,11 +42,12 @@ sealed interface LibraryUiState {
         val isRefreshing: Boolean = false,
         val isLoadingMore: Boolean = false,
         val hasMoreItems: Boolean = true,
-        val breadcrumbs: ImmutableList<BreadcrumbItem> = persistentListOf()
+        val breadcrumbs: ImmutableList<BreadcrumbItem> = persistentListOf(),
+        val isRoot: Boolean = false
     ) : LibraryUiState {
         val totalItemCount: Int get() = totalCount
-        val isAtRoot: Boolean get() = breadcrumbs.size <= 1
-        val currentFolderTitle: String get() = breadcrumbs.lastOrNull()?.name ?: currentLibraryName
+        val isAtRoot: Boolean get() = isRoot || breadcrumbs.size <= 1
+        val currentFolderTitle: String get() = if (isAtRoot) "المكتبة" else breadcrumbs.lastOrNull()?.name ?: currentLibraryName
     }
 
     data class Error(

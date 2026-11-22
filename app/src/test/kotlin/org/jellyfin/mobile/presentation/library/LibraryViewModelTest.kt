@@ -110,7 +110,7 @@ class LibraryViewModelTest {
     }
 
     @Test
-    fun initialLoad_discoversLibrariesAndLoadsFirstLibraryItems() = runTest(testDispatcher) {
+    fun initialLoad_discoversLibrariesAndPresentsRootLevel() = runTest(testDispatcher) {
         val fakeHandshake = FakeHandshakeRepository()
         val fakeRepo = FakeLibraryRepository()
         val useCase = GetLibraryItemsUseCase(fakeRepo)
@@ -125,11 +125,13 @@ class LibraryViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is LibraryUiState.Success)
         val success = state as LibraryUiState.Success
-        assertEquals("lib-movies", success.currentLibraryId)
-        assertEquals("الأفلام", success.currentLibraryName)
+        assertTrue(success.isAtRoot)
+        assertEquals("", success.currentLibraryId)
+        assertEquals("المكتبة", success.currentLibraryName)
         assertEquals(2, success.items.size)
+        assertTrue(success.items.all { it.isFolder })
         assertEquals(1, success.breadcrumbs.size)
-        assertEquals("الأفلام", success.breadcrumbs.first().name)
+        assertEquals("المكتبة", success.breadcrumbs.first().name)
     }
 
     @Test
@@ -153,13 +155,15 @@ class LibraryViewModelTest {
         val success = viewModel.uiState.value as LibraryUiState.Success
         assertEquals("lib-shows", success.currentLibraryId)
         assertEquals("المسلسلات", success.currentLibraryName)
-        assertEquals(1, success.breadcrumbs.size)
+        assertEquals(2, success.breadcrumbs.size)
+        assertEquals("المكتبة", success.breadcrumbs[0].name)
+        assertEquals("المسلسلات", success.breadcrumbs[1].name)
         assertTrue(effects.contains(LibraryEffect.ScrollToIndex(0)))
         job.cancel()
     }
 
     @Test
-    fun navigateIntoFolder_appendsBreadcrumbAndNavigatesDeeper() = runTest(testDispatcher) {
+    fun navigateIntoFolder_fromRoot_navigatesIntoSelectedLibrary() = runTest(testDispatcher) {
         val fakeHandshake = FakeHandshakeRepository()
         val fakeRepo = FakeLibraryRepository()
         val useCase = GetLibraryItemsUseCase(fakeRepo)
@@ -173,20 +177,21 @@ class LibraryViewModelTest {
         val effects = mutableListOf<LibraryEffect>()
         val job = launch { viewModel.effects.collect { effects.add(it) } }
 
-        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("folder-1", "Action Movies"))
+        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("lib-movies", "الأفلام"))
         advanceUntilIdle()
 
         val success = viewModel.uiState.value as LibraryUiState.Success
         assertEquals(2, success.breadcrumbs.size)
-        assertEquals("Action Movies", success.breadcrumbs.last().name)
-        assertEquals("folder-1", success.breadcrumbs.last().id)
-        assertTrue(fakeRepo.requests.contains("folder-1"))
+        assertEquals("المكتبة", success.breadcrumbs[0].name)
+        assertEquals("الأفلام", success.breadcrumbs[1].name)
+        assertEquals("lib-movies", success.breadcrumbs[1].id)
+        assertTrue(fakeRepo.requests.contains("lib-movies"))
         assertTrue(effects.contains(LibraryEffect.ScrollToIndex(0)))
         job.cancel()
     }
 
     @Test
-    fun navigateBackInHierarchy_popsBreadcrumbLevel() = runTest(testDispatcher) {
+    fun navigateBackInHierarchy_fromLibrary_returnsToRoot() = runTest(testDispatcher) {
         val fakeHandshake = FakeHandshakeRepository()
         val fakeRepo = FakeLibraryRepository()
         val useCase = GetLibraryItemsUseCase(fakeRepo)
@@ -197,7 +202,7 @@ class LibraryViewModelTest {
         )
         advanceUntilIdle()
 
-        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("folder-1", "Action Movies"))
+        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("lib-movies", "الأفلام"))
         advanceUntilIdle()
 
         val effects = mutableListOf<LibraryEffect>()
@@ -207,8 +212,44 @@ class LibraryViewModelTest {
         advanceUntilIdle()
 
         val success = viewModel.uiState.value as LibraryUiState.Success
+        assertTrue(success.isAtRoot)
         assertEquals(1, success.breadcrumbs.size)
-        assertEquals("الأفلام", success.breadcrumbs.first().name)
+        assertEquals("المكتبة", success.breadcrumbs.first().name)
+        assertEquals(2, success.items.size)
+        assertTrue(effects.contains(LibraryEffect.ScrollToIndex(0)))
+        job.cancel()
+    }
+
+    @Test
+    fun navigateBackInHierarchy_fromSubfolder_popsToParentFolder() = runTest(testDispatcher) {
+        val fakeHandshake = FakeHandshakeRepository()
+        val fakeRepo = FakeLibraryRepository()
+        val useCase = GetLibraryItemsUseCase(fakeRepo)
+
+        val viewModel = LibraryViewModel(
+            getLibraryItemsUseCase = useCase,
+            handshakeRepository = fakeHandshake
+        )
+        advanceUntilIdle()
+
+        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("lib-movies", "الأفلام"))
+        advanceUntilIdle()
+
+        viewModel.processIntent(LibraryIntent.NavigateIntoFolder("folder-1", "Action Movies"))
+        advanceUntilIdle()
+
+        val midState = viewModel.uiState.value as LibraryUiState.Success
+        assertEquals(3, midState.breadcrumbs.size)
+
+        val effects = mutableListOf<LibraryEffect>()
+        val job = launch { viewModel.effects.collect { effects.add(it) } }
+
+        viewModel.processIntent(LibraryIntent.NavigateBackInHierarchy)
+        advanceUntilIdle()
+
+        val success = viewModel.uiState.value as LibraryUiState.Success
+        assertEquals(2, success.breadcrumbs.size)
+        assertEquals("الأفلام", success.breadcrumbs.last().name)
         assertTrue(effects.contains(LibraryEffect.ScrollToIndex(0)))
         job.cancel()
     }
@@ -223,6 +264,9 @@ class LibraryViewModelTest {
             getLibraryItemsUseCase = useCase,
             handshakeRepository = fakeHandshake
         )
+        advanceUntilIdle()
+
+        viewModel.processIntent(LibraryIntent.SwitchLibrary("lib-movies", "الأفلام"))
         advanceUntilIdle()
 
         val effects = mutableListOf<LibraryEffect>()
@@ -249,6 +293,9 @@ class LibraryViewModelTest {
         )
         advanceUntilIdle()
 
+        viewModel.processIntent(LibraryIntent.SwitchLibrary("lib-movies", "الأفلام"))
+        advanceUntilIdle()
+
         fakeRepo.itemsToReturn = emptyList()
         viewModel.processIntent(LibraryIntent.NavigateIntoFolder("empty-folder", "Empty Subfolder"))
         advanceUntilIdle()
@@ -257,7 +304,7 @@ class LibraryViewModelTest {
         assertTrue("State must be Success even for empty folders to preserve navigation", state is LibraryUiState.Success)
         val success = state as LibraryUiState.Success
         assertTrue(success.items.isEmpty())
-        assertEquals(2, success.breadcrumbs.size)
+        assertEquals(3, success.breadcrumbs.size)
         assertEquals("Empty Subfolder", success.breadcrumbs.last().name)
         org.junit.Assert.assertFalse(success.isAtRoot)
     }
