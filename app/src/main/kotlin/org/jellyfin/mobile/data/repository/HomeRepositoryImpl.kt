@@ -67,7 +67,18 @@ class HomeRepositoryImpl(
         }
     }
 
+    @Volatile
+    private var cachedHomeFeed: HomeFeed? = null
+    @Volatile
+    private var lastFeedFetchTime: Long = 0L
+    private val cacheTtlMs: Long = 5 * 60 * 1000L
+
     override suspend fun getHomeFeed(forceRefresh: Boolean): Result<HomeFeed> = withContext(ioDispatcher) {
+        val cached = cachedHomeFeed
+        if (!forceRefresh && cached != null && (System.currentTimeMillis() - lastFeedFetchTime < cacheTtlMs)) {
+            return@withContext Result.success(cached)
+        }
+
         runCatching {
             val userId = requireUserId()
 
@@ -105,13 +116,16 @@ class HomeRepositoryImpl(
                     fallback
                 }
 
-                HomeFeed(
+                val feed = HomeFeed(
                     libraries = libraries.toImmutableList(),
                     heroItems = spotlight.toImmutableList(),
                     resumeItems = resumeItems.toImmutableList(),
                     nextUpItems = nextUpItems.toImmutableList(),
                     latestItems = latestItems.toImmutableList()
                 )
+                cachedHomeFeed = feed
+                lastFeedFetchTime = System.currentTimeMillis()
+                feed
             }
         }
     }

@@ -1,5 +1,6 @@
 package org.jellyfin.mobile.data.repository
 
+import androidx.collection.LruCache
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,8 @@ class LibraryRepositoryImpl(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : LibraryRepository {
 
+    private val pageCache = LruCache<String, LibraryPage>(50)
+
     private suspend fun requireUserId(): String {
         val current = sessionManager.getUserId() ?: handshakeRepository.currentSession.value?.userId
         if (!current.isNullOrBlank()) return current
@@ -38,7 +41,33 @@ class LibraryRepositoryImpl(
         startIndex: Int,
         limit: Int,
         isHierarchical: Boolean
+    ): Result<LibraryPage> = getLibraryItems(
+        parentId = parentId,
+        filter = filter,
+        letter = letter,
+        startIndex = startIndex,
+        limit = limit,
+        isHierarchical = isHierarchical,
+        forceRefresh = false
+    )
+
+    override suspend fun getLibraryItems(
+        parentId: String,
+        filter: LibraryFilter,
+        letter: Char?,
+        startIndex: Int,
+        limit: Int,
+        isHierarchical: Boolean,
+        forceRefresh: Boolean
     ): Result<LibraryPage> = withContext(ioDispatcher) {
+        val cacheKey = "$parentId-${filter.sortBy}-$letter-$startIndex-$limit-$isHierarchical"
+        if (!forceRefresh) {
+            val cached = pageCache[cacheKey]
+            if (cached != null) {
+                return@withContext Result.success(cached)
+            }
+        }
+
         runCatching {
             val userId = requireUserId()
 
@@ -74,11 +103,17 @@ class LibraryRepositoryImpl(
             val domainItems = response.items?.map { it.toMediaItemSummary() } ?: emptyList()
             val totalCount = response.totalRecordCount ?: domainItems.size
 
-            LibraryPage(
+            val page = LibraryPage(
                 items = domainItems.toImmutableList(),
                 totalCount = totalCount,
                 startIndex = response.startIndex ?: startIndex
             )
+            pageCache.put(cacheKey, page)
+            page
         }
+    }
+
+    override fun clearCache() {
+        pageCache.evictAll()
     }
 }

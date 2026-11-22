@@ -28,4 +28,23 @@ interface LibraryRepository {
         limit: Int = 100,
         isHierarchical: Boolean = true
     ): Result<LibraryPage>
+
+    suspend fun getLibraryItems(
+        parentId: String,
+        filter: LibraryFilter = LibraryFilter(),
+        letter: Char? = null,
+        startIndex: Int = 0,
+        limit: Int = 100,
+        isHierarchical: Boolean = true,
+        forceRefresh: Boolean = false
+    ): Result<LibraryPage> = getLibraryItems(
+        parentId = parentId,
+        filter = filter,
+        letter = letter,
+        startIndex = startIndex,
+        limit = limit,
+        isHierarchical = isHierarchical
+    )
+
+    fun clearCache() {}
 }
