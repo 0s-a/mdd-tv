@@ -12,6 +12,7 @@ import org.jellyfin.mobile.core.player.external.ExternalPlayerManager
 import org.jellyfin.mobile.core.player.external.ExternalPlayerManagerImpl
 import org.jellyfin.mobile.core.player.preload.Media3PreloadManagerImpl
 import org.jellyfin.mobile.core.player.preload.PreloadManager
+import org.jellyfin.mobile.core.sync.OfflineSyncCoordinator
 import org.jellyfin.mobile.data.local.AppDatabase
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.data.repository.HandshakeRepositoryImpl
@@ -19,6 +20,7 @@ import org.jellyfin.mobile.data.repository.HomeRepositoryImpl
 import org.jellyfin.mobile.data.repository.LibraryRepositoryImpl
 import org.jellyfin.mobile.data.repository.LocalProfileRepositoryImpl
 import org.jellyfin.mobile.data.repository.MediaDetailsRepositoryImpl
+import org.jellyfin.mobile.data.repository.OfflineActionRepositoryImpl
 import org.jellyfin.mobile.data.repository.SearchRepositoryImpl
 import org.jellyfin.mobile.data.repository.SplashPosterRepositoryImpl
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
@@ -26,6 +28,7 @@ import org.jellyfin.mobile.domain.repository.HomeRepository
 import org.jellyfin.mobile.domain.repository.LibraryRepository
 import org.jellyfin.mobile.domain.repository.LocalProfileRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
+import org.jellyfin.mobile.domain.repository.OfflineActionRepository
 import org.jellyfin.mobile.domain.repository.SearchRepository
 import org.jellyfin.mobile.domain.repository.SplashPosterRepository
 import org.jellyfin.mobile.domain.usecase.GetHomeFeedUseCase
@@ -154,7 +157,10 @@ val repositoryModule = module {
         SplashPosterRepositoryImpl(
             splashPosterDao = get(),
             apiService = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            localFavoriteDao = get(),
+            localWatchProgressDao = get(),
+            context = androidContext()
         )
     }
 
@@ -167,6 +173,21 @@ val repositoryModule = module {
     single<ExternalPlayerManager> {
         ExternalPlayerManagerImpl(
             localProfileRepository = get()
+        )
+    }
+
+    single<OfflineActionRepository> {
+        OfflineActionRepositoryImpl(
+            offlineActionDao = get(),
+            apiService = get(),
+            sessionManager = get()
+        )
+    }
+
+    single {
+        OfflineSyncCoordinator(
+            context = androidContext(),
+            offlineActionRepository = get()
         )
     }
 }
@@ -185,6 +206,7 @@ val databaseModule = module {
     single { get<AppDatabase>().watchedArchiveDao() }
     single { get<AppDatabase>().localWatchProgressDao() }
     single { get<AppDatabase>().splashPosterDao() }
+    single { get<AppDatabase>().offlineActionDao() }
 }
 
 val useCaseModule = module {

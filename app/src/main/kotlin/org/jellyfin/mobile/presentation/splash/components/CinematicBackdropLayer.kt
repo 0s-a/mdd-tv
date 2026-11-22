@@ -19,7 +19,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import org.jellyfin.mobile.presentation.splash.model.SplashPoster
 import org.jellyfin.mobile.ui.theme.JellyfinPrimitives
@@ -62,8 +64,14 @@ fun CinematicBackdropLayer(
             label = "cinematic_backdrop_crossfade"
         ) { index ->
             val poster = posters[index % posters.size]
+            val backdropTarget = poster.backdropUrl.ifBlank { poster.imageUrl }
             AsyncImage(
-                model = poster.imageUrl,
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(backdropTarget)
+                    .memoryCacheKey(backdropTarget)
+                    .diskCacheKey(backdropTarget)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

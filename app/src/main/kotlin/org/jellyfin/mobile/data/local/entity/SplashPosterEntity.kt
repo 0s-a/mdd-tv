@@ -12,5 +12,7 @@ data class SplashPosterEntity(
     val title: String,
     val badge: String,
     val imageUrl: String,
+    val backdropUrl: String = "",
+    val rating: Float = 0f,
     val orderIndex: Int = 0
 )

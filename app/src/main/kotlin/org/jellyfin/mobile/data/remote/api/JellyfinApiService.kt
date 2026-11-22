@@ -71,13 +71,14 @@ interface JellyfinApiService {
     @GET("Users/{userId}/Items")
     suspend fun getSplashItems(
         @Path("userId") userId: String,
-        @Query("sortBy") sortBy: String = "DateCreated,SortName",
+        @Query("sortBy") sortBy: String = "CommunityRating,DateCreated",
         @Query("sortOrder") sortOrder: String = "Descending",
         @Query("includeItemTypes") includeItemTypes: String = "Movie,Series",
         @Query("imageTypes") imageTypes: String = "Primary",
+        @Query("minCommunityRating") minCommunityRating: Float? = null,
         @Query("recursive") recursive: Boolean = true,
-        @Query("limit") limit: Int = 20,
-        @Query("fields") fields: String = "PrimaryImageAspectRatio,Genres,CommunityRating"
+        @Query("limit") limit: Int = 30,
+        @Query("fields") fields: String = "PrimaryImageAspectRatio,Genres,CommunityRating,BackdropImageTags,ImageTags"
     ): ItemsResponseDto
 
     @GET("Users/{userId}/Items")

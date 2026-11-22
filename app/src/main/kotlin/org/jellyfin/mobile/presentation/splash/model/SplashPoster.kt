@@ -6,7 +6,9 @@ import androidx.compose.runtime.Immutable
 data class SplashPoster(
     val title: String,
     val badge: String,
-    val imageUrl: String
+    val imageUrl: String,
+    val backdropUrl: String = imageUrl,
+    val rating: Float = 0f
 )
 
 val SplashPosterCatalog: List<SplashPoster> = listOf(

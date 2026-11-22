@@ -86,6 +86,7 @@ class SearchRepositoryImplTest {
             sortOrder: String,
             includeItemTypes: String,
             imageTypes: String,
+            minCommunityRating: Float?,
             recursive: Boolean,
             limit: Int,
             fields: String
