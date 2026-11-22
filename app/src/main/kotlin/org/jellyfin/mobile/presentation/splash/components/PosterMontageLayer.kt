@@ -1,6 +1,7 @@
 package org.jellyfin.mobile.presentation.splash.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,26 +38,29 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import kotlinx.coroutines.delay
 import org.jellyfin.mobile.presentation.splash.model.SplashPoster
+import org.jellyfin.mobile.ui.theme.JellyfinColors
+import org.jellyfin.mobile.ui.theme.JellyfinDimens
+import org.jellyfin.mobile.ui.theme.JellyfinPrimitives
 
 private val PosterCinematicThemes = listOf(
-    Color(0xFF881337) to Color(0xFF1C1917), // Attack on Titan
-    Color(0xFF701A75) to Color(0xFF0F172A), // Spider-Man
-    Color(0xFF0369A1) to Color(0xFF020617), // Interstellar
-    Color(0xFFB45309) to Color(0xFF18181B), // Demon Slayer
-    Color(0xFF3730A3) to Color(0xFF09090B), // Avengers: Endgame
-    Color(0xFF334155) to Color(0xFF030712), // The Dark Knight
-    Color(0xFF047857) to Color(0xFF14532D), // Breaking Bad
-    Color(0xFF1E3A8A) to Color(0xFF082F49), // Game of Thrones
-    Color(0xFF0D9488) to Color(0xFF134E4A), // Spirited Away
-    Color(0xFFD97706) to Color(0xFF451A03), // Dune
-    Color(0xFF65A30D) to Color(0xFF27272A), // Fight Club
-    Color(0xFF991B1B) to Color(0xFF1C1917), // Pulp Fiction
-    Color(0xFFC2410C) to Color(0xFF431407), // Gladiator
-    Color(0xFF6D28D9) to Color(0xFF1E1B4B), // Your Name
-    Color(0xFF0284C7) to Color(0xFF064E3B), // Avatar
-    Color(0xFF475569) to Color(0xFF090D16), // Inception
-    Color(0xFFEA580C) to Color(0xFF18181B), // Oppenheimer
-    Color(0xFF78350F) to Color(0xFF0F172A)  // The Shawshank Redemption
+    Color(0xFF881337) to Color(0xFF1C1917),
+    Color(0xFF701A75) to Color(0xFF0F172A),
+    Color(0xFF0369A1) to Color(0xFF020617),
+    Color(0xFFB45309) to Color(0xFF18181B),
+    Color(0xFF3730A3) to Color(0xFF09090B),
+    Color(0xFF334155) to Color(0xFF030712),
+    Color(0xFF047857) to Color(0xFF14532D),
+    Color(0xFF1E3A8A) to Color(0xFF082F49),
+    Color(0xFF0D9488) to Color(0xFF134E4A),
+    Color(0xFFD97706) to Color(0xFF451A03),
+    Color(0xFF65A30D) to Color(0xFF27272A),
+    Color(0xFF991B1B) to Color(0xFF1C1917),
+    Color(0xFFC2410C) to Color(0xFF431407),
+    Color(0xFF6D28D9) to Color(0xFF1E1B4B),
+    Color(0xFF0284C7) to Color(0xFF064E3B),
+    Color(0xFF475569) to Color(0xFF090D16),
+    Color(0xFFEA580C) to Color(0xFF18181B),
+    Color(0xFF78350F) to Color(0xFF0F172A)
 )
 
 @Composable
@@ -74,115 +78,124 @@ fun PosterMontageLayer(
 
     val context = LocalContext.current
     var currentIndex by remember { mutableIntStateOf(0) }
-    val totalCuts = minOf(14, posters.size)
+    val totalCuts = minOf(6, posters.size)
 
     LaunchedEffect(Unit) {
-        // Pre-warm the image pipeline for initial cards
-        for (idx in 0 until minOf(4, posters.size)) {
+        // Pre-warm the image pipeline for initial cards to avoid blank frames
+        for (idx in 0 until totalCuts) {
             val req = ImageRequest.Builder(context)
                 .data(posters[idx].imageUrl)
+                .memoryCacheKey(posters[idx].imageUrl)
                 .build()
             context.imageLoader.enqueue(req)
         }
 
+        // Filmic pacing with deliberate transitions avoiding rapid strobing
+        val cutDurations = listOf(350L, 300L, 270L, 240L, 220L, 200L)
         for (i in 0 until totalCuts) {
-            val stepDuration = maxOf(75L, 150L - (i * 6L))
+            val duration = cutDurations.getOrElse(i) { 200L }
             currentIndex = i
-            delay(stepDuration)
+            delay(duration)
         }
-        delay(90L)
+        delay(120L)
         onMontageComplete()
     }
 
-    AnimatedContent(
-        targetState = currentIndex,
-        transitionSpec = {
-            fadeIn(animationSpec = tween(durationMillis = 50)) togetherWith
-                fadeOut(animationSpec = tween(durationMillis = 50))
-        },
-        modifier = modifier.fillMaxSize(),
-        label = "poster_cut_transition"
-    ) { index ->
-        val poster = posters[index % posters.size]
-        val (accentColor, darkBase) = PosterCinematicThemes[index % PosterCinematicThemes.size]
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(JellyfinPrimitives.BlackOled)
+    ) {
+        AnimatedContent(
+            targetState = currentIndex,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(durationMillis = 180, easing = LinearEasing)) togetherWith
+                    fadeOut(animationSpec = tween(durationMillis = 180, easing = LinearEasing))
+            },
+            modifier = Modifier.fillMaxSize(),
+            label = "poster_cut_transition"
+        ) { index ->
+            val poster = posters[index % posters.size]
+            val (accentColor, darkBase) = PosterCinematicThemes[index % PosterCinematicThemes.size]
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.50f),
-                            darkBase.copy(alpha = 0.85f),
-                            Color(0xFF050811)
-                        ),
-                        radius = 1200f
-                    )
-                )
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(poster.imageUrl)
-                    .crossfade(true)
-                    .memoryCacheKey(poster.imageUrl)
-                    .build(),
-                contentDescription = poster.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // Cinematic Vignette Overlays
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.verticalGradient(
-                            0.0f to Color.Black.copy(alpha = 0.65f),
-                            0.35f to Color.Transparent,
-                            0.70f to Color.Transparent,
-                            1.0f to Color.Black.copy(alpha = 0.85f)
+                        Brush.radialGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.40f),
+                                darkBase.copy(alpha = 0.80f),
+                                JellyfinPrimitives.BlackOled
+                            ),
+                            radius = 1200f
                         )
                     )
-            )
-
-            // Poster Dynamic Info Overlay at bottom
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 24.dp, vertical = 32.dp)
             ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(poster.imageUrl)
+                        .crossfade(false)
+                        .memoryCacheKey(poster.imageUrl)
+                        .build(),
+                    contentDescription = poster.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Cinematic Vignette Overlays
                 Box(
                     modifier = Modifier
+                        .fillMaxSize()
                         .background(
-                            Color.Black.copy(alpha = 0.70f),
-                            RoundedCornerShape(6.dp)
+                            Brush.verticalGradient(
+                                0.0f to Color.Black.copy(alpha = 0.65f),
+                                0.35f to Color.Transparent,
+                                0.70f to Color.Transparent,
+                                1.0f to Color.Black.copy(alpha = 0.85f)
+                            )
                         )
-                        .border(
-                            1.dp,
-                            Color(0xFF38BDF8).copy(alpha = 0.40f),
-                            RoundedCornerShape(6.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+
+                // Poster Dynamic Info Overlay at bottom
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 24.dp, vertical = 32.dp)
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                JellyfinPrimitives.Graphite900.copy(alpha = 0.85f),
+                                RoundedCornerShape(JellyfinDimens.RadiusMicro)
+                            )
+                            .border(
+                                JellyfinDimens.BorderHairline,
+                                JellyfinColors.AccentCyan.copy(alpha = 0.40f),
+                                RoundedCornerShape(JellyfinDimens.RadiusMicro)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = poster.badge,
+                            color = JellyfinColors.AccentCyan,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.2.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
                     Text(
-                        text = poster.badge,
-                        color = Color(0xFF38BDF8),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.2.sp
+                        text = poster.title,
+                        color = JellyfinPrimitives.WhitePure,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black
                     )
                 }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = poster.title,
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Black
-                )
             }
         }
     }
