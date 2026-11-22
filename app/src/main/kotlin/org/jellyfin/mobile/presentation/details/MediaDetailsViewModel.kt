@@ -1,6 +1,5 @@
 package org.jellyfin.mobile.presentation.details
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.collections.immutable.toImmutableList
@@ -29,8 +28,7 @@ class MediaDetailsViewModel(
     private val getMediaDetailsUseCase: GetMediaDetailsUseCase,
     private val mediaDetailsRepository: MediaDetailsRepository,
     private val handshakeRepository: HandshakeRepository,
-    private val localProfileRepository: LocalProfileRepository? = null,
-    private val context: Context? = null
+    private val localProfileRepository: LocalProfileRepository? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MediaDetailsUiState>(MediaDetailsUiState.Loading)
@@ -335,7 +333,12 @@ class MediaDetailsViewModel(
         }
     }
 
+    private var lastPlayClickTimeMs: Long = 0L
+
     private fun handlePlayMedia(fromStart: Boolean) {
+        val now = System.currentTimeMillis()
+        if (now - lastPlayClickTimeMs < 800L) return
+        lastPlayClickTimeMs = now
         val current = _uiState.value
         if (current !is MediaDetailsUiState.Success) return
         val mediaId = currentMediaId ?: return

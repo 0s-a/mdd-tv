@@ -7,11 +7,14 @@ import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
+import android.os.SystemClock
 import android.util.Rational
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,6 +24,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +43,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import org.jellyfin.mobile.core.player.external.ExternalPlayerIntentBuilder
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
+import org.jellyfin.mobile.core.player.external.ExternalPlayerResultParser
 import org.jellyfin.mobile.presentation.player.components.PlayerActionsModal
 import org.jellyfin.mobile.presentation.player.components.PlayerHudOverlay
 import org.jellyfin.mobile.presentation.player.components.PlayerSurface
@@ -60,10 +68,10 @@ import org.jellyfin.mobile.ui.theme.JellyfinColors
 @Composable
 fun AdvancedPlayerScreen(
     mediaId: String,
-    startPositionMs: Long = 0L,
     viewModel: PlayerViewModel,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    startPositionMs: Long = 0L
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -73,8 +81,29 @@ fun AdvancedPlayerScreen(
     var isInPiP by remember { mutableStateOf(activity?.isInPictureInPictureMode ?: false) }
 
     // Dynamic Video Size tracking for PiP aspect ratio
-    var videoWidth by remember { mutableStateOf(viewModel.player.videoSize.width) }
-    var videoHeight by remember { mutableStateOf(viewModel.player.videoSize.height) }
+    var videoWidth by remember { mutableIntStateOf(viewModel.player.videoSize.width) }
+    var videoHeight by remember { mutableIntStateOf(viewModel.player.videoSize.height) }
+
+    // External player activity result launcher
+    var activeExternalPayload by remember { mutableStateOf<ExternalPlayerPayload?>(null) }
+    var externalLaunchTimestamp by remember { mutableLongStateOf(0L) }
+
+    val externalPlayerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val payload = activeExternalPayload
+        val elapsedMs = SystemClock.elapsedRealtime() - externalLaunchTimestamp
+        if (payload != null) {
+            val playbackResult = ExternalPlayerResultParser.parse(
+                payload = payload,
+                resultCode = result.resultCode,
+                data = result.data,
+                elapsedMs = elapsedMs
+            )
+            viewModel.onExternalPlaybackResult(playbackResult)
+        }
+        activeExternalPayload = null
+    }
 
     DisposableEffect(viewModel.player) {
         val listener = object : androidx.media3.common.Player.Listener {
@@ -124,11 +153,7 @@ fun AdvancedPlayerScreen(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
-                    val inPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        activity?.isInPictureInPictureMode == true
-                    } else {
-                        false
-                    }
+                    val inPip = activity?.isInPictureInPictureMode == true
                     if (!inPip) {
                         viewModel.dispatch(PlayerIntent.Pause)
                     }
@@ -202,6 +227,12 @@ fun AdvancedPlayerScreen(
                 }
                 PlayerEffect.ClosePlayerScreen -> {
                     onNavigateBack()
+                }
+                is PlayerEffect.LaunchExternalPlayer -> {
+                    activeExternalPayload = effect.payload
+                    externalLaunchTimestamp = SystemClock.elapsedRealtime()
+                    val chooserIntent = ExternalPlayerIntentBuilder.buildChooserIntent(effect.payload)
+                    externalPlayerLauncher.launch(chooserIntent)
                 }
                 PlayerEffect.EnterPictureInPicture -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity != null) {
@@ -371,7 +402,8 @@ fun AdvancedPlayerScreen(
                 onSetEqualizerBand = { index, gain -> viewModel.dispatch(PlayerIntent.SetEqualizerBand(index, gain)) },
                 onApplyVocalBoost = { viewModel.dispatch(PlayerIntent.ApplyVocalBoost) },
                 onSetBitstreamPassthrough = { viewModel.dispatch(PlayerIntent.SetBitstreamPassthrough(it)) },
-                onSetAudioDelay = { viewModel.dispatch(PlayerIntent.SetAudioDelay(it)) }
+                onSetAudioDelay = { viewModel.dispatch(PlayerIntent.SetAudioDelay(it)) },
+                onLaunchExternalPlayer = { viewModel.dispatch(PlayerIntent.LaunchExternalPlayer) }
             )
         }
     }

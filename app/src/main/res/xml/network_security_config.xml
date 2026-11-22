@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <!-- خادم Jellyfin المعتمد حصرياً -->
+        <!-- خادم Jellyfin المعتمد حصريا والشبكة المحلية -->
         <domain includeSubdomains="true">192.168.200.200</domain>
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
     </domain-config>
-    <!-- السماح بحركة البيانات المحلية غير المشفرة على نطاق الشبكة المحلية -->
-    <base-config cleartextTrafficPermitted="true" />
+    <!-- حظر تام لحركة HTTP غير المشفرة خارج الشبكة المحلية المعتمدة -->
+    <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

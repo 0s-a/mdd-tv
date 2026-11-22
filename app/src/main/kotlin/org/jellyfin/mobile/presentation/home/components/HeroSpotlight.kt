@@ -181,7 +181,7 @@ fun HeroSpotlight(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = String.format("%.1f IMDb", item.communityRating),
+                                    text = String.format(java.util.Locale.ROOT, "%.1f IMDb", item.communityRating),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = JellyfinColors.RatingGold,
                                     fontWeight = FontWeight.Bold

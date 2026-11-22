@@ -3,6 +3,7 @@ package org.jellyfin.mobile.presentation.player
 import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
 
 /**
  * MVI Contract for Screen 04 - Advanced Video Player.
@@ -76,6 +77,7 @@ sealed interface PlayerIntent {
     data class SetAudioDelay(val delayMs: Long) : PlayerIntent
     data object PlayNextEpisode : PlayerIntent
     data object EnterPictureInPicture : PlayerIntent
+    data object LaunchExternalPlayer : PlayerIntent
     data object ReleasePlayer : PlayerIntent
 }
 
@@ -89,6 +91,7 @@ data class PlayerUiState(
     val mediaTitle: String = "",
     val mediaSubtitle: String = "",
     val isPlaying: Boolean = false,
+    val playWhenReady: Boolean = false,
     val isBuffering: Boolean = true,
     val currentPositionMs: Long = 0L,
     val totalDurationMs: Long = 0L,
@@ -143,9 +146,9 @@ fun formatPlayerTime(millis: Long): String {
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     return if (hours > 0) {
-        String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        String.format(java.util.Locale.ROOT, "%02d:%02d:%02d", hours, minutes, seconds)
     } else {
-        String.format("%02d:%02d", minutes, seconds)
+        String.format(java.util.Locale.ROOT, "%02d:%02d", minutes, seconds)
     }
 }
 
@@ -160,4 +163,5 @@ sealed interface PlayerEffect {
     data object TriggerHapticDouble : PlayerEffect
     data object ClosePlayerScreen : PlayerEffect
     data object EnterPictureInPicture : PlayerEffect
+    data class LaunchExternalPlayer(val payload: ExternalPlayerPayload) : PlayerEffect
 }

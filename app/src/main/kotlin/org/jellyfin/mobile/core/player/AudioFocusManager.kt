@@ -9,6 +9,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 
 /**
  * AudioFocusManager
@@ -218,7 +219,12 @@ class AudioFocusManager(
     private fun registerNoisyReceiver() {
         if (noisyReceiverRegistered) return
         val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
-        context.registerReceiver(noisyReceiver, filter)
+        ContextCompat.registerReceiver(
+            context,
+            noisyReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         noisyReceiverRegistered = true
     }
 

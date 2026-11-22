@@ -146,7 +146,7 @@ private fun PosterCard(
                     )
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
-                        text = String.format("%.1f", item.communityRating),
+                        text = String.format(java.util.Locale.ROOT, "%.1f", item.communityRating),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = JellyfinColors.RatingGold

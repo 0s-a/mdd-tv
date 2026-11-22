@@ -158,7 +158,9 @@ fun MainNavGraph(
                     navController.navigate(Screen.Details.createRoute(mediaId))
                 },
                 onLaunchPlayer = { mediaId, positionMs ->
-                    navController.navigate(Screen.Player.createRoute(mediaId, positionMs))
+                    navController.navigate(Screen.Player.createRoute(mediaId, positionMs)) {
+                        launchSingleTop = true
+                    }
                 },
                 onNavigateToLibrary = { libraryId, title ->
                     navController.navigate(Screen.Library.createRoute(libraryId, title))
@@ -219,7 +221,9 @@ fun MainNavGraph(
                     navController.navigate(Screen.Search.route)
                 },
                 onLaunchPlayer = { mediaId, positionMs ->
-                    navController.navigate(Screen.Player.createRoute(mediaId, positionMs))
+                    navController.navigate(Screen.Player.createRoute(mediaId, positionMs)) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -242,7 +246,9 @@ fun MainNavGraph(
                 explicitType = explicitType,
                 onNavigateBack = { navController.popBackStack() },
                 onLaunchPlayer = { id, resumePositionMs ->
-                    navController.navigate(Screen.Player.createRoute(id, resumePositionMs))
+                    navController.navigate(Screen.Player.createRoute(id, resumePositionMs)) {
+                        launchSingleTop = true
+                    }
                 },
                 onNavigateToGenre = { genre ->
                     navController.navigate(Screen.Search.createRoute(genre))
@@ -311,7 +317,9 @@ fun MainNavGraph(
                     navController.navigate(Screen.Details.createRoute(mediaId))
                 },
                 onLaunchPlayer = { mediaId ->
-                    navController.navigate(Screen.Player.createRoute(mediaId, 0L))
+                    navController.navigate(Screen.Player.createRoute(mediaId, 0L)) {
+                        launchSingleTop = true
+                    }
                 },
                 onNavigateBack = {
                     navController.popBackStack()

@@ -6,6 +6,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
+import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.AudioAttributes
@@ -17,6 +18,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.text.CueGroup
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -25,9 +27,12 @@ import androidx.media3.session.MediaSession
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import org.jellyfin.mobile.core.player.AudioBoostEngine
-import org.jellyfin.mobile.core.player.AudioFocusManager
 import org.jellyfin.mobile.core.player.MxStyleRenderersFactory
 import org.jellyfin.mobile.core.player.TrickplayThumbnailManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
+import org.jellyfin.mobile.core.player.external.ExternalPlaybackResult
+import org.jellyfin.mobile.core.player.external.ExternalSubtitle
 import org.jellyfin.mobile.core.player.preload.PreloadManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -59,16 +64,22 @@ import java.util.Collections
  * - Series Next Episode automatic discovery.
  * - TalkBack accessibility and zero memory leaks.
  */
+@OptIn(UnstableApi::class)
 class PlayerViewModel(
-    private val context: Context,
+    context: Context,
     private val apiService: JellyfinApiService,
     private val sessionManager: SessionManager,
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository? = null,
-    private val preloadManager: PreloadManager? = null
+    private val preloadManager: PreloadManager? = null,
+    private val externalPlayerManager: ExternalPlayerManager? = null
 ) : ViewModel() {
 
     private val tag = "PlayerViewModel"
+    private val appContext: Context = context.applicationContext
+
+    private var activeStreamUrl: String? = null
+    private var activeSubtitles: List<ExternalSubtitle> = emptyList()
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
@@ -76,55 +87,32 @@ class PlayerViewModel(
     private val _effects = Channel<PlayerEffect>(Channel.BUFFERED)
     val effects = _effects.receiveAsFlow()
 
-    private val trackSelector = DefaultTrackSelector(context)
+    private val trackSelector = DefaultTrackSelector(appContext)
 
-    val player: ExoPlayer = ExoPlayer.Builder(context)
-        .setRenderersFactory(MxStyleRenderersFactory(context))
+    private val audioAttributes = AudioAttributes.Builder()
+        .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+        .setUsage(C.USAGE_MEDIA)
+        .build()
+
+    val player: ExoPlayer = ExoPlayer.Builder(appContext)
+        .setRenderersFactory(MxStyleRenderersFactory(appContext))
         .setTrackSelector(trackSelector)
+        .setAudioAttributes(audioAttributes, true)
+        .setHandleAudioBecomingNoisy(true)
         .setMediaSourceFactory(
             if (preloadManager != null) {
                 DefaultMediaSourceFactory(preloadManager.cacheDataSourceFactory)
             } else {
-                DefaultMediaSourceFactory(context)
+                DefaultMediaSourceFactory(appContext)
             }
         )
         .build()
 
-    private val audioFocusListener = object : AudioFocusManager.Listener {
-        override fun onAudioFocusGained() {
-            player.volume = _uiState.value.volume.coerceAtMost(1.0f)
-            if (!player.isPlaying) {
-                player.play()
-            }
-        }
-
-        override fun onAudioFocusPaused() {
-            if (player.isPlaying) {
-                player.pause()
-            }
-        }
-
-        override fun onAudioFocusDucked() {
-            player.volume = (_uiState.value.volume.coerceAtMost(1.0f) * 0.2f)
-        }
-
-        override fun onAudioFocusLostPermanently() {
-            if (player.isPlaying) {
-                player.pause()
-            }
-        }
-
-        override fun onBecomingNoisy() {
-            if (player.isPlaying) {
-                player.pause()
-            }
-        }
-    }
-    private val audioFocusManager = AudioFocusManager(context, audioFocusListener)
+    private var hasRetriedWithoutCache = false
 
     private var mediaSession: MediaSession? = null
     private var audioBoostEngine: AudioBoostEngine? = null
-    val thumbnailManager = TrickplayThumbnailManager(context)
+    val thumbnailManager = TrickplayThumbnailManager(appContext)
     private var progressTickerJob: Job? = null
     private var lastReportTimeMs: Long = 0L
     private var hasMarkedPlayed: Boolean = false
@@ -155,6 +143,7 @@ class PlayerViewModel(
                     _uiState.update {
                         it.copy(
                             isPlaying = false,
+                            playWhenReady = false,
                             isBuffering = false,
                             currentPositionMs = it.totalDurationMs
                         )
@@ -167,11 +156,14 @@ class PlayerViewModel(
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _uiState.update { it.copy(isPlaying = isPlaying) }
             if (isPlaying) {
-                audioFocusManager.requestAudioFocus()
                 startProgressTicker()
             } else {
-                audioFocusManager.abandonAudioFocus()
+                progressTickerJob?.cancel()
             }
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            _uiState.update { it.copy(playWhenReady = playWhenReady) }
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -196,7 +188,22 @@ class PlayerViewModel(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            Log.e(tag, "Playback error encountered: ${error.errorCodeName}", error)
+            Log.e(tag, "Playback error encountered: ${error.errorCodeName} (${error.errorCode})", error)
+
+            // Self-healing recovery: if an unexpected cache or I/O error occurred,
+            // retry once directly with DefaultMediaSourceFactory bypassing cache
+            if (!hasRetriedWithoutCache && activeStreamUrl != null) {
+                hasRetriedWithoutCache = true
+                Log.w(tag, "Retrying playback directly with clean DefaultMediaSourceFactory...")
+                val currentPos = player.currentPosition.coerceAtLeast(0L)
+                val fallbackSource = DefaultMediaSourceFactory(appContext)
+                    .createMediaSource(MediaItem.fromUri(activeStreamUrl!!))
+                player.setMediaSource(fallbackSource, currentPos)
+                player.prepare()
+                player.play()
+                return
+            }
+
             _uiState.update {
                 it.copy(
                     isBuffering = false,
@@ -210,14 +217,7 @@ class PlayerViewModel(
     }
 
     init {
-        // 1. Configure AudioAttributes with Audio Focus handling for phone calls and navigation
-        val audioAttributes = AudioAttributes.Builder()
-            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-            .setUsage(C.USAGE_MEDIA)
-            .build()
-        player.setAudioAttributes(audioAttributes, true)
-
-        // 2. Configure track selector for software fallback compatibility & Arabic priority
+        // 1. Configure track selector for software fallback compatibility & Arabic priority
         trackSelector.parameters = trackSelector.buildUponParameters()
             .setPreferredAudioMimeTypes(
                 MimeTypes.AUDIO_AAC,
@@ -234,7 +234,7 @@ class PlayerViewModel(
 
         // 3. Initialize MediaSession for Bluetooth remotes, lockscreen, and system notifications
         try {
-            mediaSession = MediaSession.Builder(context, player).build()
+            mediaSession = MediaSession.Builder(appContext, player).build()
         } catch (e: Exception) {
             Log.w(tag, "MediaSession initialization fallback: ${e.message}")
         }
@@ -243,10 +243,26 @@ class PlayerViewModel(
     fun dispatch(intent: PlayerIntent) {
         when (intent) {
             is PlayerIntent.InitializePlayer -> initialize(intent.mediaId, intent.startPositionMs)
-            is PlayerIntent.Play -> player.play()
-            is PlayerIntent.Pause -> player.pause()
+            is PlayerIntent.Play -> {
+                player.play()
+                _uiState.update { it.copy(playWhenReady = true) }
+            }
+            is PlayerIntent.Pause -> {
+                player.pause()
+                _uiState.update { it.copy(playWhenReady = false) }
+            }
             is PlayerIntent.TogglePlayPause -> {
-                if (player.isPlaying) player.pause() else player.play()
+                if (player.playbackState == Player.STATE_ENDED) {
+                    player.seekTo(0L)
+                    player.play()
+                    _uiState.update { it.copy(playWhenReady = true) }
+                } else if (player.playWhenReady) {
+                    player.pause()
+                    _uiState.update { it.copy(playWhenReady = false) }
+                } else {
+                    player.play()
+                    _uiState.update { it.copy(playWhenReady = true) }
+                }
             }
             is PlayerIntent.SeekTo -> seekTo(intent.positionMs)
             is PlayerIntent.FastSeekBy -> fastSeekBy(intent.deltaMs)
@@ -269,16 +285,20 @@ class PlayerViewModel(
             is PlayerIntent.EnterPictureInPicture -> {
                 viewModelScope.launch { _effects.send(PlayerEffect.EnterPictureInPicture) }
             }
+            is PlayerIntent.LaunchExternalPlayer -> launchExternalPlayer()
             is PlayerIntent.ReleasePlayer -> stopPlayer()
         }
     }
 
     private fun initialize(mediaId: String, startPositionMs: Long) {
         stopPlayer()
+        preloadManager?.cancelPreload(mediaId)
+        hasRetriedWithoutCache = false
         _uiState.update {
             it.copy(
                 mediaId = mediaId,
                 isBuffering = true,
+                playWhenReady = true,
                 errorMessage = null,
                 subtitleOffsetMs = 0L,
                 currentSubtitleText = null,
@@ -289,15 +309,22 @@ class PlayerViewModel(
         rawSubtitleText = null
         hasMarkedPlayed = false
 
-        val isOnline = isNetworkAvailable(context)
+        val isOnline = isNetworkAvailable(appContext)
 
         viewModelScope.launch {
             // 1. Ensure authenticated session if online
-            if (isOnline) {
+            var token = sessionManager.getToken()
+                ?: handshakeRepository.currentSession.value?.token
+            var userId = sessionManager.getUserId()
+                ?: handshakeRepository.currentSession.value?.userId.orEmpty()
+
+            if (isOnline && (token.isNullOrBlank() || userId.isBlank())) {
                 try {
-                    if (sessionManager.getToken().isNullOrBlank()) {
-                        handshakeRepository.performHandshake()
-                    }
+                    handshakeRepository.performHandshake()
+                    token = sessionManager.getToken()
+                        ?: handshakeRepository.currentSession.value?.token
+                    userId = sessionManager.getUserId()
+                        ?: handshakeRepository.currentSession.value?.userId.orEmpty()
                 } catch (e: Exception) {
                     Log.w(tag, "Login handshake fallback: ${e.message}")
                 }
@@ -316,7 +343,6 @@ class PlayerViewModel(
                 }
             }
 
-            val userId = sessionManager.getUserId().orEmpty()
             var primarySource: MediaSourceDto? = null
 
             if (isOnline) {
@@ -398,18 +424,25 @@ class PlayerViewModel(
             }
 
             // 4. Construct stream URL (Media3 CacheDataSource automatically plays from cache with zero network calls)
-            val token = sessionManager.getToken()
             val baseServer = AppConfig.SERVER_URL.trimEnd('/')
             val streamUrl = StringBuilder("$baseServer/Videos/$mediaId/stream?static=true")
             if (!token.isNullOrBlank()) {
                 streamUrl.append("&api_key=$token")
             }
+            activeStreamUrl = streamUrl.toString()
 
             val subConfigs = mutableListOf<MediaItem.SubtitleConfiguration>()
+            val parsedExternalSubs = mutableListOf<ExternalSubtitle>()
             if (isOnline && currentMediaSourceId != null) {
                 primarySource?.mediaStreams?.filter { it.type.equals("Subtitle", ignoreCase = true) }?.forEach { sub ->
                     val idx = sub.index ?: return@forEach
                     val codec = sub.codec?.lowercase().orEmpty()
+                    val isTextSub = codec.contains("subrip") || codec.contains("srt") ||
+                            codec.contains("ass") || codec.contains("ssa") ||
+                            codec.contains("vtt")
+
+                    // Exclude image-based subtitle formats (e.g. PGSSUB, VOBSUB, DVBSUB) from text stream extraction
+                    if (!isTextSub) return@forEach
 
                     // Select native subtitle format: SRT (SubRip), ASS/SSA, or WebVTT
                     val (ext, mimeType) = when {
@@ -430,28 +463,54 @@ class PlayerViewModel(
                     val label = sub.displayTitle ?: if (isArabic) "العربية" else lang.uppercase()
                     val isDefault = sub.isDefault == true || isArabic
 
-                    val config = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl.toString()))
-                        .setMimeType(mimeType)
-                        .setLanguage(lang)
-                        .setLabel(label)
-                        .setSelectionFlags(if (isDefault) C.SELECTION_FLAG_DEFAULT else 0)
-                        .build()
-                    subConfigs.add(config)
+                    // Only inject external subtitle files via SubtitleConfiguration.
+                    // Embedded subtitles inside MKV/MP4 containers are demuxed natively by ExoPlayer with zero network latency.
+                    if (sub.isExternal == true) {
+                        val config = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl.toString()))
+                            .setMimeType(mimeType)
+                            .setLanguage(lang)
+                            .setLabel(label)
+                            .setSelectionFlags(if (isDefault) C.SELECTION_FLAG_DEFAULT else 0)
+                            .build()
+                        subConfigs.add(config)
+                    }
+
+                    parsedExternalSubs.add(
+                        ExternalSubtitle(
+                            url = subUrl.toString(),
+                            name = label,
+                            language = lang,
+                            isDefault = isDefault
+                        )
+                    )
                 }
             }
+            activeSubtitles = parsedExternalSubs
 
-            val mediaItem = MediaItem.Builder()
+            val containerMime = when (primarySource?.container?.lowercase()) {
+                "mp4", "m4v", "mov" -> MimeTypes.VIDEO_MP4
+                "mkv", "webm" -> MimeTypes.VIDEO_MATROSKA
+                "avi" -> MimeTypes.VIDEO_AVI
+                "ts", "m2ts" -> MimeTypes.VIDEO_MP2T
+                else -> null
+            }
+
+            val mediaItemBuilder = MediaItem.Builder()
                 .setUri(streamUrl.toString())
                 .setMediaId(mediaId)
                 .setSubtitleConfigurations(subConfigs)
-                .build()
 
-            player.setMediaItem(mediaItem)
-            player.prepare()
+            if (containerMime != null) {
+                mediaItemBuilder.setMimeType(containerMime)
+            }
+            val mediaItem = mediaItemBuilder.build()
 
             if (resumeMs > 0L) {
-                player.seekTo(resumeMs)
+                player.setMediaItem(mediaItem, resumeMs)
+            } else {
+                player.setMediaItem(mediaItem)
             }
+            player.prepare()
             player.playWhenReady = true
 
             // Trickplay BIF or local I-Frame extraction (Zero dynamic server transcoding)
@@ -819,6 +878,41 @@ class PlayerViewModel(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
+    private fun launchExternalPlayer() {
+        player.pause()
+        val mediaId = _uiState.value.mediaId
+        val title = _uiState.value.mediaTitle
+        val currentPos = player.currentPosition.coerceAtLeast(0L)
+        val duration = player.duration.coerceAtLeast(0L)
+        val stream = activeStreamUrl ?: AppConfig.buildVideoStreamUrl(mediaId, sessionManager.getToken())
+
+        val payload = ExternalPlayerPayload(
+            mediaId = mediaId,
+            title = title,
+            streamUrl = stream,
+            resumePositionMs = currentPos,
+            durationMs = duration,
+            subtitles = activeSubtitles
+        )
+
+        viewModelScope.launch {
+            _effects.send(PlayerEffect.LaunchExternalPlayer(payload))
+        }
+    }
+
+    fun onExternalPlaybackResult(result: ExternalPlaybackResult) {
+        val title = _uiState.value.mediaTitle
+        viewModelScope.launch {
+            externalPlayerManager?.persistResult(result, title)
+            if (result.isCompleted) {
+                _effects.send(PlayerEffect.ClosePlayerScreen)
+            } else if (result.positionMs > 0L) {
+                player.seekTo(result.positionMs)
+                _uiState.update { it.copy(currentPositionMs = result.positionMs) }
+            }
+        }
+    }
+
     private fun stopPlayer() {
         progressTickerJob?.cancel()
         try {
@@ -828,17 +922,11 @@ class PlayerViewModel(
         } catch (e: Exception) {
             Log.w(tag, "Error stopping ExoPlayer: ${e.message}")
         }
-        audioFocusManager.abandonAudioFocus()
     }
 
     override fun onCleared() {
         super.onCleared()
         stopPlayer()
-        try {
-            audioFocusManager.release()
-        } catch (e: Exception) {
-            Log.w(tag, "Error releasing AudioFocusManager: ${e.message}")
-        }
         try {
             thumbnailManager.release()
         } catch (e: Exception) {

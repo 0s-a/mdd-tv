@@ -737,7 +737,7 @@ private fun TrackRowItem(
                 AnimatedAudioEqualizer()
             } else {
                 Text(
-                    text = String.format("%02d", index),
+                    text = String.format(java.util.Locale.ROOT, "%02d", index),
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = if (isCurrentTrack) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 14.sp

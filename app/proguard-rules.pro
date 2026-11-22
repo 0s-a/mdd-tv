@@ -79,3 +79,6 @@
 # 10. Compose & Material3
 -keep class androidx.compose.material3.** { *; }
 -keep class androidx.compose.ui.** { *; }
+
+# 11. External Player Core Models
+-keep class org.jellyfin.mobile.core.player.external.** { *; }

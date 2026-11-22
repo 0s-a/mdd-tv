@@ -354,9 +354,25 @@ fun PlayerHudOverlay(
                 Spacer(modifier = Modifier.width(36.dp))
 
                 // Center Play / Pause / Buffering Master Button
+                val isPlayingOrReady = uiState.playWhenReady || uiState.isPlaying
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(76.dp)
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(Color(0xEE1E293B), Color(0xCC0F172A))
+                            )
+                        )
+                        .border(2.dp, Color(0x886366F1), CircleShape)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onTogglePlayPause
+                        )
+                        .semantics {
+                            contentDescription = if (isPlayingOrReady) "إيقاف مؤقت" else "تشغيل"
+                        }
                 ) {
                     if (uiState.isBuffering) {
                         CircularProgressIndicator(
@@ -364,34 +380,13 @@ fun PlayerHudOverlay(
                             strokeWidth = 3.5.dp,
                             modifier = Modifier.size(68.dp)
                         )
-                    } else {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(Color(0xEE1E293B), Color(0xCC0F172A))
-                                    )
-                                )
-                                .border(2.dp, Color(0x886366F1), CircleShape)
-                                .clickable(
-                                    role = Role.Button,
-                                    onClick = onTogglePlayPause
-                                )
-                                .semantics {
-                                    contentDescription = if (uiState.isPlaying) "إيقاف مؤقت" else "تشغيل"
-                                }
-                        ) {
-                            Icon(
-                                imageVector = if (uiState.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(42.dp)
-                            )
-                        }
                     }
+                    Icon(
+                        imageVector = if (isPlayingOrReady) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(42.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(36.dp))
@@ -510,6 +505,22 @@ fun PlayerHudOverlay(
                                 label = uiState.selectedSubtitle?.name ?: "الترجمة",
                                 isActive = uiState.selectedSubtitle != null,
                                 onClick = { showSubtitleDialog = true }
+                            )
+
+                            // Audio Track Chip
+                            MxQuickChip(
+                                icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                                label = uiState.selectedAudioTrack?.name ?: "الصوت",
+                                isActive = uiState.selectedAudioTrack != null,
+                                onClick = { showAudioDialog = true }
+                            )
+
+                            // Playback Speed Chip
+                            MxQuickChip(
+                                icon = Icons.Rounded.Speed,
+                                label = "${uiState.playbackSpeed}x",
+                                isActive = uiState.playbackSpeed != 1.0f,
+                                onClick = { showSpeedDialog = true }
                             )
 
                             // Aspect Ratio Chip (Toggle between Fit and Fill)

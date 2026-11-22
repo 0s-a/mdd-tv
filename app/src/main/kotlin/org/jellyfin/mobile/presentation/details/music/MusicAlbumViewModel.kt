@@ -509,7 +509,7 @@ class MusicAlbumViewModel(
         val totalSeconds = (ticks / 10_000_000L).toInt()
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
-        return String.format("%02d:%02d", minutes, seconds)
+        return String.format(java.util.Locale.ROOT, "%02d:%02d", minutes, seconds)
     }
 
     private fun formatTotalDuration(minutes: Int): String {

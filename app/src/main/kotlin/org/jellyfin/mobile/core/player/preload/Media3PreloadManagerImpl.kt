@@ -66,15 +66,20 @@ class Media3PreloadManagerImpl(
 
     private val httpDataSourceFactory: DefaultHttpDataSource.Factory =
         DefaultHttpDataSource.Factory()
-            .setConnectTimeoutMs(8_000)
-            .setReadTimeoutMs(8_000)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(20_000)
             .setAllowCrossProtocolRedirects(true)
             .setUserAgent("MddTV-ExoPlayer/2.2.0")
+
+    private val preloadWriteDataSourceFactory: DataSource.Factory = CacheDataSource.Factory()
+        .setCache(simpleCache)
+        .setUpstreamDataSourceFactory(httpDataSourceFactory)
 
     override val cacheDataSourceFactory: DataSource.Factory = CacheDataSource.Factory()
         .setCache(simpleCache)
         .setUpstreamDataSourceFactory(httpDataSourceFactory)
         .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        .setCacheWriteDataSinkFactory(null)
 
     override fun startPreload(mediaId: String, streamUri: Uri) {
         if (!isUnmeteredNetworkConnected()) {
@@ -90,7 +95,7 @@ class Media3PreloadManagerImpl(
         val job = scope.launch {
             try {
                 Log.d(tag, "Starting speculative preload for $mediaId: 4MB slice from $streamUri")
-                val cacheDataSource = cacheDataSourceFactory.createDataSource() as CacheDataSource
+                val cacheDataSource = preloadWriteDataSourceFactory.createDataSource() as CacheDataSource
                 val dataSpec = DataSpec.Builder()
                     .setUri(streamUri)
                     .setPosition(0L)

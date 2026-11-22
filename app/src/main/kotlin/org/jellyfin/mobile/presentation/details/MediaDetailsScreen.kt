@@ -223,7 +223,7 @@ fun MediaDetailsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = String.format("%.1f IMDb", media.communityRating),
+                                        text = String.format(java.util.Locale.ROOT, "%.1f IMDb", media.communityRating),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = JellyfinColors.RatingGold,
                                         fontWeight = FontWeight.Bold
