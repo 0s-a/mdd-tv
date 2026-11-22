@@ -397,14 +397,15 @@ fun SeriesDetailsScreen(
                 )
 
                 // 4. Save Modal Bottom Sheet (Favorites + Watchlist)
-                SaveModalBottomSheet(
-                    isVisible = state.isSaveModalVisible,
-                    isFavorite = state.isFavorite,
-                    isWatchlist = state.isWatchlist,
-                    onToggleFavorite = { viewModel.processIntent(SeriesIntent.ToggleSeriesFavorite) },
-                    onToggleWatchlist = { viewModel.processIntent(SeriesIntent.ToggleSeriesWatchlist) },
-                    onDismiss = { viewModel.processIntent(SeriesIntent.DismissSaveModal) }
-                )
+                if (state.isSaveModalVisible) {
+                    SaveModalBottomSheet(
+                        isFavorite = state.isFavorite,
+                        isWatchlist = state.isWatchlist,
+                        onToggleFavorite = { viewModel.processIntent(SeriesIntent.ToggleSeriesFavorite) },
+                        onToggleWatchlist = { viewModel.processIntent(SeriesIntent.ToggleSeriesWatchlist) },
+                        onDismiss = { viewModel.processIntent(SeriesIntent.DismissSaveModal) }
+                    )
+                }
             }
         }
     }
