@@ -19,7 +19,6 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -954,7 +953,7 @@ private fun VerticalBandSlider(
             color = if (gainDb > 0) JellyfinColors.AccentAmber else if (gainDb < 0) Color(0xFF94A3B8) else Color.White
         )
         Spacer(modifier = Modifier.height(4.dp))
-        BoxWithConstraints(
+        Box(
             modifier = Modifier
                 .width(26.dp)
                 .height(100.dp)

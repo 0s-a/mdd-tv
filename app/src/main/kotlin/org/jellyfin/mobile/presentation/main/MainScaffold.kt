@@ -80,9 +80,12 @@ fun MainScaffold(
                     CinemaBottomBar(
                         currentRoute = currentRoute,
                         onTabSelected = { tab ->
-                            if (currentRoute != tab.route) {
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
+                            val targetRoute = tab.route
+                            val isAlreadySelected = currentRoute == targetRoute ||
+                                (tab == NavigationTab.LIBRARY && currentRoute.startsWith("library"))
+                            if (!isAlreadySelected) {
+                                navController.navigate(targetRoute) {
+                                    popUpTo(Screen.Home.route) {
                                         saveState = true
                                     }
                                     launchSingleTop = true

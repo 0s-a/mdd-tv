@@ -163,13 +163,25 @@ fun MainNavGraph(
                     }
                 },
                 onNavigateToLibrary = { libraryId, title ->
-                    navController.navigate(Screen.Library.createRoute(libraryId, title))
+                    navController.navigate(Screen.Library.createRoute(libraryId, title)) {
+                        popUpTo(Screen.Home.route) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 },
                 onNavigateToSearch = {
                     navController.navigate(Screen.Search.route)
                 },
                 onNavigateToProfile = {
-                    navController.navigate(Screen.Profile.route)
+                    navController.navigate(Screen.Profile.route) {
+                        popUpTo(Screen.Home.route) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }
