@@ -61,6 +61,9 @@ sealed interface MovieIntent {
     data object PlayExternal : MovieIntent
     data class PlayChapter(val chapter: MovieChapter) : MovieIntent
     data object ToggleFavorite : MovieIntent
+    data object ToggleWatchlist : MovieIntent
+    data object OpenSaveModal : MovieIntent
+    data object DismissSaveModal : MovieIntent
     data object ToggleWatched : MovieIntent
     data object OpenTrailer : MovieIntent
     data object ShareMovie : MovieIntent
@@ -78,7 +81,9 @@ sealed interface MovieUiState {
     data class Success(
         val movie: MediaDetails,
         val isFavorite: Boolean = movie.isFavorite,
+        val isWatchlist: Boolean = false,
         val isWatched: Boolean = false,
+        val isSaveModalVisible: Boolean = false,
         val castList: ImmutableList<CastMember> = movie.castMembers,
         val chapters: ImmutableList<MovieChapter> = persistentListOf(),
         val audioTracks: ImmutableList<MovieAudioTrack> = persistentListOf(),

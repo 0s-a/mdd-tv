@@ -37,6 +37,8 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Subtitles
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Favorite
@@ -45,6 +47,10 @@ import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.platform.LocalConfiguration
+import org.jellyfin.mobile.presentation.details.components.SaveModalBottomSheet
+import org.jellyfin.mobile.presentation.details.components.TopActionsDropdownMenu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -249,6 +255,8 @@ fun MovieDetailsScreen(
             is MovieUiState.Success -> {
                 val movie = state.movie
                 val dominantColor by rememberDominantColor(imageUrl = movie.backdropUrl ?: movie.posterUrl)
+                val configuration = LocalConfiguration.current
+                val heroHeight = (configuration.screenHeightDp * 0.50f).dp.coerceIn(240.dp, 440.dp)
 
                 // 1. Dynamic Ambient Glow at top
                 AmbientGlow(
@@ -263,12 +271,12 @@ fun MovieDetailsScreen(
                         .verticalScroll(scrollState)
                         .padding(bottom = 80.dp)
                 ) {
-                    // Header banner constrained to 220dp with dual scrims
+                    // Header banner occupying 50% screen height with dual scrims
                     AdaptiveBackdropHeader(
                         backdropUrl = movie.backdropUrl,
                         posterUrl = movie.posterUrl,
                         title = movie.title,
-                        maxHeight = 220.dp,
+                        maxHeight = heroHeight,
                         backgroundColor = backgroundColor
                     )
 
@@ -315,23 +323,20 @@ fun MovieDetailsScreen(
 
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
 
-                        // Big Primary Action Button (Play / Resume with Progress)
+                        // 1. Single Grand Primary Play/Resume Button (54dp Ivory50)
                         MoviePrimaryActionButton(
                             movie = movie,
                             onResumeClick = { viewModel.processIntent(MovieIntent.Resume) },
                             onPlayClick = { viewModel.processIntent(MovieIntent.Play) }
                         )
 
-                        Spacer(modifier = Modifier.height(JellyfinDimens.SpaceMedium))
+                        Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
 
-                        // Quick Action Buttons Row (External Player, Trailer, Favorite, Watched, Options)
-                        MovieQuickActionBar(
-                            state = state,
-                            onExternalPlayerClick = { viewModel.processIntent(MovieIntent.PlayExternal) },
-                            onTrailerClick = { viewModel.processIntent(MovieIntent.OpenTrailer) },
-                            onFavoriteClick = { viewModel.processIntent(MovieIntent.ToggleFavorite) },
-                            onWatchedClick = { viewModel.processIntent(MovieIntent.ToggleWatched) },
-                            onOptionsClick = { viewModel.processIntent(MovieIntent.OpenAudioSubtitleSheet) }
+                        // 2. Secondary Action Duo: Save in Lists (50%) + External Player (50%)
+                        MovieSecondaryActionDuo(
+                            isSaved = state.isFavorite || state.isWatchlist,
+                            onSaveClick = { viewModel.processIntent(MovieIntent.OpenSaveModal) },
+                            onExternalPlayerClick = { viewModel.processIntent(MovieIntent.PlayExternal) }
                         )
 
                         // Expandable Synopsis Section
@@ -404,16 +409,30 @@ fun MovieDetailsScreen(
                     }
                 }
 
-                // 3. Floating Transparent Top App Bar (Back, Share, Favorite)
+                // 3. Minimalist Floating Top App Bar (Back Button + Top Actions Overflow Menu)
                 MovieTopBar(
-                    isFavorite = state.isFavorite,
                     onBackClick = onNavigateBack,
+                    onPlaybackOptionsClick = { viewModel.processIntent(MovieIntent.OpenAudioSubtitleSheet) },
                     onShareClick = { viewModel.processIntent(MovieIntent.ShareMovie) },
-                    onFavoriteClick = { viewModel.processIntent(MovieIntent.ToggleFavorite) },
+                    isWatched = state.isWatched,
+                    onToggleWatchedClick = { viewModel.processIntent(MovieIntent.ToggleWatched) },
+                    hasTrailer = false,
+                    onTrailerClick = { viewModel.processIntent(MovieIntent.OpenTrailer) },
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
                 )
+
+                // 4. Save in Lists Modal Bottom Sheet (Favorites / Watchlist)
+                if (state.isSaveModalVisible) {
+                    SaveModalBottomSheet(
+                        isFavorite = state.isFavorite,
+                        isWatchlist = state.isWatchlist,
+                        onToggleFavorite = { viewModel.processIntent(MovieIntent.ToggleFavorite) },
+                        onToggleWatchlist = { viewModel.processIntent(MovieIntent.ToggleWatchlist) },
+                        onDismiss = { viewModel.processIntent(MovieIntent.DismissSaveModal) }
+                    )
+                }
 
                 // 4. Modal Options Bottom Sheet for Audio & Subtitles
                 if (state.isAudioSubtitleSheetVisible) {
@@ -507,22 +526,15 @@ private fun MovieMetadataRow(movie: org.jellyfin.mobile.domain.model.MediaDetail
 private fun MoviePrimaryActionButton(
     movie: org.jellyfin.mobile.domain.model.MediaDetails,
     onResumeClick: () -> Unit,
-    onPlayClick: () -> Unit
+    onPlayClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val isResume = movie.resumePositionMs > 0L
     val progress = if (movie.totalDurationMs > 0L) {
         (movie.resumePositionMs.toFloat() / movie.totalDurationMs.toFloat()).coerceIn(0f, 1f)
     } else 0f
 
-    val remainingMinutes = if (isResume && movie.totalDurationMs > movie.resumePositionMs) {
-        ((movie.totalDurationMs - movie.resumePositionMs) / 60000L).coerceAtLeast(1L)
-    } else null
-
-    val buttonText = when {
-        isResume && remainingMinutes != null -> "استئناف الفيلم (متبقي $remainingMinutes دقيقة)"
-        isResume -> "استئناف الفيلم"
-        else -> "تشغيل الفيلم"
-    }
+    val buttonText = if (isResume) "استئناف" else "تشغيل"
 
     Button(
         onClick = if (isResume) onResumeClick else onPlayClick,
@@ -531,9 +543,9 @@ private fun MoviePrimaryActionButton(
             contentColor = JellyfinPrimitives.Obsidian950
         ),
         shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
+            .height(54.dp)
             .shadow(
                 elevation = JellyfinDimens.ElevationHigh,
                 shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
@@ -569,13 +581,13 @@ private fun MoviePrimaryActionButton(
             }
 
             if (isResume && progress > 0f) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(3.dp))
                 LinearProgressIndicator(
                     progress = { progress },
                     color = JellyfinPrimitives.CrimsonMuted,
                     trackColor = JellyfinPrimitives.Slate700,
                     modifier = Modifier
-                        .fillMaxWidth(0.65f)
+                        .fillMaxWidth(0.50f)
                         .height(3.dp)
                         .clip(RoundedCornerShape(2.dp))
                 )
@@ -585,120 +597,75 @@ private fun MoviePrimaryActionButton(
 }
 
 @Composable
-private fun MovieQuickActionBar(
-    state: MovieUiState.Success,
+private fun MovieSecondaryActionDuo(
+    isSaved: Boolean,
+    onSaveClick: () -> Unit,
     onExternalPlayerClick: () -> Unit,
-    onTrailerClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    onWatchedClick: () -> Unit,
-    onOptionsClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
-    ) {
-        // External Player action button
-        QuickActionItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
-                    contentDescription = null,
-                    tint = JellyfinColors.AccentAmber,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            label = "مشغل خارجي",
-            onClick = onExternalPlayerClick,
-            modifier = Modifier.weight(1f)
-        )
-
-        // Trailer action button
-        QuickActionItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Outlined.Movie,
-                    contentDescription = null,
-                    tint = JellyfinColors.TextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            label = "تريلر",
-            onClick = onTrailerClick,
-            modifier = Modifier.weight(1f)
-        )
-
-        // Favorite action button
-        QuickActionItem(
-            icon = {
-                Icon(
-                    imageVector = if (state.isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = null,
-                    tint = if (state.isFavorite) JellyfinColors.RatingGold else JellyfinColors.TextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            label = if (state.isFavorite) "مفضل" else "المفضلة",
-            onClick = onFavoriteClick,
-            modifier = Modifier.weight(1f)
-        )
-
-        // Watched action button
-        QuickActionItem(
-            icon = {
-                Icon(
-                    imageVector = if (state.isWatched) Icons.Rounded.Check else Icons.Outlined.Check,
-                    contentDescription = null,
-                    tint = if (state.isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            label = if (state.isWatched) "شوهد" else "المشاهدة",
-            onClick = onWatchedClick,
-            modifier = Modifier.weight(1f)
-        )
-
-        // Options (Audio & Subtitles) action button
-        QuickActionItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Outlined.Subtitles,
-                    contentDescription = null,
-                    tint = JellyfinColors.TextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            label = "الخيارات",
-            onClick = onOptionsClick,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun QuickActionItem(
-    icon: @Composable () -> Unit,
-    label: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
-        modifier = modifier.defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        // 1. Save in Lists button (50%)
+        OutlinedButton(
+            onClick = onSaveClick,
+            shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = JellyfinPrimitives.Graphite800.copy(alpha = 0.6f)
+            ),
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                brush = Brush.horizontalGradient(
+                    listOf(JellyfinColors.BorderGlass, JellyfinColors.BorderGlass)
+                )
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp)
         ) {
-            icon()
-            Spacer(modifier = Modifier.height(4.dp))
+            Icon(
+                imageVector = if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd,
+                contentDescription = null,
+                tint = if (isSaved) JellyfinColors.RatingGold else JellyfinColors.TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = JellyfinColors.TextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = "حفظ في القوائم",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isSaved) JellyfinColors.RatingGold else JellyfinColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // 2. External Player button (50%)
+        OutlinedButton(
+            onClick = onExternalPlayerClick,
+            shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = JellyfinPrimitives.Graphite800.copy(alpha = 0.6f)
+            ),
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                brush = Brush.horizontalGradient(
+                    listOf(JellyfinColors.BorderGlass, JellyfinColors.BorderGlass)
+                )
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                contentDescription = null,
+                tint = JellyfinColors.AccentAmber,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "مشغل خارجي",
+                style = MaterialTheme.typography.labelMedium,
+                color = JellyfinColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -920,10 +887,13 @@ private fun SimilarMovieCard(
 
 @Composable
 private fun MovieTopBar(
-    isFavorite: Boolean,
     onBackClick: () -> Unit,
+    onPlaybackOptionsClick: () -> Unit,
     onShareClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
+    isWatched: Boolean,
+    onToggleWatchedClick: () -> Unit,
+    hasTrailer: Boolean,
+    onTrailerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -955,50 +925,15 @@ private fun MovieTopBar(
             )
         }
 
-        // Actions: Share & Favorite
-        Row(horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)) {
-            IconButton(
-                onClick = onShareClick,
-                modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
-                    .glassmorphism(
-                        backgroundColor = JellyfinPrimitives.Graphite900.copy(alpha = 0.75f),
-                        borderColor = JellyfinColors.BorderGlass,
-                        cornerRadius = JellyfinDimens.RadiusPill
-                    )
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "مشاركة الفيلم"
-                    }
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Share,
-                    contentDescription = null,
-                    tint = JellyfinColors.TextPrimary
-                )
-            }
-
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
-                    .glassmorphism(
-                        backgroundColor = JellyfinPrimitives.Graphite900.copy(alpha = 0.75f),
-                        borderColor = JellyfinColors.BorderGlass,
-                        cornerRadius = JellyfinDimens.RadiusPill
-                    )
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = if (isFavorite) "إزالة من المفضلة" else "إضافة للمفضلة"
-                    }
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = null,
-                    tint = if (isFavorite) JellyfinColors.RatingGold else JellyfinColors.TextPrimary
-                )
-            }
-        }
+        // Top Actions Overflow Menu
+        TopActionsDropdownMenu(
+            onPlaybackOptionsClick = onPlaybackOptionsClick,
+            onShareClick = onShareClick,
+            isWatched = isWatched,
+            onToggleWatchedClick = onToggleWatchedClick,
+            hasTrailer = hasTrailer,
+            onTrailerClick = onTrailerClick
+        )
     }
 }
 

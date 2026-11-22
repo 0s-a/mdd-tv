@@ -42,7 +42,6 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.Speed
@@ -91,7 +90,6 @@ import org.jellyfin.mobile.ui.theme.JellyfinDimens
 private const val OLED_DIM_PAUSE_THRESHOLD_MS = 120_000L
 private const val SUBTITLE_STEP_MS = 100L
 private const val AUDIO_DELAY_STEP_MS = 50L
-private val EQ_BAND_LABELS = listOf("60Hz", "230Hz", "910Hz", "3.6kHz", "14kHz")
 
 /**
  * Screen state enum for navigating inside the modular Actions Modal.
@@ -101,8 +99,7 @@ private enum class ActionsModalScreen {
     Subtitles,
     Audio,
     Speed,
-    AspectRatio,
-    Equalizer
+    AspectRatio
 }
 
 /**
@@ -115,12 +112,12 @@ fun PlayerActionsModal(
     uiState: PlayerUiState,
     isVisible: Boolean,
     isPlaying: Boolean,
-    audioBands: List<Float>,
+    audioBands: List<Float> = emptyList(),
     isBitstreamPassthrough: Boolean,
     onDismiss: () -> Unit,
     onIntent: (PlayerIntent) -> Unit,
-    onSetEqualizerBand: (bandIndex: Int, gainMb: Int) -> Unit,
-    onApplyVocalBoost: () -> Unit,
+    onSetEqualizerBand: (bandIndex: Int, gainMb: Int) -> Unit = { _, _ -> },
+    onApplyVocalBoost: () -> Unit = {},
     onSetBitstreamPassthrough: (Boolean) -> Unit,
     onSetAudioDelay: (Long) -> Unit,
     onLaunchExternalPlayer: () -> Unit = {},
@@ -242,7 +239,6 @@ fun PlayerActionsModal(
                                 onOpenAudio = { currentScreen = ActionsModalScreen.Audio },
                                 onOpenAspectRatio = { currentScreen = ActionsModalScreen.AspectRatio },
                                 onOpenSpeed = { currentScreen = ActionsModalScreen.Speed },
-                                onOpenEqualizer = { currentScreen = ActionsModalScreen.Equalizer },
                                 onEnterPiP = {
                                     onEnterPiP()
                                     onDismiss()
@@ -311,14 +307,6 @@ fun PlayerActionsModal(
                                 onBack = { currentScreen = ActionsModalScreen.Root },
                                 onClose = onDismiss
                             )
-                            ActionsModalScreen.Equalizer -> EqualizerMiniSheet(
-                                audioBands = audioBands,
-                                isBitstreamPassthrough = isBitstreamPassthrough,
-                                onSetBand = onSetEqualizerBand,
-                                onApplyVocalBoost = onApplyVocalBoost,
-                                onBack = { currentScreen = ActionsModalScreen.Root },
-                                onClose = onDismiss
-                            )
                         }
                     }
                 }
@@ -338,7 +326,6 @@ private fun RootActionsList(
     onOpenAudio: () -> Unit,
     onOpenAspectRatio: () -> Unit,
     onOpenSpeed: () -> Unit,
-    onOpenEqualizer: () -> Unit,
     onEnterPiP: () -> Unit,
     onPlayNextEpisode: (() -> Unit)?,
     onLaunchExternalPlayer: () -> Unit,
@@ -384,14 +371,6 @@ private fun RootActionsList(
             title = "سرعة التشغيل",
             subtitleBadge = "${uiState.playbackSpeed}x",
             onClick = onOpenSpeed
-        )
-
-        // Equalizer & Vocal Boost
-        ActionItemRow(
-            icon = Icons.Rounded.GraphicEq,
-            title = "معادل الترددات وتعزيز الصوت",
-            subtitleBadge = "عزل الحوار وتوازن النغمات",
-            onClick = onOpenEqualizer
         )
 
         // Next Episode (Series)
@@ -690,97 +669,6 @@ private fun AspectRatioMiniSheet(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 6. Equalizer & Vocal Booster Mini Sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun EqualizerMiniSheet(
-    audioBands: List<Float>,
-    isBitstreamPassthrough: Boolean,
-    onSetBand: (Int, Int) -> Unit,
-    onApplyVocalBoost: () -> Unit,
-    onBack: () -> Unit,
-    onClose: () -> Unit
-) {
-    Column {
-        SheetHeader(title = "معادل الترددات الصوتي", onBack = onBack, onClose = onClose)
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        if (isBitstreamPassthrough) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x33000000))
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "معادل الترددات الصوتي معطل أثناء تفعيل التمرير المباشر (Bitstream).",
-                    fontSize = 12.sp,
-                    color = Color(0xFF94A3B8),
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            // Vocal Boost Preset Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x336366F1))
-                    .clickable(role = Role.Button, onClick = onApplyVocalBoost)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Rounded.GraphicEq,
-                        contentDescription = null,
-                        tint = JellyfinColors.AccentAmber,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "بروفايل تعزيز الحوار الصوتي (Vocal Booster)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
-                Text(
-                    text = "تطبيق",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = JellyfinColors.AccentAmber
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 5 Vertical Frequency Bands
-            val bandCount = audioBands.size.coerceAtMost(EQ_BAND_LABELS.size)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                for (i in 0 until bandCount) {
-                    val gainMb = audioBands.getOrElse(i) { 0f }
-                    VerticalBandSlider(
-                        bandLabel = EQ_BAND_LABELS.getOrElse(i) { "" },
-                        gainMb = gainMb,
-                        onGainChanged = { newGain -> onSetBand(i, newGain) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Reusable UI Components for Sheets
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -925,80 +813,5 @@ private fun OptionSelectionItem(
                 modifier = Modifier.size(18.dp)
             )
         }
-    }
-}
-
-@Composable
-private fun VerticalBandSlider(
-    bandLabel: String,
-    gainMb: Float,
-    onGainChanged: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val minMb = -1500f
-    val maxMb = 1500f
-    val normalizedFraction = ((gainMb - minMb) / (maxMb - minMb)).coerceIn(0f, 1f)
-    val gainDb = (gainMb / 100f).toInt()
-    val gainText = if (gainDb > 0) "+$gainDb" else "$gainDb"
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-    ) {
-        Text(
-            text = gainText,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            color = if (gainDb > 0) JellyfinColors.AccentAmber else if (gainDb < 0) Color(0xFF94A3B8) else Color.White
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Box(
-            modifier = Modifier
-                .width(26.dp)
-                .height(100.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0x22FFFFFF))
-                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures { change, dragAmount ->
-                        change.consume()
-                        val heightPx = size.height.toFloat()
-                        if (heightPx > 0f) {
-                            val deltaMb = (-dragAmount / heightPx) * (maxMb - minMb)
-                            val newGain = (gainMb + deltaMb).coerceIn(minMb, maxMb)
-                            onGainChanged(newGain.toInt())
-                        }
-                    }
-                },
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            // Zero centerline
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color(0x44FFFFFF))
-            )
-            // Active level bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(normalizedFraction)
-                    .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
-                    .background(
-                        if (gainDb > 0) JellyfinColors.AccentAmber.copy(alpha = 0.85f)
-                        else JellyfinColors.TechSky.copy(alpha = 0.7f)
-                    )
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = bandLabel,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFFCBD5E1)
-        )
     }
 }

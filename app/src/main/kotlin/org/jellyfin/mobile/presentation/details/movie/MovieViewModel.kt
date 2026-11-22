@@ -79,6 +79,21 @@ class MovieViewModel(
             is MovieIntent.ToggleFavorite -> {
                 toggleFavorite()
             }
+            is MovieIntent.ToggleWatchlist -> {
+                toggleWatchlist()
+            }
+            is MovieIntent.OpenSaveModal -> {
+                val current = _uiState.value
+                if (current is MovieUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = true)
+                }
+            }
+            is MovieIntent.DismissSaveModal -> {
+                val current = _uiState.value
+                if (current is MovieUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = false)
+                }
+            }
             is MovieIntent.ToggleWatched -> {
                 toggleWatched()
             }
@@ -397,6 +412,17 @@ class MovieViewModel(
             }
 
             val msg = if (targetState) "تمت إضافة الفيلم إلى المفضلة" else "تمت إزالة الفيلم من المفضلة"
+            _effects.send(MovieEffect.ShowToast(msg))
+        }
+    }
+
+    private fun toggleWatchlist() {
+        val current = _uiState.value
+        if (current !is MovieUiState.Success) return
+        val targetState = !current.isWatchlist
+        _uiState.value = current.copy(isWatchlist = targetState)
+        viewModelScope.launch {
+            val msg = if (targetState) "تمت إضافة الفيلم إلى قائمتك" else "تمت إزالة الفيلم من قائمتك"
             _effects.send(MovieEffect.ShowToast(msg))
         }
     }

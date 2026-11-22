@@ -25,7 +25,10 @@ sealed interface SeriesIntent {
     data object PlayFromStart : SeriesIntent
     data class ToggleEpisodeWatched(val episodeId: String) : SeriesIntent
     data object ToggleSeriesFavorite : SeriesIntent
+    data object ToggleSeriesWatchlist : SeriesIntent
     data object ToggleSeriesWatched : SeriesIntent
+    data object OpenSaveModal : SeriesIntent
+    data object DismissSaveModal : SeriesIntent
     data class OpenActorFilmography(val personId: String, val personName: String) : SeriesIntent
     data object RefreshPlaybackState : SeriesIntent
     data object ShareSeries : SeriesIntent
@@ -45,7 +48,9 @@ sealed interface SeriesUiState {
         val episodesForSelectedSeason: ImmutableList<EpisodeSummary> = persistentListOf(),
         val castList: ImmutableList<CastMember> = seriesDetails.castMembers,
         val isFavorite: Boolean = seriesDetails.isFavorite,
+        val isWatchlist: Boolean = false,
         val isWatched: Boolean = false,
+        val isSaveModalVisible: Boolean = false,
         val isLoadingEpisodes: Boolean = false
     ) : SeriesUiState {
         val series: MediaDetails get() = seriesDetails

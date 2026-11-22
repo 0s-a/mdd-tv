@@ -485,17 +485,14 @@ fun AdvancedPlayerScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 6. Modular Unified Cinema Actions Modal (Subtitles, Audio, Speed, Aspect Ratio, EQ, PiP)
+            // 6. Modular Unified Cinema Actions Modal (Subtitles, Audio, Speed, Aspect Ratio, PiP)
             PlayerActionsModal(
                 uiState = uiState,
                 isVisible = uiState.isActionsModalVisible,
                 isPlaying = uiState.isPlaying,
-                audioBands = uiState.audioBands,
                 isBitstreamPassthrough = uiState.isBitstreamPassthrough,
                 onDismiss = { viewModel.dispatch(PlayerIntent.SetActionsModalVisibility(false)) },
                 onIntent = { viewModel.dispatch(it) },
-                onSetEqualizerBand = { index, gain -> viewModel.dispatch(PlayerIntent.SetEqualizerBand(index, gain)) },
-                onApplyVocalBoost = { viewModel.dispatch(PlayerIntent.ApplyVocalBoost) },
                 onSetBitstreamPassthrough = { viewModel.dispatch(PlayerIntent.SetBitstreamPassthrough(it)) },
                 onSetAudioDelay = { viewModel.dispatch(PlayerIntent.SetAudioDelay(it)) },
                 onLaunchExternalPlayer = { viewModel.dispatch(PlayerIntent.LaunchExternalPlayer) },

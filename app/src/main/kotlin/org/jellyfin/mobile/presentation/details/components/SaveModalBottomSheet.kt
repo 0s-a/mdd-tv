@@ -160,7 +160,7 @@ private fun SaveOptionRow(
             onCheckedChange = { onToggle() },
             colors = CheckboxDefaults.colors(
                 checkedColor = JellyfinColors.RatingGold,
-                uncheckedColor = JellyfinPrimitives.Slate600,
+                uncheckedColor = JellyfinPrimitives.Slate700,
                 checkmarkColor = JellyfinPrimitives.BlackOled
             )
         )
