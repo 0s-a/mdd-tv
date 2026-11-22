@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
+import org.jellyfin.mobile.core.player.external.ExternalPlaybackResult
+import org.jellyfin.mobile.core.player.external.ExternalSubtitle
 import org.jellyfin.mobile.core.player.preload.PreloadManager
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
@@ -33,7 +37,8 @@ class MovieViewModel(
     private val localProfileRepository: LocalProfileRepository? = null,
     private val apiService: JellyfinApiService? = null,
     private val sessionManager: SessionManager? = null,
-    private val preloadManager: PreloadManager? = null
+    private val preloadManager: PreloadManager? = null,
+    private val externalPlayerManager: ExternalPlayerManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MovieUiState>(MovieUiState.Loading)
@@ -64,6 +69,9 @@ class MovieViewModel(
             }
             is MovieIntent.PlayFromStart -> {
                 handlePlay(fromStart = true)
+            }
+            is MovieIntent.PlayExternal -> {
+                handlePlayExternal()
             }
             is MovieIntent.PlayChapter -> {
                 handlePlayChapter(intent.chapter)
@@ -286,7 +294,12 @@ class MovieViewModel(
         }
     }
 
+    private var lastPlayClickTimeMs: Long = 0L
+
     private fun handlePlay(fromStart: Boolean) {
+        val now = System.currentTimeMillis()
+        if (now - lastPlayClickTimeMs < 800L) return
+        lastPlayClickTimeMs = now
         val current = _uiState.value
         if (current !is MovieUiState.Success) return
 
@@ -307,6 +320,58 @@ class MovieViewModel(
                     resumePositionMs = chapter.startPositionMs
                 )
             )
+        }
+    }
+
+    private fun handlePlayExternal() {
+        val current = _uiState.value
+        if (current !is MovieUiState.Success) return
+
+        val movieId = current.movie.id
+        val title = current.movie.title
+        val resumeMs = current.movie.resumePositionMs
+        val durationMs = current.movie.runTimeTicks?.div(10_000L) ?: 0L
+
+        val token = sessionManager?.getToken() ?: handshakeRepository.currentSession.value?.token
+        val baseServer = AppConfig.SERVER_URL.trimEnd('/')
+        val streamUrl = StringBuilder("$baseServer/Videos/$movieId/stream?static=true")
+        if (!token.isNullOrBlank()) {
+            streamUrl.append("&api_key=$token")
+        }
+
+        val subtitles = current.subtitleTracks.mapIndexed { idx, sub ->
+            val subUrl = StringBuilder("$baseServer/Videos/$movieId/Subtitles/$idx/Stream.srt")
+            if (!token.isNullOrBlank()) {
+                subUrl.append("?api_key=$token")
+            }
+            ExternalSubtitle(
+                url = subUrl.toString(),
+                name = sub.language ?: "عربي",
+                language = sub.language ?: "ar",
+                isDefault = sub.isDefault
+            )
+        }
+
+        val payload = ExternalPlayerPayload(
+            mediaId = movieId,
+            title = title,
+            streamUrl = streamUrl.toString(),
+            resumePositionMs = resumeMs,
+            durationMs = durationMs,
+            subtitles = subtitles
+        )
+
+        viewModelScope.launch {
+            _effects.send(MovieEffect.LaunchExternalPlayer(payload))
+        }
+    }
+
+    fun onExternalPlaybackResult(result: ExternalPlaybackResult) {
+        val current = _uiState.value
+        val title = if (current is MovieUiState.Success) current.movie.title else AppConfig.APP_NAME
+        viewModelScope.launch {
+            externalPlayerManager?.persistResult(result, title, "Movie")
+            refreshPlaybackState()
         }
     }
 

@@ -3,6 +3,7 @@ package org.jellyfin.mobile.presentation.details.movie
 import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
 import org.jellyfin.mobile.domain.model.CastMember
 import org.jellyfin.mobile.domain.model.MediaDetails
 import org.jellyfin.mobile.domain.model.MediaItemSummary
@@ -57,6 +58,7 @@ sealed interface MovieIntent {
     data object Play : MovieIntent
     data object Resume : MovieIntent
     data object PlayFromStart : MovieIntent
+    data object PlayExternal : MovieIntent
     data class PlayChapter(val chapter: MovieChapter) : MovieIntent
     data object ToggleFavorite : MovieIntent
     data object ToggleWatched : MovieIntent
@@ -102,6 +104,7 @@ sealed interface MovieEffect {
     data class ShowSnackbar(val message: String) : MovieEffect
     data class ShareMovie(val title: String, val shareUrl: String) : MovieEffect
     data class NavigateToMovieDetails(val movieId: String) : MovieEffect
+    data class LaunchExternalPlayer(val payload: ExternalPlayerPayload) : MovieEffect
 }
 
 fun formatChapterTimestamp(ms: Long): String {

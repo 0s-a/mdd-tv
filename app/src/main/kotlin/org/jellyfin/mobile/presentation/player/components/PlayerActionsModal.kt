@@ -31,6 +31,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.HorizontalDivider
@@ -167,6 +169,7 @@ fun PlayerActionsModal(
     onApplyVocalBoost: () -> Unit,
     onSetBitstreamPassthrough: (Boolean) -> Unit,
     onSetAudioDelay: (Long) -> Unit,
+    onLaunchExternalPlayer: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -183,23 +186,9 @@ fun PlayerActionsModal(
         mutableLongStateOf(uiState.subtitleOffsetMs)
     }
 
-    // ── Auto-vanish inactivity timer ──────────────────────────────────────
-    var lastInteractionMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-
-    LaunchedEffect(isVisible) {
-        if (!isVisible) return@LaunchedEffect
-        while (true) {
-            delay(500L)
-            val idle = System.currentTimeMillis() - lastInteractionMs
-            if (idle >= CHROME_VANISH_IDLE_MS) {
-                onDismiss()
-                break
-            }
-        }
-    }
-
+    // ── Interaction state ────────────────────────────────────────────────
     fun resetIdleTimer() {
-        lastInteractionMs = System.currentTimeMillis()
+        // Modal remains open until user explicitly dismisses or clicks backdrop scrim
     }
 
     // ── OLED burn-in protection ────────────────────────────────────────────
@@ -313,6 +302,10 @@ fun PlayerActionsModal(
                     onSetAudioDelay(newDelay)
                     resetIdleTimer()
                 },
+                onLaunchExternalPlayer = {
+                    onLaunchExternalPlayer()
+                    resetIdleTimer()
+                },
                 onUserInteraction = { resetIdleTimer() },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -344,6 +337,7 @@ private fun ActionsSheetContent(
     onApplyVocalBoost: () -> Unit,
     onSetBitstreamPassthrough: (Boolean) -> Unit,
     onAudioDelayStep: (Long) -> Unit,
+    onLaunchExternalPlayer: () -> Unit,
     onUserInteraction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -431,6 +425,48 @@ private fun ActionsSheetContent(
                 onSubtitleDelayStep = onSubtitleDelayStep,
                 onUserInteraction = onUserInteraction,
                 modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        HorizontalDivider(
+            color = Color.White.copy(alpha = 0.06f),
+            thickness = 1.dp
+        )
+
+        // Seamless External Player Handoff button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = JellyfinDimens.SpaceMd, vertical = 10.dp)
+                .clip(RoundedCornerShape(JellyfinDimens.RadiusMedium))
+                .background(Color.White.copy(alpha = 0.05f))
+                .clickable(role = Role.Button) {
+                    onLaunchExternalPlayer()
+                }
+                .padding(horizontal = JellyfinDimens.SpaceMd, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = null,
+                    tint = JellyfinColors.AccentAmber,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "متابعة المشاهدة في مشغل خارجي",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                contentDescription = null,
+                tint = Color(0xFF9CA3AF),
+                modifier = Modifier.size(16.dp)
             )
         }
     }

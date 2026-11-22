@@ -1,7 +1,10 @@
 package org.jellyfin.mobile.presentation.details.movie
 
 import android.content.Intent
+import android.os.SystemClock
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -58,6 +62,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -83,6 +88,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.collectLatest
+import org.jellyfin.mobile.core.player.external.ExternalPlayerIntentBuilder
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
+import org.jellyfin.mobile.core.player.external.ExternalPlayerResultParser
 import org.jellyfin.mobile.core.util.BidiFormatter
 import org.jellyfin.mobile.domain.model.MediaItemSummary
 import org.jellyfin.mobile.presentation.core.components.AmbientGlow
@@ -132,6 +140,27 @@ fun MovieDetailsScreen(
 
     var isSynopsisExpanded by remember { mutableStateOf(false) }
 
+    // External Player Activity Result Launcher
+    var activeExternalPayload by remember { mutableStateOf<ExternalPlayerPayload?>(null) }
+    var externalLaunchTimestamp by remember { mutableLongStateOf(0L) }
+
+    val externalPlayerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val payload = activeExternalPayload
+        val elapsedMs = SystemClock.elapsedRealtime() - externalLaunchTimestamp
+        if (payload != null) {
+            val playbackResult = ExternalPlayerResultParser.parse(
+                payload = payload,
+                resultCode = result.resultCode,
+                data = result.data,
+                elapsedMs = elapsedMs
+            )
+            viewModel.onExternalPlaybackResult(playbackResult)
+        }
+        activeExternalPayload = null
+    }
+
     LaunchedEffect(movieId) {
         viewModel.processIntent(MovieIntent.LoadMovie(movieId))
     }
@@ -165,6 +194,12 @@ fun MovieDetailsScreen(
                 }
                 is MovieEffect.NavigateToMovieDetails -> {
                     viewModel.processIntent(MovieIntent.LoadMovie(effect.movieId))
+                }
+                is MovieEffect.LaunchExternalPlayer -> {
+                    activeExternalPayload = effect.payload
+                    externalLaunchTimestamp = SystemClock.elapsedRealtime()
+                    val chooserIntent = ExternalPlayerIntentBuilder.buildChooserIntent(effect.payload)
+                    externalPlayerLauncher.launch(chooserIntent)
                 }
             }
         }
@@ -289,10 +324,10 @@ fun MovieDetailsScreen(
 
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceMedium))
 
-                        // Quick Action Buttons Row (Download, Trailer, Favorite, Watched, Options)
+                        // Quick Action Buttons Row (External Player, Trailer, Favorite, Watched, Options)
                         MovieQuickActionBar(
                             state = state,
-                            onDownloadClick = { viewModel.processIntent(MovieIntent.ToggleDownload) },
+                            onExternalPlayerClick = { viewModel.processIntent(MovieIntent.PlayExternal) },
                             onTrailerClick = { viewModel.processIntent(MovieIntent.OpenTrailer) },
                             onFavoriteClick = { viewModel.processIntent(MovieIntent.ToggleFavorite) },
                             onWatchedClick = { viewModel.processIntent(MovieIntent.ToggleWatched) },
@@ -552,7 +587,7 @@ private fun MoviePrimaryActionButton(
 @Composable
 private fun MovieQuickActionBar(
     state: MovieUiState.Success,
-    onDownloadClick: () -> Unit,
+    onExternalPlayerClick: () -> Unit,
     onTrailerClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     onWatchedClick: () -> Unit,
@@ -562,41 +597,18 @@ private fun MovieQuickActionBar(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
     ) {
-        // Download action button
+        // External Player action button
         QuickActionItem(
             icon = {
-                when (state.downloadStatus) {
-                    is MovieDownloadStatus.Downloading -> {
-                        CircularProgressIndicator(
-                            color = JellyfinPrimitives.Ivory50,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    is MovieDownloadStatus.Downloaded -> {
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
-                            contentDescription = null,
-                            tint = JellyfinColors.SuccessEmerald,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    is MovieDownloadStatus.Idle -> {
-                        Icon(
-                            imageVector = Icons.Outlined.Download,
-                            contentDescription = null,
-                            tint = JellyfinColors.TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                    contentDescription = null,
+                    tint = JellyfinColors.AccentAmber,
+                    modifier = Modifier.size(16.dp)
+                )
             },
-            label = when (state.downloadStatus) {
-                is MovieDownloadStatus.Downloading -> "جاري التنزيل"
-                is MovieDownloadStatus.Downloaded -> "محمّل"
-                is MovieDownloadStatus.Idle -> "تنزيل"
-            },
-            onClick = onDownloadClick,
+            label = "مشغل خارجي",
+            onClick = onExternalPlayerClick,
             modifier = Modifier.weight(1f)
         )
 

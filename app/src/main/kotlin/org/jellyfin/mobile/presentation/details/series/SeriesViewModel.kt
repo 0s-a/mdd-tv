@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
+import org.jellyfin.mobile.core.player.external.ExternalPlaybackResult
 import org.jellyfin.mobile.core.player.preload.PreloadManager
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.model.EpisodeSummary
@@ -34,7 +37,8 @@ class SeriesViewModel(
     private val localProfileRepository: LocalProfileRepository? = null,
     private val apiService: JellyfinApiService? = null,
     private val sessionManager: SessionManager? = null,
-    private val preloadManager: PreloadManager? = null
+    private val preloadManager: PreloadManager? = null,
+    private val externalPlayerManager: ExternalPlayerManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SeriesUiState>(SeriesUiState.Loading)
@@ -63,8 +67,14 @@ class SeriesViewModel(
             is SeriesIntent.PlayEpisode -> {
                 handlePlayEpisode(intent.episodeId)
             }
+            is SeriesIntent.PlayEpisodeExternal -> {
+                handlePlayEpisodeExternal(intent.episodeId)
+            }
             is SeriesIntent.ResumeNextUp -> {
                 handleResumeNextUp()
+            }
+            is SeriesIntent.PlayNextUpExternal -> {
+                handlePlayNextUpExternal()
             }
             is SeriesIntent.PlayFromStart -> {
                 handlePlayFromStart()
@@ -325,7 +335,12 @@ class SeriesViewModel(
         }
     }
 
+    private var lastPlayClickTimeMs: Long = 0L
+
     private fun handlePlayEpisode(episodeId: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastPlayClickTimeMs < 800L) return
+        lastPlayClickTimeMs = now
         val current = _uiState.value
         if (current !is SeriesUiState.Success) return
 
@@ -362,6 +377,69 @@ class SeriesViewModel(
             viewModelScope.launch {
                 _effects.send(SeriesEffect.ShowToast("لا توجد حلقات متاحة للتشغيل"))
             }
+        }
+    }
+
+    private fun handlePlayEpisodeExternal(episodeId: String) {
+        val current = _uiState.value
+        if (current !is SeriesUiState.Success) return
+
+        val episode = current.episodesForSelectedSeason.find { it.id == episodeId }
+            ?: current.seriesDetails.episodes.find { it.id == episodeId }
+            ?: current.nextUpEpisode
+
+        val title = if (episode != null) {
+            "${current.seriesDetails.title} - ${episode.name}"
+        } else {
+            current.seriesDetails.title
+        }
+
+        viewModelScope.launch {
+            val resumeTicks = localProfileRepository?.getProgress(episodeId)?.positionTicks ?: 0L
+            val resumeMs = resumeTicks / 10_000L
+
+            val token = sessionManager?.getToken() ?: handshakeRepository.currentSession.value?.token
+            val baseServer = AppConfig.SERVER_URL.trimEnd('/')
+            val streamUrl = StringBuilder("$baseServer/Videos/$episodeId/stream?static=true")
+            if (!token.isNullOrBlank()) {
+                streamUrl.append("&api_key=$token")
+            }
+
+            val payload = ExternalPlayerPayload(
+                mediaId = episodeId,
+                title = title,
+                streamUrl = streamUrl.toString(),
+                resumePositionMs = resumeMs,
+                durationMs = 0L
+            )
+
+            _effects.send(SeriesEffect.LaunchExternalPlayer(payload))
+        }
+    }
+
+    private fun handlePlayNextUpExternal() {
+        val current = _uiState.value
+        if (current !is SeriesUiState.Success) return
+
+        val targetEpisode = current.nextUpEpisode
+            ?: current.episodesForSelectedSeason.firstOrNull { !it.isWatched }
+            ?: current.seriesDetails.episodes.firstOrNull { !it.isWatched }
+            ?: current.episodesForSelectedSeason.firstOrNull()
+            ?: current.seriesDetails.episodes.firstOrNull()
+
+        if (targetEpisode != null) {
+            handlePlayEpisodeExternal(targetEpisode.id)
+        } else {
+            viewModelScope.launch {
+                _effects.send(SeriesEffect.ShowToast("لا توجد حلقات متاحة للتشغيل"))
+            }
+        }
+    }
+
+    fun onExternalPlaybackResult(result: ExternalPlaybackResult, episodeTitle: String) {
+        viewModelScope.launch {
+            externalPlayerManager?.persistResult(result, episodeTitle, "Episode")
+            refreshPlaybackState()
         }
     }
 

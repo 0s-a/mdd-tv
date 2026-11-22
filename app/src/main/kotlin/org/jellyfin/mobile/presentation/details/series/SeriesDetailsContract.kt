@@ -2,6 +2,7 @@ package org.jellyfin.mobile.presentation.details.series
 
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
 import org.jellyfin.mobile.domain.model.CastMember
 import org.jellyfin.mobile.domain.model.EpisodeSummary
 import org.jellyfin.mobile.domain.model.MediaDetails
@@ -18,7 +19,9 @@ sealed interface SeriesIntent {
     data class SelectSeason(val seasonNumber: Int) : SeriesIntent
     data class SelectSeasonById(val seasonId: String) : SeriesIntent
     data class PlayEpisode(val episodeId: String) : SeriesIntent
+    data class PlayEpisodeExternal(val episodeId: String) : SeriesIntent
     data object ResumeNextUp : SeriesIntent
+    data object PlayNextUpExternal : SeriesIntent
     data object PlayFromStart : SeriesIntent
     data class ToggleEpisodeWatched(val episodeId: String) : SeriesIntent
     data object ToggleSeriesFavorite : SeriesIntent
@@ -64,6 +67,7 @@ sealed interface SeriesEffect {
     data class ShowSnackbar(val message: String) : SeriesEffect
     data class NavigateToActorFilmography(val personId: String, val personName: String) : SeriesEffect
     data class ShareSeriesContent(val title: String, val summary: String) : SeriesEffect
+    data class LaunchExternalPlayer(val payload: ExternalPlayerPayload) : SeriesEffect
 }
 
 typealias SeriesDetailsEffect = SeriesEffect

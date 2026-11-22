@@ -1,6 +1,9 @@
 package org.jellyfin.mobile.presentation.details.series
 
+import android.os.SystemClock
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
@@ -29,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -58,6 +62,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import org.jellyfin.mobile.core.player.external.ExternalPlayerIntentBuilder
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
+import org.jellyfin.mobile.core.player.external.ExternalPlayerResultParser
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -119,6 +130,27 @@ fun SeriesDetailsScreen(
 
     var isOverviewExpanded by remember { mutableStateOf(false) }
 
+    // External Player Activity Result Launcher
+    var activeExternalPayload by remember { mutableStateOf<ExternalPlayerPayload?>(null) }
+    var externalLaunchTimestamp by remember { mutableLongStateOf(0L) }
+
+    val externalPlayerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val payload = activeExternalPayload
+        val elapsedMs = SystemClock.elapsedRealtime() - externalLaunchTimestamp
+        if (payload != null) {
+            val playbackResult = ExternalPlayerResultParser.parse(
+                payload = payload,
+                resultCode = result.resultCode,
+                data = result.data,
+                elapsedMs = elapsedMs
+            )
+            viewModel.onExternalPlaybackResult(playbackResult, payload.title)
+        }
+        activeExternalPayload = null
+    }
+
     LaunchedEffect(seriesId) {
         viewModel.processIntent(SeriesIntent.LoadSeries(seriesId))
     }
@@ -140,6 +172,12 @@ fun SeriesDetailsScreen(
                 }
                 is SeriesEffect.ShowSnackbar -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+                is SeriesEffect.LaunchExternalPlayer -> {
+                    activeExternalPayload = effect.payload
+                    externalLaunchTimestamp = SystemClock.elapsedRealtime()
+                    val chooserIntent = ExternalPlayerIntentBuilder.buildChooserIntent(effect.payload)
+                    externalPlayerLauncher.launch(chooserIntent)
                 }
             }
         }
@@ -258,10 +296,11 @@ fun SeriesDetailsScreen(
 
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
 
-                        // Secondary Action Bar: Replay from start, Watched toggle, Share
+                        // Secondary Action Bar: Replay from start, Watched toggle, External player, Share
                         SeriesSecondaryActionBar(
                             isWatched = state.isWatched,
                             onPlayFromStart = { viewModel.processIntent(SeriesIntent.PlayFromStart) },
+                            onPlayExternal = { viewModel.processIntent(SeriesIntent.PlayNextUpExternal) },
                             onToggleWatched = { viewModel.processIntent(SeriesIntent.ToggleSeriesWatched) },
                             onShare = { viewModel.processIntent(SeriesIntent.ShareSeries) }
                         )
@@ -372,7 +411,7 @@ private fun SeriesMetadataRow(
                 )
                 Spacer(modifier = Modifier.width(3.dp))
                 Text(
-                    text = String.format("%.1f IMDb", series.communityRating),
+                    text = String.format(java.util.Locale.ROOT, "%.1f IMDb", series.communityRating),
                     style = MaterialTheme.typography.bodySmall,
                     color = JellyfinColors.RatingGold,
                     fontWeight = FontWeight.Bold
@@ -602,6 +641,7 @@ private fun SeriesNextUpHeroCard(
 private fun SeriesSecondaryActionBar(
     isWatched: Boolean,
     onPlayFromStart: () -> Unit,
+    onPlayExternal: () -> Unit,
     onToggleWatched: () -> Unit,
     onShare: () -> Unit,
     modifier: Modifier = Modifier
@@ -623,6 +663,22 @@ private fun SeriesSecondaryActionBar(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(text = "من البداية", style = MaterialTheme.typography.labelSmall)
+        }
+
+        OutlinedButton(
+            onClick = onPlayExternal,
+            modifier = Modifier
+                .weight(1f)
+                .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                contentDescription = null,
+                tint = JellyfinColors.AccentAmber,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = "مشغل خارجي", style = MaterialTheme.typography.labelSmall)
         }
 
         OutlinedButton(

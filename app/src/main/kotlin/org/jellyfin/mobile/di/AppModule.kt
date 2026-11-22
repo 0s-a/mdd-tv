@@ -8,6 +8,8 @@ import okhttp3.logging.HttpLoggingInterceptor
 import org.jellyfin.mobile.AppConfig
 import org.jellyfin.mobile.core.network.AuthInterceptor
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerManagerImpl
 import org.jellyfin.mobile.core.player.preload.Media3PreloadManagerImpl
 import org.jellyfin.mobile.core.player.preload.PreloadManager
 import org.jellyfin.mobile.data.local.AppDatabase
@@ -161,6 +163,12 @@ val repositoryModule = module {
             context = androidContext()
         )
     }
+
+    single<ExternalPlayerManager> {
+        ExternalPlayerManagerImpl(
+            localProfileRepository = get()
+        )
+    }
 }
 
 val databaseModule = module {
@@ -221,7 +229,8 @@ val viewModelModule = module {
             localProfileRepository = get(),
             apiService = get(),
             sessionManager = get(),
-            preloadManager = get()
+            preloadManager = get(),
+            externalPlayerManager = get()
         )
     }
 
@@ -280,7 +289,8 @@ val viewModelModule = module {
             sessionManager = get(),
             handshakeRepository = get(),
             localProfileRepository = get(),
-            preloadManager = get()
+            preloadManager = get(),
+            externalPlayerManager = get()
         )
     }
 
