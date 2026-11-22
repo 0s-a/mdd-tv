@@ -376,13 +376,24 @@ class PlayerViewModel(
                         resumeMs = item.userData.playbackPositionTicks / 10_000L
                     }
 
+                    val parsedChapters = item.chapters?.mapNotNull { ch ->
+                        val ticks = ch.startPositionTicks ?: return@mapNotNull null
+                        val chName = ch.name?.takeIf { it.isNotBlank() } ?: "فصل"
+                        MediaChapter(
+                            name = chName,
+                            startPositionMs = ticks / 10_000L
+                        )
+                    }?.sortedBy { it.startPositionMs }.orEmpty()
+
                     _uiState.update {
                         it.copy(
                             mediaTitle = title,
                             mediaSubtitle = subTitle,
                             videoCodecInfo = vCodec,
                             audioCodecInfo = aCodec,
-                            playbackMethod = PlaybackMethod.DirectPlay
+                            playbackMethod = PlaybackMethod.DirectPlay,
+                            chapters = parsedChapters.toImmutableList(),
+                            currentChapter = parsedChapters.firstOrNull()
                         )
                     }
 
@@ -529,7 +540,8 @@ class PlayerViewModel(
         val duration = player.duration.coerceAtLeast(0L)
         val targetMs = positionMs.coerceIn(0L, duration)
         player.seekTo(targetMs)
-        _uiState.update { it.copy(currentPositionMs = targetMs) }
+        val curChapter = _uiState.value.chapters.lastOrNull { it.startPositionMs <= targetMs }
+        _uiState.update { it.copy(currentPositionMs = targetMs, currentChapter = curChapter) }
         applySubtitleOffset()
     }
 
@@ -538,7 +550,8 @@ class PlayerViewModel(
         val duration = player.duration.coerceAtLeast(0L)
         val target = (current + deltaMs).coerceIn(0L, duration)
         player.seekTo(target)
-        _uiState.update { it.copy(currentPositionMs = target) }
+        val curChapter = _uiState.value.chapters.lastOrNull { it.startPositionMs <= target }
+        _uiState.update { it.copy(currentPositionMs = target, currentChapter = curChapter) }
         applySubtitleOffset()
         viewModelScope.launch {
             _effects.send(PlayerEffect.TriggerHapticTick)
@@ -828,11 +841,15 @@ class PlayerViewModel(
                     val buffered = player.bufferedPosition.coerceAtLeast(0L)
                     val dur = player.duration.coerceAtLeast(0L)
 
-                    _uiState.update {
-                        it.copy(
+                    _uiState.update { current ->
+                        val curChapter = if (current.chapters.isNotEmpty()) {
+                            current.chapters.lastOrNull { it.startPositionMs <= pos }
+                        } else null
+                        current.copy(
                             currentPositionMs = pos,
                             bufferedPositionMs = buffered,
-                            totalDurationMs = dur
+                            totalDurationMs = dur,
+                            currentChapter = curChapter
                         )
                     }
 

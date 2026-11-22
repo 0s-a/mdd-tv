@@ -209,10 +209,20 @@ fun PlayerHudOverlay(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (uiState.mediaSubtitle.isNotBlank()) {
+                        val subtitleText = buildString {
+                            if (uiState.mediaSubtitle.isNotBlank()) {
+                                append(uiState.mediaSubtitle)
+                            }
+                            val chapterName = uiState.currentChapter?.name
+                            if (!chapterName.isNullOrBlank()) {
+                                if (isNotEmpty()) append(" • ")
+                                append(chapterName)
+                            }
+                        }
+                        if (subtitleText.isNotBlank()) {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = uiState.mediaSubtitle,
+                                text = subtitleText,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF94A3B8),
                                 maxLines = 1,

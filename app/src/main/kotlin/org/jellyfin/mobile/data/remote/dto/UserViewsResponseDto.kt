@@ -39,7 +39,15 @@ data class BaseItemDto(
     @SerialName("MediaSources") val mediaSources: List<MediaSourceDto>? = null,
     @SerialName("Taglines") val taglines: List<String>? = null,
     @SerialName("People") val people: List<PersonDto>? = null,
-    @SerialName("ChildCount") val childCount: Int? = null
+    @SerialName("ChildCount") val childCount: Int? = null,
+    @SerialName("Chapters") val chapters: List<ChapterInfoDto>? = null
+)
+
+@Serializable
+data class ChapterInfoDto(
+    @SerialName("StartPositionTicks") val startPositionTicks: Long? = null,
+    @SerialName("Name") val name: String? = null,
+    @SerialName("ImageTag") val imageTag: String? = null
 )
 
 @Serializable
