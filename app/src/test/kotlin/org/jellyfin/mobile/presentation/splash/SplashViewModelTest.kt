@@ -236,4 +236,68 @@ class SplashViewModelTest {
         assertEquals(2, viewModel.uiState.value.posters.size)
         assertEquals("Server Movie 1", viewModel.uiState.value.posters[0].title)
     }
+
+    @Test
+    fun `navigation effect is delivered exactly once when montage and handshake settle`() = runTest(testDispatcher) {
+        val fakeHandshake = FakeHandshakeRepository()
+        val fakeProfile = FakeLocalProfileRepository().apply { hasProfileValue = true }
+        val fakePoster = FakeSplashPosterRepository()
+
+        val viewModel = SplashViewModel(
+            fakeHandshake,
+            fakeProfile,
+            fakePoster,
+            testDispatcher,
+            200L
+        )
+
+        val effects = mutableListOf<SplashEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        // Trigger MontageFinished multiple times
+        viewModel.handleIntent(SplashIntent.MontageFinished)
+        viewModel.handleIntent(SplashIntent.MontageFinished)
+        advanceUntilIdle()
+
+        assertEquals(1, effects.size)
+        assertEquals(SplashEffect.NavigateToHome, effects.first())
+        job.cancel()
+    }
+
+    @Test
+    fun `when offline and retry succeeds, navigates to Home`() = runTest(testDispatcher) {
+        val fakeHandshake = FakeHandshakeRepository().apply { shouldSucceed = false }
+        val fakeProfile = FakeLocalProfileRepository().apply { hasProfileValue = true }
+        val fakePoster = FakeSplashPosterRepository()
+
+        val viewModel = SplashViewModel(
+            fakeHandshake,
+            fakeProfile,
+            fakePoster,
+            testDispatcher,
+            200L
+        )
+
+        val effects = mutableListOf<SplashEffect>()
+        val job = launch {
+            viewModel.effects.collect { effects.add(it) }
+        }
+
+        viewModel.handleIntent(SplashIntent.MontageFinished)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.serverStatus is ServerStatus.Offline)
+        assertTrue(effects.isEmpty())
+
+        // Now fix network and retry
+        fakeHandshake.shouldSucceed = true
+        viewModel.handleIntent(SplashIntent.Retry)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.serverStatus is ServerStatus.Connected)
+        assertEquals(1, effects.size)
+        assertEquals(SplashEffect.NavigateToHome, effects.first())
+        job.cancel()
+    }
 }

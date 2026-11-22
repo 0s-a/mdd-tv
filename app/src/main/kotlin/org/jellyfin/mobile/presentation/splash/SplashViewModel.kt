@@ -33,6 +33,9 @@ class SplashViewModel(
     private val _effects = Channel<SplashEffect>(Channel.BUFFERED)
     val effects = _effects.receiveAsFlow()
 
+    @Volatile
+    private var hasNavigated = false
+
     init {
         loadCachedPosters()
         handleIntent(SplashIntent.Initialize)
@@ -50,9 +53,14 @@ class SplashViewModel(
     fun handleIntent(intent: SplashIntent) {
         when (intent) {
             SplashIntent.Initialize -> performStartupHandshake()
-            SplashIntent.Retry -> performStartupHandshake()
+            SplashIntent.Retry -> {
+                hasNavigated = false
+                performStartupHandshake()
+            }
             SplashIntent.MontageFinished -> onMontageFinished()
             SplashIntent.ContinueOffline -> {
+                if (hasNavigated) return
+                hasNavigated = true
                 viewModelScope.launch {
                     if (_uiState.value.hasProfile) {
                         _effects.send(SplashEffect.NavigateToHome)
@@ -60,6 +68,19 @@ class SplashViewModel(
                         _effects.send(SplashEffect.NavigateToOnboarding)
                     }
                 }
+            }
+        }
+    }
+
+    private fun triggerNavigation() {
+        if (hasNavigated) return
+        hasNavigated = true
+        viewModelScope.launch {
+            delay(minDisplayDurationMs)
+            if (_uiState.value.hasProfile) {
+                _effects.send(SplashEffect.NavigateToHome)
+            } else {
+                _effects.send(SplashEffect.NavigateToOnboarding)
             }
         }
     }
@@ -73,12 +94,7 @@ class SplashViewModel(
 
             // If server is connected and profile exists, give the user minimum display duration before navigating
             if (_uiState.value.serverStatus is ServerStatus.Connected) {
-                delay(minDisplayDurationMs)
-                if (_uiState.value.hasProfile) {
-                    _effects.send(SplashEffect.NavigateToHome)
-                } else {
-                    _effects.send(SplashEffect.NavigateToOnboarding)
-                }
+                triggerNavigation()
             }
         }
     }
@@ -121,12 +137,7 @@ class SplashViewModel(
 
                 // If the montage has already settled, transition to home after comfortable display
                 if (_uiState.value.montagePhase == MontagePhase.SETTLED) {
-                    delay(minDisplayDurationMs)
-                    if (hasProfile) {
-                        _effects.send(SplashEffect.NavigateToHome)
-                    } else {
-                        _effects.send(SplashEffect.NavigateToOnboarding)
-                    }
+                    triggerNavigation()
                 }
             } else {
                 val errorMsg = handshakeResult?.exceptionOrNull()?.localizedMessage

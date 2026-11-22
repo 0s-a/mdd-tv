@@ -86,6 +86,7 @@ fun PosterMontageLayer(
             val req = ImageRequest.Builder(context)
                 .data(posters[idx].imageUrl)
                 .memoryCacheKey(posters[idx].imageUrl)
+                .diskCacheKey(posters[idx].imageUrl)
                 .build()
             context.imageLoader.enqueue(req)
         }
@@ -137,6 +138,7 @@ fun PosterMontageLayer(
                         .data(poster.imageUrl)
                         .crossfade(false)
                         .memoryCacheKey(poster.imageUrl)
+                        .diskCacheKey(poster.imageUrl)
                         .build(),
                     contentDescription = poster.title,
                     contentScale = ContentScale.Crop,
