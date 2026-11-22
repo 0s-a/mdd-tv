@@ -132,7 +132,8 @@ val repositoryModule = module {
         MediaDetailsRepositoryImpl(
             apiService = get(),
             sessionManager = get(),
-            handshakeRepository = get()
+            handshakeRepository = get(),
+            offlineActionRepository = get()
         )
     }
 

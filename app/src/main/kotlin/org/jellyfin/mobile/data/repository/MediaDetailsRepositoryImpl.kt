@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.data.local.entity.OfflineActionType
 import org.jellyfin.mobile.data.mapper.toEpisodeSummary
 import org.jellyfin.mobile.data.mapper.toMediaDetails
 import org.jellyfin.mobile.data.mapper.toMediaItemSummary
@@ -14,15 +15,18 @@ import org.jellyfin.mobile.domain.model.EpisodeSummary
 import org.jellyfin.mobile.domain.model.MediaDetails
 import org.jellyfin.mobile.domain.repository.HandshakeRepository
 import org.jellyfin.mobile.domain.repository.MediaDetailsRepository
+import org.jellyfin.mobile.domain.repository.OfflineActionRepository
 
 /**
  * Concrete implementation of MediaDetailsRepository.
- * Coordinates fetching item metadata, seasons, episodes, and similar recommendations concurrently.
+ * Coordinates fetching item metadata, seasons, episodes, and similar recommendations concurrently,
+ * with resilient offline action queuing for favorites and playback state updates.
  */
 class MediaDetailsRepositoryImpl(
     private val apiService: JellyfinApiService,
     private val sessionManager: SessionManager,
     private val handshakeRepository: HandshakeRepository,
+    private val offlineActionRepository: OfflineActionRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : MediaDetailsRepository {
 
@@ -103,28 +107,38 @@ class MediaDetailsRepositoryImpl(
     }
 
     override suspend fun toggleFavorite(itemId: String, isFavorite: Boolean): Result<Boolean> = withContext(ioDispatcher) {
+        val actionType = if (isFavorite) OfflineActionType.MARK_FAVORITE else OfflineActionType.REMOVE_FAVORITE
+        offlineActionRepository.enqueueAction(itemId, actionType)
+
         runCatching {
             val userId = requireUserId()
             if (isFavorite) {
                 apiService.markFavorite(userId = userId, itemId = itemId)
-                true
             } else {
                 apiService.removeFavorite(userId = userId, itemId = itemId)
-                false
             }
+        }.onSuccess {
+            offlineActionRepository.removeAction(itemId, actionType)
         }
+
+        Result.success(isFavorite)
     }
 
     override suspend fun markAsWatched(itemId: String, isWatched: Boolean): Result<Boolean> = withContext(ioDispatcher) {
+        val actionType = if (isWatched) OfflineActionType.MARK_WATCHED else OfflineActionType.MARK_UNWATCHED
+        offlineActionRepository.enqueueAction(itemId, actionType)
+
         runCatching {
             val userId = requireUserId()
             if (isWatched) {
                 apiService.markPlayed(userId = userId, itemId = itemId)
-                true
             } else {
                 apiService.markUnplayed(userId = userId, itemId = itemId)
-                false
             }
+        }.onSuccess {
+            offlineActionRepository.removeAction(itemId, actionType)
         }
+
+        Result.success(isWatched)
     }
 }
