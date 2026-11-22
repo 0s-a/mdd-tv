@@ -194,9 +194,9 @@ interface JellyfinApiService {
     companion object {
         fun buildPrimaryImageUrl(
             itemId: String,
-            maxWidth: Int? = null,
+            maxWidth: Int? = 400,
             maxHeight: Int? = null,
-            quality: Int = 90
+            quality: Int = 80
         ): String {
             val base = AppConfig.SERVER_URL.trimEnd('/')
             val builder = StringBuilder("$base/Items/$itemId/Images/Primary?quality=$quality")
@@ -207,8 +207,8 @@ interface JellyfinApiService {
 
         fun buildBackdropImageUrl(
             itemId: String,
-            maxWidth: Int? = 1920,
-            quality: Int = 85
+            maxWidth: Int? = 1280,
+            quality: Int = 80
         ): String {
             val base = AppConfig.SERVER_URL.trimEnd('/')
             val builder = StringBuilder("$base/Items/$itemId/Images/Backdrop?quality=$quality")

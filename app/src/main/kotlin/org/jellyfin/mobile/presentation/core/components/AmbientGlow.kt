@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.collection.LruCache
 import androidx.palette.graphics.Palette
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -29,6 +30,8 @@ import coil.request.SuccessResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jellyfin.mobile.ui.theme.JellyfinColors
+
+private val dominantColorCache = LruCache<String, Color>(100)
 
 /**
  * Remembers and extracts the dominant vibrant color from an image URL using AndroidX Palette.
@@ -41,11 +44,22 @@ fun rememberDominantColor(
     defaultColor: Color = JellyfinColors.PrimaryIndigo
 ): State<Color> {
     val context = LocalContext.current
-    var dominantColor by remember { mutableStateOf(defaultColor) }
+    val cachedColor = remember(imageUrl) {
+        if (!imageUrl.isNullOrBlank()) dominantColorCache[imageUrl] else null
+    }
+    var dominantColor by remember(imageUrl) {
+        mutableStateOf(cachedColor ?: defaultColor)
+    }
 
     LaunchedEffect(imageUrl) {
         if (imageUrl.isNullOrBlank()) {
             dominantColor = defaultColor
+            return@LaunchedEffect
+        }
+
+        val cached = dominantColorCache[imageUrl]
+        if (cached != null) {
+            dominantColor = cached
             return@LaunchedEffect
         }
 
@@ -67,8 +81,10 @@ fun rememberDominantColor(
                         ?: palette.mutedSwatch?.rgb
 
                     if (rgb != null) {
+                        val extractedColor = Color(rgb)
+                        dominantColorCache.put(imageUrl, extractedColor)
                         withContext(Dispatchers.Main) {
-                            dominantColor = Color(rgb)
+                            dominantColor = extractedColor
                         }
                     }
                 }

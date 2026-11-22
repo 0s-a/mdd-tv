@@ -1,7 +1,12 @@
 package org.jellyfin.mobile.di
 
 import androidx.room.Room
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import kotlinx.serialization.json.Json
+import okhttp3.Cache
+import okhttp3.ConnectionPool
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -67,13 +72,39 @@ val networkModule = module {
     }
 
     single {
+        val context = androidContext()
+        val cacheDir = context.cacheDir.resolve("http_cache")
+        val cache = Cache(cacheDir, 50L * 1024L * 1024L)
+
         OkHttpClient.Builder()
+            .cache(cache)
             .addInterceptor(get<AuthInterceptor>())
             .addInterceptor(get<HttpLoggingInterceptor>())
+            .connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES))
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    single<ImageLoader> {
+        val context = androidContext()
+        ImageLoader.Builder(context)
+            .memoryCache {
+                MemoryCache.Builder(context)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(150L * 1024L * 1024L)
+                    .build()
+            }
+            .okHttpClient { get<OkHttpClient>() }
+            .respectCacheHeaders(false)
+            .crossfade(true)
             .build()
     }
 
