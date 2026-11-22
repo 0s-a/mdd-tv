@@ -77,7 +77,18 @@ class HandshakeRepositoryImpl(
         }
     }
 
+    @Volatile
+    private var cachedUserViews: List<LibraryFolder>? = null
+    @Volatile
+    private var userViewsFetchTime: Long = 0L
+    private val viewsTtlMs: Long = 10 * 60 * 1000L
+
     override suspend fun getUserViews(userId: String?): Result<List<LibraryFolder>> = withContext(ioDispatcher) {
+        val cached = cachedUserViews
+        if (cached != null && (System.currentTimeMillis() - userViewsFetchTime < viewsTtlMs)) {
+            return@withContext Result.success(cached)
+        }
+
         runCatching {
             val targetUserId = userId
                 ?: _currentSession.value?.userId
@@ -85,12 +96,16 @@ class HandshakeRepositoryImpl(
                 ?: throw IllegalStateException("Cannot fetch user views: No active user session")
 
             val response = apiService.getUserViews(targetUserId)
-            response.toDomain()
+            val domainViews = response.toDomain()
+            cachedUserViews = domainViews
+            userViewsFetchTime = System.currentTimeMillis()
+            domainViews
         }
     }
 
     override suspend fun clearSession() = withContext(ioDispatcher) {
         sessionManager.clear()
         _currentSession.value = null
+        cachedUserViews = null
     }
 }
