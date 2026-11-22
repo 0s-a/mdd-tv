@@ -80,6 +80,10 @@ sealed interface MusicAlbumIntent {
     data object PreviousTrack : MusicAlbumIntent
     data class SeekTo(val positionMs: Long) : MusicAlbumIntent
     data object ToggleFavoriteAlbum : MusicAlbumIntent
+    data object ToggleWatchlist : MusicAlbumIntent
+    data object OpenSaveModal : MusicAlbumIntent
+    data object DismissSaveModal : MusicAlbumIntent
+    data object ShareAlbumIntent : MusicAlbumIntent
     data class ToggleFavoriteTrack(val trackId: String) : MusicAlbumIntent
     data class OpenLyrics(val trackId: String? = null) : MusicAlbumIntent
     data object DismissLyrics : MusicAlbumIntent
@@ -99,6 +103,8 @@ sealed interface MusicAlbumUiState {
         val playbackPositionMs: Long = 0L,
         val miniPlayer: MiniPlayerUiModel? = null,
         val isFavorite: Boolean = album.isFavorite,
+        val isWatchlist: Boolean = false,
+        val isSaveModalVisible: Boolean = false,
         val showLyricsSheet: Boolean = false,
         val lyrics: LyricsUiModel? = null,
         val isLoadingLyrics: Boolean = false,

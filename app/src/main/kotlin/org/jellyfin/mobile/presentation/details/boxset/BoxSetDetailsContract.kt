@@ -1,13 +1,16 @@
 package org.jellyfin.mobile.presentation.details.boxset
 
+import androidx.compose.runtime.Immutable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
 import org.jellyfin.mobile.domain.model.MediaDetails
 
 /**
  * Domain representation of an individual movie part within a BoxSet / Collection.
  * Strict zero-emoji compliance.
  */
+@Immutable
 data class BoxSetPartItem(
     val id: String,
     val title: String,
@@ -39,8 +42,14 @@ sealed interface BoxSetIntent {
     data class PlayMovie(val movieId: String, val resumePositionMs: Long = 0L) : BoxSetIntent
     data object ResumeFranchise : BoxSetIntent
     data object PlayFromBeginning : BoxSetIntent
+    data object PlayExternalNext : BoxSetIntent
+    data class PlayMovieExternal(val movieId: String) : BoxSetIntent
     data object ToggleFavorite : BoxSetIntent
+    data object ToggleWatchlist : BoxSetIntent
+    data object OpenSaveModal : BoxSetIntent
+    data object DismissSaveModal : BoxSetIntent
     data class ToggleMovieWatched(val movieId: String) : BoxSetIntent
+    data object ToggleEntireCollectionWatched : BoxSetIntent
     data class OpenMovieDetails(val movieId: String) : BoxSetIntent
     data object ShareFranchise : BoxSetIntent
 }
@@ -60,6 +69,9 @@ sealed interface BoxSetUiState {
         val nextUnwatchedPart: BoxSetPartItem? = null,
         val nextUnwatchedIndex: Int? = null,
         val isFavorite: Boolean = boxSetDetails.isFavorite,
+        val isWatchlist: Boolean = false,
+        val isWatched: Boolean = false,
+        val isSaveModalVisible: Boolean = false,
         val isRefreshing: Boolean = false
     ) : BoxSetUiState
 
@@ -74,6 +86,7 @@ sealed interface BoxSetUiState {
  */
 sealed interface BoxSetEffect {
     data class LaunchPlayer(val mediaId: String, val resumePositionMs: Long = 0L) : BoxSetEffect
+    data class LaunchExternalPlayer(val payload: ExternalPlayerPayload) : BoxSetEffect
     data class NavigateToMovieDetails(val movieId: String) : BoxSetEffect
     data class ShowSnackbar(val message: String) : BoxSetEffect
     data class ShowToast(val message: String) : BoxSetEffect

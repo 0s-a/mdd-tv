@@ -307,7 +307,9 @@ val viewModelModule = module {
             mediaDetailsRepository = get(),
             handshakeRepository = get(),
             localProfileRepository = get(),
-            apiService = get()
+            apiService = get(),
+            sessionManager = get(),
+            externalPlayerManager = get()
         )
     }
 

@@ -69,6 +69,34 @@ class MusicAlbumViewModel(
             is MusicAlbumIntent.ToggleFavoriteAlbum -> {
                 toggleFavoriteAlbum()
             }
+            is MusicAlbumIntent.ToggleWatchlist -> {
+                toggleWatchlist()
+            }
+            is MusicAlbumIntent.OpenSaveModal -> {
+                val current = _uiState.value
+                if (current is MusicAlbumUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = true)
+                }
+            }
+            is MusicAlbumIntent.DismissSaveModal -> {
+                val current = _uiState.value
+                if (current is MusicAlbumUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = false)
+                }
+            }
+            is MusicAlbumIntent.ShareAlbumIntent -> {
+                val current = _uiState.value
+                if (current is MusicAlbumUiState.Success) {
+                    viewModelScope.launch {
+                        _effects.send(
+                            MusicAlbumEffect.ShareAlbum(
+                                title = current.album.title,
+                                artist = current.album.artist
+                            )
+                        )
+                    }
+                }
+            }
             is MusicAlbumIntent.ToggleFavoriteTrack -> {
                 toggleFavoriteTrack(intent.trackId)
             }
@@ -410,6 +438,16 @@ class MusicAlbumViewModel(
 
             val toastMsg = if (targetFav) "تمت إضافة الألبوم إلى المفضلة" else "تمت إزالة الألبوم من المفضلة"
             _effects.send(MusicAlbumEffect.ShowToast(toastMsg))
+        }
+    }
+
+    private fun toggleWatchlist() {
+        val current = _uiState.value as? MusicAlbumUiState.Success ?: return
+        val targetWatchlist = !current.isWatchlist
+        _uiState.value = current.copy(isWatchlist = targetWatchlist)
+        viewModelScope.launch {
+            val msg = if (targetWatchlist) "تمت إضافة الألبوم إلى قائمتك" else "تمت إزالة الألبوم من قائمتك"
+            _effects.send(MusicAlbumEffect.ShowToast(msg))
         }
     }
 

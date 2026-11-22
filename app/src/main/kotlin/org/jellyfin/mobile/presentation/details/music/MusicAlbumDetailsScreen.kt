@@ -41,7 +41,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -55,6 +56,8 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import org.jellyfin.mobile.presentation.details.components.SaveModalBottomSheet
+import org.jellyfin.mobile.presentation.details.components.TopActionsDropdownMenu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -256,29 +259,23 @@ private fun MusicAlbumSuccessContent(
                     album = album,
                     onNavigateBack = onNavigateBack,
                     onToggleFavorite = { onIntent(MusicAlbumIntent.ToggleFavoriteAlbum) },
+                    onShareAlbum = { onIntent(MusicAlbumIntent.ShareAlbumIntent) },
                     onNavigateToArtist = onNavigateToArtist
                 )
             }
 
-            // 2. Play All & Shuffle Buttons
+            // 2. Play All (54dp) & Secondary Action Duo (48dp: Shuffle + Save in Lists)
             item(key = "album_action_buttons") {
-                AlbumPrimaryActionsRow(
+                AlbumPrimaryActionsSection(
                     isPlaying = state.isPlaying,
+                    isSaved = state.isFavorite || state.isWatchlist,
                     onPlayAll = { onIntent(MusicAlbumIntent.PlayAll) },
-                    onShuffleAll = { onIntent(MusicAlbumIntent.ShuffleAll) }
+                    onShuffleAll = { onIntent(MusicAlbumIntent.ShuffleAll) },
+                    onSaveClick = { onIntent(MusicAlbumIntent.OpenSaveModal) }
                 )
             }
 
-            // 3. Quick Actions Row (Download, Favorite, Lyrics, Radio)
-            item(key = "album_quick_actions") {
-                AlbumQuickActionsBar(
-                    isFavorite = state.isFavorite,
-                    onToggleFavorite = { onIntent(MusicAlbumIntent.ToggleFavoriteAlbum) },
-                    onOpenLyrics = { onIntent(MusicAlbumIntent.OpenLyrics(null)) }
-                )
-            }
-
-            // 4. Section Title: Numbered Tracklist
+            // 3. Section Title: Numbered Tracklist
             item(key = "tracklist_header") {
                 TracklistHeader(trackCount = state.tracks.size)
             }
@@ -340,6 +337,17 @@ private fun MusicAlbumSuccessContent(
             }
         )
     }
+
+    // Save Modal Bottom Sheet (Favorites + Watchlist)
+    if (state.isSaveModalVisible) {
+        SaveModalBottomSheet(
+            isFavorite = state.isFavorite,
+            isWatchlist = state.isWatchlist,
+            onToggleFavorite = { onIntent(MusicAlbumIntent.ToggleFavoriteAlbum) },
+            onToggleWatchlist = { onIntent(MusicAlbumIntent.ToggleWatchlist) },
+            onDismiss = { onIntent(MusicAlbumIntent.DismissSaveModal) }
+        )
+    }
 }
 
 /**
@@ -350,6 +358,7 @@ private fun AlbumHeroHeader(
     album: MusicAlbumUiModel,
     onNavigateBack: () -> Unit,
     onToggleFavorite: () -> Unit,
+    onShareAlbum: () -> Unit,
     onNavigateToArtist: (String, String) -> Unit
 ) {
     Column(
@@ -379,20 +388,14 @@ private fun AlbumHeroHeader(
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onToggleFavorite,
-                    modifier = Modifier
-                        .size(JellyfinDimens.MinTouchTarget)
-                        .clip(CircleShape)
-                ) {
-                    Icon(
-                        imageVector = if (album.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                        contentDescription = "المفضلة",
-                        tint = if (album.isFavorite) JellyfinColors.RatingGold else JellyfinColors.TextSecondary
-                    )
-                }
-            }
+            TopActionsDropdownMenu(
+                onPlaybackOptionsClick = {},
+                onShareClick = onShareAlbum,
+                isWatched = album.isFavorite,
+                onToggleWatchedClick = onToggleFavorite,
+                hasTrailer = false,
+                onTrailerClick = {}
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -515,156 +518,135 @@ private fun AlbumHeroHeader(
 }
 
 /**
- * Primary Actions: Wide Play All button (Ivory) and Shuffle button.
+ * Primary Actions Section:
+ * 1. Single 54dp Play All Button (Ivory50, Obsidian950).
+ * 2. Secondary 48dp Duo (50% / 50%): Shuffle All + Save in Lists.
  */
 @Composable
-private fun AlbumPrimaryActionsRow(
+private fun AlbumPrimaryActionsSection(
     isPlaying: Boolean,
+    isSaved: Boolean,
     onPlayAll: () -> Unit,
-    onShuffleAll: () -> Unit
+    onShuffleAll: () -> Unit,
+    onSaveClick: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
-        // Play All Button (Ivory50 surface with bold black text)
+        // 1. Single Play All / Resume Button (54dp)
         Button(
             onClick = onPlayAll,
             modifier = Modifier
-                .weight(1.2f)
-                .height(52.dp)
+                .fillMaxWidth()
+                .height(54.dp)
+                .shadow(
+                    elevation = JellyfinDimens.ElevationHigh,
+                    shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
+                    ambientColor = Color.White.copy(alpha = 0.1f),
+                    spotColor = Color.White.copy(alpha = 0.2f)
+                )
                 .semantics { role = Role.Button },
             shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
             colors = ButtonDefaults.buttonColors(
                 containerColor = JellyfinPrimitives.Ivory50,
-                contentColor = JellyfinPrimitives.BlackOled
+                contentColor = JellyfinPrimitives.Obsidian950
             )
         ) {
-            Icon(
-                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                contentDescription = null,
-                modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (isPlaying) "استئناف الألبوم" else "تشغيل الألبوم",
-                style = MaterialTheme.typography.bodyMedium.copy(
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = JellyfinPrimitives.Obsidian950,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isPlaying) "استئناف الألبوم" else "تشغيل الألبوم",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    color = JellyfinPrimitives.Obsidian950
                 )
-            )
+            }
         }
 
-        // Shuffle Button (Obsidian elevated container)
-        OutlinedButton(
-            onClick = onShuffleAll,
-            modifier = Modifier
-                .weight(1f)
-                .height(52.dp)
-                .semantics { role = Role.Button },
-            shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
-            colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = JellyfinPrimitives.Graphite800,
-                contentColor = JellyfinColors.TextPrimary
-            ),
-            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                brush = Brush.horizontalGradient(
-                    listOf(JellyfinColors.BorderHairline, JellyfinColors.BorderHairline)
-                )
-            )
+        Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSm))
+
+        // 2. Secondary Duo: Shuffle All (50%) + Save in Lists (50%) (48dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSm)
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Shuffle,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = JellyfinColors.RatingGold
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "خلط عشوائي",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
+            // Shuffle Button
+            OutlinedButton(
+                onClick = onShuffleAll,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .semantics { role = Role.Button },
+                shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = JellyfinPrimitives.Graphite800.copy(alpha = 0.6f),
+                    contentColor = JellyfinColors.TextPrimary
+                ),
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                    brush = Brush.horizontalGradient(
+                        listOf(JellyfinColors.BorderGlass, JellyfinColors.BorderGlass)
+                    )
                 )
-            )
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Shuffle,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = JellyfinColors.RatingGold
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "خلط عشوائي",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = JellyfinColors.TextPrimary
+                )
+            }
+
+            // Save in Lists Button
+            OutlinedButton(
+                onClick = onSaveClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+                    .semantics { role = Role.Button },
+                shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = JellyfinPrimitives.Graphite800.copy(alpha = 0.6f),
+                    contentColor = JellyfinColors.TextPrimary
+                ),
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                    brush = Brush.horizontalGradient(
+                        listOf(JellyfinColors.BorderGlass, JellyfinColors.BorderGlass)
+                    )
+                )
+            ) {
+                Icon(
+                    imageVector = if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isSaved) JellyfinColors.RatingGold else JellyfinColors.TextSecondary
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "حفظ في القوائم",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSaved) JellyfinColors.RatingGold else JellyfinColors.TextPrimary
+                )
+            }
         }
-    }
-}
-
-/**
- * Quick Action Bar: Secondary actions (Download, Favorite, Lyrics shortcut, Radio Mix).
- */
-@Composable
-private fun AlbumQuickActionsBar(
-    isFavorite: Boolean,
-    onToggleFavorite: () -> Unit,
-    onOpenLyrics: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        QuickActionButton(
-            icon = Icons.Rounded.Download,
-            label = "تنزيل",
-            onClick = { /* Offline download action */ }
-        )
-
-        QuickActionButton(
-            icon = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-            label = "المفضلة",
-            tint = if (isFavorite) JellyfinColors.RatingGold else JellyfinColors.TextSecondary,
-            onClick = onToggleFavorite
-        )
-
-        QuickActionButton(
-            icon = Icons.Rounded.Mic,
-            label = "الكلمات",
-            tint = JellyfinPrimitives.Ivory50,
-            onClick = onOpenLyrics
-        )
-
-        QuickActionButton(
-            icon = Icons.Rounded.Radio,
-            label = "راديو Mix",
-            onClick = { /* Mix station */ }
-        )
-    }
-}
-
-@Composable
-private fun QuickActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    tint: Color = JellyfinColors.TextSecondary,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .defaultMinSize(minWidth = JellyfinDimens.MinTouchTarget, minHeight = JellyfinDimens.MinTouchTarget)
-            .clip(RoundedCornerShape(JellyfinDimens.RadiusSmall))
-            .clickable(onClick = onClick)
-            .padding(8.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = tint,
-            modifier = Modifier.size(22.dp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-            color = JellyfinColors.TextSecondary
-        )
     }
 }
 

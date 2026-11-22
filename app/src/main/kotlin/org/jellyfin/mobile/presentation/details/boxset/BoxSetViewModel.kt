@@ -10,6 +10,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.mobile.AppConfig
+import org.jellyfin.mobile.core.network.SessionManager
+import org.jellyfin.mobile.core.player.external.ExternalPlaybackResult
+import org.jellyfin.mobile.core.player.external.ExternalPlayerManager
+import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
 import org.jellyfin.mobile.data.remote.api.JellyfinApiService
 import org.jellyfin.mobile.domain.model.LibraryFilter
 import org.jellyfin.mobile.domain.model.MediaItemSummary
@@ -31,7 +36,9 @@ class BoxSetViewModel(
     private val mediaDetailsRepository: MediaDetailsRepository,
     private val handshakeRepository: HandshakeRepository,
     private val localProfileRepository: LocalProfileRepository? = null,
-    private val apiService: JellyfinApiService? = null
+    private val apiService: JellyfinApiService? = null,
+    private val sessionManager: SessionManager? = null,
+    private val externalPlayerManager: ExternalPlayerManager? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<BoxSetUiState>(BoxSetUiState.Loading)
@@ -63,11 +70,35 @@ class BoxSetViewModel(
             is BoxSetIntent.PlayFromBeginning -> {
                 handlePlayFromBeginning()
             }
+            is BoxSetIntent.PlayExternalNext -> {
+                handlePlayExternalNext()
+            }
+            is BoxSetIntent.PlayMovieExternal -> {
+                handlePlayMovieExternal(intent.movieId)
+            }
             is BoxSetIntent.ToggleFavorite -> {
                 toggleFavorite()
             }
+            is BoxSetIntent.ToggleWatchlist -> {
+                toggleWatchlist()
+            }
+            is BoxSetIntent.OpenSaveModal -> {
+                val current = _uiState.value
+                if (current is BoxSetUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = true)
+                }
+            }
+            is BoxSetIntent.DismissSaveModal -> {
+                val current = _uiState.value
+                if (current is BoxSetUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = false)
+                }
+            }
             is BoxSetIntent.ToggleMovieWatched -> {
                 toggleMovieWatched(intent.movieId)
+            }
+            is BoxSetIntent.ToggleEntireCollectionWatched -> {
+                toggleEntireCollectionWatched()
             }
             is BoxSetIntent.OpenMovieDetails -> {
                 viewModelScope.launch {
@@ -120,6 +151,7 @@ class BoxSetViewModel(
 
                 // 4. Track next unwatched part
                 val (nextPart, nextIndex) = calculateNextUnwatched(partsList)
+                val allWatched = partsList.isNotEmpty() && partsList.all { it.isWatched }
 
                 _uiState.value = BoxSetUiState.Success(
                     boxSetDetails = details,
@@ -130,6 +162,9 @@ class BoxSetViewModel(
                     nextUnwatchedPart = nextPart,
                     nextUnwatchedIndex = nextIndex,
                     isFavorite = details.isFavorite,
+                    isWatchlist = false,
+                    isWatched = allWatched,
+                    isSaveModalVisible = false,
                     isRefreshing = false
                 )
             } catch (e: Exception) {
@@ -221,6 +256,53 @@ class BoxSetViewModel(
         }
     }
 
+    private fun handlePlayExternalNext() {
+        val current = _uiState.value as? BoxSetUiState.Success ?: return
+        val targetPart = current.nextUnwatchedPart ?: current.parts.firstOrNull()
+        if (targetPart != null) {
+            handlePlayMovieExternal(targetPart.id)
+        } else {
+            viewModelScope.launch {
+                _effects.send(BoxSetEffect.ShowToast("لا توجد أجزاء متاحة للتشغيل"))
+            }
+        }
+    }
+
+    private fun handlePlayMovieExternal(movieId: String) {
+        val current = _uiState.value as? BoxSetUiState.Success ?: return
+        val targetPart = current.parts.find { it.id == movieId } ?: return
+        val title = "${current.boxSetDetails.title} - ${targetPart.title}"
+        val resumeMs = targetPart.resumePositionMs
+        val durationMs = targetPart.runtimeMs
+
+        val token = sessionManager?.getToken() ?: handshakeRepository.currentSession.value?.token
+        val baseServer = AppConfig.SERVER_URL.trimEnd('/')
+        val streamUrl = StringBuilder("$baseServer/Videos/$movieId/stream?static=true")
+        if (!token.isNullOrBlank()) {
+            streamUrl.append("&api_key=$token")
+        }
+
+        val payload = ExternalPlayerPayload(
+            mediaId = movieId,
+            title = title,
+            streamUrl = streamUrl.toString(),
+            resumePositionMs = resumeMs,
+            durationMs = durationMs,
+            subtitles = emptyList()
+        )
+
+        viewModelScope.launch {
+            _effects.send(BoxSetEffect.LaunchExternalPlayer(payload))
+        }
+    }
+
+    fun onExternalPlaybackResult(result: ExternalPlaybackResult, partTitle: String) {
+        viewModelScope.launch {
+            externalPlayerManager?.persistResult(result, partTitle, "Movie")
+            currentBoxSetId?.let { loadBoxSet(it, isRefresh = true) }
+        }
+    }
+
     private fun toggleFavorite() {
         val currentState = _uiState.value as? BoxSetUiState.Success ?: return
         val boxSetId = currentBoxSetId ?: return
@@ -246,6 +328,16 @@ class BoxSetViewModel(
         }
     }
 
+    private fun toggleWatchlist() {
+        val current = _uiState.value as? BoxSetUiState.Success ?: return
+        val targetWatchlist = !current.isWatchlist
+        _uiState.value = current.copy(isWatchlist = targetWatchlist)
+        viewModelScope.launch {
+            val msg = if (targetWatchlist) "تمت إضافة السلسلة إلى قائمتك" else "تمت إزالة السلسلة من قائمتك"
+            _effects.send(BoxSetEffect.ShowToast(msg))
+        }
+    }
+
     private fun toggleMovieWatched(movieId: String) {
         val currentState = _uiState.value as? BoxSetUiState.Success ?: return
         val targetPart = currentState.parts.find { it.id == movieId } ?: return
@@ -264,10 +356,12 @@ class BoxSetViewModel(
             }.toImmutableList()
 
             val (nextPart, nextIndex) = calculateNextUnwatched(updatedParts)
+            val allWatched = updatedParts.isNotEmpty() && updatedParts.all { it.isWatched }
             _uiState.value = currentState.copy(
                 parts = updatedParts,
                 nextUnwatchedPart = nextPart,
-                nextUnwatchedIndex = nextIndex
+                nextUnwatchedIndex = nextIndex,
+                isWatched = allWatched
             )
 
             val result = mediaDetailsRepository.markAsWatched(movieId, newWatched)
@@ -281,6 +375,37 @@ class BoxSetViewModel(
                     }
                 }
             }
+        }
+    }
+
+    private fun toggleEntireCollectionWatched() {
+        val current = _uiState.value as? BoxSetUiState.Success ?: return
+        val newWatchedState = !current.isWatched
+
+        val updatedParts = current.parts.map { part ->
+            part.copy(
+                isPlayed = newWatchedState,
+                playbackPositionPercentage = if (newWatchedState) 100.0 else 0.0
+            )
+        }.toImmutableList()
+
+        val (nextPart, nextIndex) = calculateNextUnwatched(updatedParts)
+        _uiState.value = current.copy(
+            parts = updatedParts,
+            nextUnwatchedPart = nextPart,
+            nextUnwatchedIndex = nextIndex,
+            isWatched = newWatchedState
+        )
+
+        viewModelScope.launch {
+            current.parts.forEach { part ->
+                mediaDetailsRepository.markAsWatched(part.id, newWatchedState)
+                if (newWatchedState) {
+                    localProfileRepository?.markWatched(part.id)
+                }
+            }
+            val msg = if (newWatchedState) "تم تحديد السلسلة بالكامل كمشاهدة" else "تم تحديد السلسلة كغير مشاهدة"
+            _effects.send(BoxSetEffect.ShowToast(msg))
         }
     }
 
