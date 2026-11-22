@@ -258,7 +258,8 @@ class LibraryViewModel(
                 letter = null,
                 startIndex = 0,
                 limit = 60,
-                isHierarchical = true
+                isHierarchical = true,
+                forceRefresh = isRefresh
             ).onSuccess { page ->
                 _uiState.value = LibraryUiState.Success(
                     items = page.items,

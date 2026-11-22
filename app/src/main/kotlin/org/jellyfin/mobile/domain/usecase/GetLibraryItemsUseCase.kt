@@ -16,7 +16,8 @@ class GetLibraryItemsUseCase(
         letter: Char? = null,
         startIndex: Int = 0,
         limit: Int = 100,
-        isHierarchical: Boolean = true
+        isHierarchical: Boolean = true,
+        forceRefresh: Boolean = false
     ): Result<LibraryPage> {
         return libraryRepository.getLibraryItems(
             parentId = parentId,
@@ -24,7 +25,12 @@ class GetLibraryItemsUseCase(
             letter = letter,
             startIndex = startIndex,
             limit = limit,
-            isHierarchical = isHierarchical
+            isHierarchical = isHierarchical,
+            forceRefresh = forceRefresh
         )
+    }
+
+    fun clearCache() {
+        libraryRepository.clearCache()
     }
 }
