@@ -144,6 +144,9 @@ class LiveServerIntegrationTest {
     fun testLiveNextUpAndResume() = runBlocking {
         handshakeRepo.performHandshake(testUsername, "")
         val nextUpResult = homeRepo.getNextUpItems(limit = 10)
+        if (nextUpResult.isFailure) {
+            println("getNextUpItems failed with: " + nextUpResult.exceptionOrNull())
+        }
         assertTrue("getNextUpItems should succeed", nextUpResult.isSuccess)
 
         val resumeResult = homeRepo.getResumeItems(limit = 10)

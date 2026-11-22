@@ -73,6 +73,7 @@ fun CinemaScrubber(
     modifier: Modifier = Modifier,
     trackHeight: Dp = 3.dp,
     thumbRadius: Dp = 6.dp,
+    onScrubProgress: ((isScrubbing: Boolean, scrubMs: Long, touchX: Float, totalWidth: Float) -> Unit)? = null,
 ) {
     if (durationMs <= 0L) return
 
@@ -135,19 +136,25 @@ fun CinemaScrubber(
                             onDragStart = { offset ->
                                 isScrubbing = true
                                 scrubFraction = (offset.x / trackWidthPx).coerceIn(0f, 1f)
-                                onSeek((scrubFraction * durationMs).toLong())
+                                val targetMs = (scrubFraction * durationMs).toLong()
+                                onSeek(targetMs)
+                                onScrubProgress?.invoke(true, targetMs, offset.x, trackWidthPx)
                             },
                             onHorizontalDrag = { _, dragAmount ->
                                 scrubFraction = (scrubFraction + dragAmount / trackWidthPx).coerceIn(0f, 1f)
-                                onSeek((scrubFraction * durationMs).toLong())
+                                val targetMs = (scrubFraction * durationMs).toLong()
+                                onSeek(targetMs)
+                                onScrubProgress?.invoke(true, targetMs, scrubFraction * trackWidthPx, trackWidthPx)
                             },
                             onDragEnd = {
                                 val finalMs = (scrubFraction * durationMs).toLong()
                                 onSeekFinished(finalMs)
                                 isScrubbing = false
+                                onScrubProgress?.invoke(false, finalMs, 0f, trackWidthPx)
                             },
                             onDragCancel = {
                                 isScrubbing = false
+                                onScrubProgress?.invoke(false, 0L, 0f, trackWidthPx)
                             },
                         )
                     },

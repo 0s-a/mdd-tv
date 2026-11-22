@@ -14,7 +14,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
@@ -65,30 +68,37 @@ fun PlayerSurface(
             .background(JellyfinColors.PureBlack)
     ) {
         val screenAspect = if (maxHeight.value > 0) maxWidth.value / maxHeight.value else 16f / 9f
-        val fillScale = if (videoAspectRatio > 0f && screenAspect > 0f) {
-            maxOf(screenAspect / videoAspectRatio, videoAspectRatio / screenAspect)
-        } else {
-            1.2f
-        }
-
-        val surfaceModifier = when (aspectRatioMode) {
+        val density = LocalDensity.current
+        val surfaceWidth: Dp
+        val surfaceHeight: Dp
+        when (aspectRatioMode) {
             AspectRatioMode.Fit -> {
-                Modifier
-                    .fillMaxSize()
-                    .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = false)
+                if (screenAspect > videoAspectRatio) {
+                    surfaceHeight = maxHeight
+                    surfaceWidth = (maxHeight.value * videoAspectRatio).dp
+                } else {
+                    surfaceWidth = maxWidth
+                    surfaceHeight = (maxWidth.value / videoAspectRatio).dp
+                }
             }
             AspectRatioMode.Fill -> {
-                Modifier
-                    .fillMaxSize()
-                    .scale(fillScale)
+                if (screenAspect > videoAspectRatio) {
+                    surfaceWidth = maxWidth
+                    surfaceHeight = (maxWidth.value / videoAspectRatio).dp
+                } else {
+                    surfaceHeight = maxHeight
+                    surfaceWidth = (maxHeight.value * videoAspectRatio).dp
+                }
             }
             AspectRatioMode.Stretch -> {
-                Modifier.fillMaxSize()
+                surfaceWidth = maxWidth
+                surfaceHeight = maxHeight
             }
             AspectRatioMode.Original -> {
-                Modifier
-                    .fillMaxSize()
-                    .aspectRatio(videoAspectRatio, matchHeightConstraintsFirst = true)
+                val nativeW = with(density) { videoWidth.toDp() }
+                val nativeH = with(density) { videoHeight.toDp() }
+                surfaceWidth = minOf(nativeW, maxWidth)
+                surfaceHeight = minOf(nativeH, maxHeight)
             }
         }
 
@@ -106,7 +116,7 @@ fun PlayerSurface(
             onRelease = { surfaceView ->
                 player.clearVideoSurfaceView(surfaceView)
             },
-            modifier = surfaceModifier
+            modifier = Modifier.size(surfaceWidth, surfaceHeight)
         )
     }
 }

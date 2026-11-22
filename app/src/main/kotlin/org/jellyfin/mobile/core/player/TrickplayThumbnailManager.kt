@@ -98,6 +98,20 @@ class TrickplayThumbnailManager(
      *
      * Returns null if no thumbnail source is available yet.
      */
+    /**
+     * Returns the best available thumbnail bitmap synchronously from in-memory cache or BIF bytes.
+     * Safe to call from UI/Compose remember blocks.
+     */
+    fun getThumbnailSync(positionMs: Long): Bitmap? {
+        val snappedPosition = snapToBifInterval(positionMs)
+        cache.get(snappedPosition)?.let { return it }
+        val bitmap = decodeBifFrame(snappedPosition)
+        if (bitmap != null) {
+            cache.put(snappedPosition, bitmap)
+        }
+        return bitmap
+    }
+
     suspend fun getThumbnail(positionMs: Long): Bitmap? {
         // Round to nearest BIF interval to maximize cache reuse.
         val snappedPosition = snapToBifInterval(positionMs)

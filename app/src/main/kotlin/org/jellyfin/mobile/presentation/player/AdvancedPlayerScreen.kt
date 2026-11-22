@@ -16,6 +16,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,9 +31,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -43,6 +51,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
 import org.jellyfin.mobile.core.player.external.ExternalPlayerIntentBuilder
 import org.jellyfin.mobile.core.player.external.ExternalPlayerPayload
 import org.jellyfin.mobile.core.player.external.ExternalPlayerResultParser
@@ -262,49 +271,143 @@ fun AdvancedPlayerScreen(
     }
     val isLandscape = activity?.resources?.configuration?.orientation == Configuration.ORIENTATION_LANDSCAPE
     val density = LocalDensity.current.density
+    var lastInteractionTime by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+
+    // Auto-dismiss HUD after 3 seconds of inactivity while video playback is active
+    LaunchedEffect(
+        uiState.isHudVisible,
+        uiState.isPlaying,
+        uiState.isControlsLocked,
+        uiState.isActionsModalVisible,
+        lastInteractionTime
+    ) {
+        if (uiState.isHudVisible && uiState.isPlaying && !uiState.isControlsLocked && !uiState.isActionsModalVisible) {
+            delay(3000L)
+            viewModel.dispatch(PlayerIntent.ToggleHudVisibility)
+        }
+    }
+
     val gestureCallbacks = remember(viewModel, hapticFeedback) {
         object : PlayerGestureCallbacks {
             override fun onSeekDelta(deltaMs: Long) {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.FastSeekBy(deltaMs))
             }
             override fun onBrightnessChange(brightness: Float) {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.SetBrightness(brightness))
             }
             override fun onVolumeChange(volume: Float) {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.SetVolume(volume))
             }
             override fun onLongPressStart() {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(2.0f))
             }
             override fun onLongPressEnd() {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(1.0f))
             }
             override fun onDoubleTapSeekBackward() {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.FastSeekBy(-10_000L))
             }
             override fun onDoubleTapSeekForward() {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.FastSeekBy(10_000L))
             }
             override fun onDoubleTapCenter() {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.TogglePlayPause)
             }
             override fun onZoomChange(scale: Float, panOffset: Offset) {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 // Zoom & pan state maintained live in gestureState
             }
             override fun onTouchLockToggle(locked: Boolean) {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.ToggleControlsLock)
             }
             override fun onSingleTap() {
+                lastInteractionTime = SystemClock.elapsedRealtime()
                 viewModel.dispatch(PlayerIntent.ToggleHudVisibility)
             }
         }
+    }
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
     }
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(JellyfinColors.PureBlack)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    lastInteractionTime = SystemClock.elapsedRealtime()
+                    when (event.key) {
+                        Key.DirectionCenter,
+                        Key.Enter,
+                        Key.NumPadEnter -> {
+                            if (!uiState.isHudVisible) {
+                                viewModel.dispatch(PlayerIntent.ToggleHudVisibility)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.DirectionLeft -> {
+                            viewModel.dispatch(PlayerIntent.FastSeekBy(-10_000L))
+                            true
+                        }
+                        Key.DirectionRight -> {
+                            viewModel.dispatch(PlayerIntent.FastSeekBy(10_000L))
+                            true
+                        }
+                        Key.DirectionUp,
+                        Key.DirectionDown -> {
+                            if (!uiState.isHudVisible) {
+                                viewModel.dispatch(PlayerIntent.ToggleHudVisibility)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.MediaPlayPause,
+                        Key.HeadsetHook -> {
+                            viewModel.dispatch(PlayerIntent.TogglePlayPause)
+                            true
+                        }
+                        Key.MediaPlay -> {
+                            viewModel.dispatch(PlayerIntent.Play)
+                            true
+                        }
+                        Key.MediaPause -> {
+                            viewModel.dispatch(PlayerIntent.Pause)
+                            true
+                        }
+                        Key.MediaFastForward,
+                        Key.MediaStepForward -> {
+                            viewModel.dispatch(PlayerIntent.FastSeekBy(10_000L))
+                            true
+                        }
+                        Key.MediaRewind,
+                        Key.MediaStepBackward -> {
+                            viewModel.dispatch(PlayerIntent.FastSeekBy(-10_000L))
+                            true
+                        }
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            }
     ) {
         val containerWidthPx = constraints.maxWidth.toFloat()
         val containerHeightPx = constraints.maxHeight.toFloat()
@@ -355,7 +458,7 @@ fun AdvancedPlayerScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 5. Floating Frosted Glass HUD Overlay (MX Player Pro Cinematic HUD)
+            // 5. Minimalist Cinema Heads-Up Display (Triad + Scrubber)
             PlayerHudOverlay(
                 uiState = uiState.copy(isInPictureInPicture = isInPiP),
                 onNavigateBack = {
@@ -378,19 +481,11 @@ fun AdvancedPlayerScreen(
                     }
                 },
                 onOpenActionsModal = { viewModel.dispatch(PlayerIntent.ToggleActionsModal) },
-                onSelectSubtitle = { viewModel.dispatch(PlayerIntent.SelectSubtitleTrack(it)) },
-                onAdjustSubtitleOffset = { viewModel.dispatch(PlayerIntent.AdjustSubtitleOffset(it)) },
-                onSelectAudio = { viewModel.dispatch(PlayerIntent.SelectAudioTrack(it)) },
-                onSetPlaybackSpeed = { viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(it)) },
-                onSetAspectRatio = { viewModel.dispatch(PlayerIntent.SetAspectRatio(it)) },
-                onEnterPiP = { viewModel.dispatch(PlayerIntent.EnterPictureInPicture) },
-                onPlayNextEpisode = if (!uiState.nextEpisodeId.isNullOrBlank()) {
-                    { viewModel.dispatch(PlayerIntent.PlayNextEpisode) }
-                } else null,
+                onGetThumbnail = { viewModel.getThumbnail(it) },
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 6. Foldable Cinema Actions Modal (Audio Equalizer, Vocal Booster, Passthrough, Delays)
+            // 6. Modular Unified Cinema Actions Modal (Subtitles, Audio, Speed, Aspect Ratio, EQ, PiP)
             PlayerActionsModal(
                 uiState = uiState,
                 isVisible = uiState.isActionsModalVisible,
@@ -403,7 +498,13 @@ fun AdvancedPlayerScreen(
                 onApplyVocalBoost = { viewModel.dispatch(PlayerIntent.ApplyVocalBoost) },
                 onSetBitstreamPassthrough = { viewModel.dispatch(PlayerIntent.SetBitstreamPassthrough(it)) },
                 onSetAudioDelay = { viewModel.dispatch(PlayerIntent.SetAudioDelay(it)) },
-                onLaunchExternalPlayer = { viewModel.dispatch(PlayerIntent.LaunchExternalPlayer) }
+                onLaunchExternalPlayer = { viewModel.dispatch(PlayerIntent.LaunchExternalPlayer) },
+                onEnterPiP = { viewModel.dispatch(PlayerIntent.EnterPictureInPicture) },
+                onSetAspectRatio = { viewModel.dispatch(PlayerIntent.SetAspectRatio(it)) },
+                onSetPlaybackSpeed = { viewModel.dispatch(PlayerIntent.SetPlaybackSpeed(it)) },
+                onPlayNextEpisode = if (!uiState.nextEpisodeId.isNullOrBlank()) {
+                    { viewModel.dispatch(PlayerIntent.PlayNextEpisode) }
+                } else null
             )
         }
     }

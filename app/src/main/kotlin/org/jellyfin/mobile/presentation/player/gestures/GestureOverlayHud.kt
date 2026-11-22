@@ -20,6 +20,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -240,7 +244,7 @@ private fun BrightnessHud(
         val percent = (capturedLevel * 100f).toInt().coerceIn(1, 100)
 
         SideProgressPanel(
-            icon = android.R.drawable.ic_menu_gallery,
+            icon = Icons.Rounded.LightMode,
             label = "$percent%",
             fillFraction = fillFraction,
             accent = HUD_ACCENT_FILL,
@@ -254,8 +258,8 @@ private fun BrightnessHud(
 
 /**
  * Right-side vertical progress panel showing current volume level
- * (0.0 to 2.0).  When volume exceeds 100% (1.0), the accent colour shifts
- * to [HUD_BOOST_ACCENT] and a "BOOST" badge appears.
+ * (0.0 to 2.0). When volume exceeds 100% (1.0), the accent colour shifts
+ * to [HUD_BOOST_ACCENT] and a boost badge appears.
  */
 @Composable
 private fun VolumeHud(
@@ -291,10 +295,15 @@ private fun VolumeHud(
         )
         val percent = (capturedLevel * 100f).toInt().coerceIn(0, 200)
         val accent = if (capturedBoost) HUD_BOOST_ACCENT else HUD_ACCENT_FILL
-        val label = if (capturedBoost) "$percent% BOOST" else "$percent%"
+        val label = if (capturedBoost) "$percent% تضخيم" else "$percent%"
+        val volumeIcon = if (capturedLevel <= 0.01f) {
+            Icons.AutoMirrored.Rounded.VolumeOff
+        } else {
+            Icons.AutoMirrored.Rounded.VolumeUp
+        }
 
         SideProgressPanel(
-            icon = android.R.drawable.ic_lock_silent_mode_off,
+            icon = volumeIcon,
             label = label,
             fillFraction = fillFraction,
             accent = accent,
@@ -349,11 +358,10 @@ private fun SpeedBoostHud(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "FAST",
-                color = HUD_FOREGROUND.copy(alpha = 0.75f),
+                text = "تسريع",
+                color = HUD_FOREGROUND.copy(alpha = 0.85f),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 2.sp,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -366,18 +374,13 @@ private fun SpeedBoostHud(
 /**
  * Reusable vertical indicator pill used for both brightness and volume displays.
  * Contains:
- * - A system icon at the top.
+ * - A Material icon at the top.
  * - A vertical progress track filling bottom-to-top.
  * - A percentage label below the track.
- *
- * @param icon Android resource id for the icon drawable.
- * @param label text shown below the track (e.g., "75%" or "150% BOOST").
- * @param fillFraction progress fraction [0.0, 1.0] driving the bar fill.
- * @param accent fill colour for the active portion of the track.
  */
 @Composable
 private fun SideProgressPanel(
-    icon: Int,
+    icon: ImageVector,
     label: String,
     fillFraction: Float,
     accent: Color,
@@ -390,14 +393,11 @@ private fun SideProgressPanel(
             .background(HUD_SCRIM)
             .padding(horizontal = 14.dp, vertical = 18.dp),
     ) {
-        // Icon placeholder using a simple coloured circle since we cannot depend
-        // on specific icon resources being available. Host screens may replace
-        // this with their own icon composable via slot API if needed.
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .clip(RoundedCornerShape(50))
-                .background(HUD_FOREGROUND.copy(alpha = 0.8f)),
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = HUD_FOREGROUND,
+            modifier = Modifier.size(20.dp),
         )
 
         Spacer(modifier = Modifier.height(12.dp))

@@ -249,6 +249,7 @@ class PlayerViewModel(
             }
             is PlayerIntent.Pause -> {
                 player.pause()
+                saveCurrentWatchProgress()
                 _uiState.update { it.copy(playWhenReady = false) }
             }
             is PlayerIntent.TogglePlayPause -> {
@@ -913,8 +914,27 @@ class PlayerViewModel(
         }
     }
 
+    private fun saveCurrentWatchProgress() {
+        val pos = player.currentPosition.coerceAtLeast(0L)
+        val dur = player.duration.coerceAtLeast(0L)
+        val mId = _uiState.value.mediaId
+        val title = _uiState.value.mediaTitle
+        if (mId.isNotBlank() && dur > 0L && pos > 0L) {
+            viewModelScope.launch {
+                localProfileRepository?.saveWatchProgress(
+                    itemId = mId,
+                    title = title,
+                    positionTicks = pos * 10_000L,
+                    durationTicks = dur * 10_000L,
+                    isPlayed = pos.toDouble() / dur >= 0.90
+                )
+            }
+        }
+    }
+
     private fun stopPlayer() {
         progressTickerJob?.cancel()
+        saveCurrentWatchProgress()
         try {
             player.pause()
             player.stop()
