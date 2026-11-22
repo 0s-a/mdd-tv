@@ -100,6 +100,14 @@ import org.jellyfin.mobile.presentation.details.components.AdaptiveBackdropHeade
 import org.jellyfin.mobile.presentation.details.components.CastCarousel
 import org.jellyfin.mobile.presentation.details.components.GenreChipsRow
 import org.jellyfin.mobile.presentation.details.components.InfuseTechBadgesRow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import org.jellyfin.mobile.presentation.details.components.SaveModalBottomSheet
+import org.jellyfin.mobile.presentation.details.components.TopActionsDropdownMenu
+import org.jellyfin.mobile.ui.theme.JellyfinPrimitives
 import org.jellyfin.mobile.ui.components.GlassmorphicCard
 import org.jellyfin.mobile.ui.components.glassmorphism
 import org.jellyfin.mobile.ui.theme.JellyfinColors
@@ -237,18 +245,21 @@ fun SeriesDetailsScreen(
                 )
 
                 // 2. Main Scrollable Content
+                val configuration = LocalConfiguration.current
+                val heroHeight = (configuration.screenHeightDp * 0.50f).dp
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(scrollState)
                         .padding(bottom = 80.dp)
                 ) {
-                    // 220dp Golden Ratio Adaptive Backdrop Header with Dual Scrims
+                    // 50% Screen Height Golden Ratio Adaptive Backdrop Header with Dual Scrims
                     AdaptiveBackdropHeader(
                         backdropUrl = series.backdropUrl,
                         posterUrl = series.posterUrl,
                         title = series.title,
-                        maxHeight = 220.dp,
+                        maxHeight = heroHeight,
                         backgroundColor = backgroundColor
                     )
 
@@ -286,23 +297,20 @@ fun SeriesDetailsScreen(
 
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceLarge))
 
-                        // Next Up Hero Button / Card
-                        SeriesNextUpHeroCard(
+                        // Primary Action Button (Next Up Hero Button - 54dp)
+                        SeriesPrimaryActionButton(
                             nextUpEpisode = state.nextUpEpisode,
                             allWatched = state.allEpisodesWatched,
-                            onResumeClick = { viewModel.processIntent(SeriesIntent.ResumeNextUp) },
-                            onPlayEpisode = { epId -> viewModel.processIntent(SeriesIntent.PlayEpisode(epId)) }
+                            onClick = { viewModel.processIntent(SeriesIntent.ResumeNextUp) }
                         )
 
                         Spacer(modifier = Modifier.height(JellyfinDimens.SpaceSmall))
 
-                        // Secondary Action Bar: Replay from start, Watched toggle, External player, Share
-                        SeriesSecondaryActionBar(
-                            isWatched = state.isWatched,
-                            onPlayFromStart = { viewModel.processIntent(SeriesIntent.PlayFromStart) },
-                            onPlayExternal = { viewModel.processIntent(SeriesIntent.PlayNextUpExternal) },
-                            onToggleWatched = { viewModel.processIntent(SeriesIntent.ToggleSeriesWatched) },
-                            onShare = { viewModel.processIntent(SeriesIntent.ShareSeries) }
+                        // Secondary Action Duo: Save in lists + External player (48dp, 50%/50%)
+                        SeriesSecondaryActionDuo(
+                            isSaved = state.isFavorite || state.isWatchlist,
+                            onSaveClick = { viewModel.processIntent(SeriesIntent.OpenSaveModal) },
+                            onExternalPlayerClick = { viewModel.processIntent(SeriesIntent.PlayNextUpExternal) }
                         )
 
                         // Expandable Synopsis Section
@@ -372,15 +380,30 @@ fun SeriesDetailsScreen(
                     }
                 }
 
-                // 3. Floating Transparent Top App Bar (Back, Share, Favorite)
+                // 3. Floating Transparent Top App Bar (Back, More Actions Menu)
                 SeriesTopBar(
-                    isFavorite = state.isFavorite,
                     onBackClick = onNavigateBack,
-                    onFavoriteClick = { viewModel.processIntent(SeriesIntent.ToggleSeriesFavorite) },
+                    onPlaybackOptionsClick = {
+                        Toast.makeText(context, "خيارات التشغيل الافتراضية نشطة", Toast.LENGTH_SHORT).show()
+                    },
                     onShareClick = { viewModel.processIntent(SeriesIntent.ShareSeries) },
+                    isWatched = state.isWatched,
+                    onToggleWatchedClick = { viewModel.processIntent(SeriesIntent.ToggleSeriesWatched) },
+                    hasTrailer = false,
+                    onTrailerClick = {},
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
+                )
+
+                // 4. Save Modal Bottom Sheet (Favorites + Watchlist)
+                SaveModalBottomSheet(
+                    isVisible = state.isSaveModalVisible,
+                    isFavorite = state.isFavorite,
+                    isWatchlist = state.isWatchlist,
+                    onToggleFavorite = { viewModel.processIntent(SeriesIntent.ToggleSeriesFavorite) },
+                    onToggleWatchlist = { viewModel.processIntent(SeriesIntent.ToggleSeriesWatchlist) },
+                    onDismiss = { viewModel.processIntent(SeriesIntent.DismissSaveModal) }
                 )
             }
         }
@@ -635,85 +658,159 @@ private fun SeriesNextUpHeroCard(
 }
 
 /**
- * Secondary actions row: Play from start, toggle watched, share.
+ * Next Up Hero Primary Action Button (54dp) in Ivory50.
  */
 @Composable
-private fun SeriesSecondaryActionBar(
-    isWatched: Boolean,
-    onPlayFromStart: () -> Unit,
-    onPlayExternal: () -> Unit,
-    onToggleWatched: () -> Unit,
-    onShare: () -> Unit,
+private fun SeriesPrimaryActionButton(
+    nextUpEpisode: EpisodeSummary?,
+    allWatched: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isResume = nextUpEpisode != null && nextUpEpisode.playbackPositionPercentage > 0f
+    val buttonText = when {
+        allWatched -> "إعادة من الحلقة الأولى"
+        nextUpEpisode == null -> "بدء الحلقة الأولى"
+        isResume -> "استئناف: ح ${nextUpEpisode.episodeNumber} · م ${nextUpEpisode.seasonNumber}"
+        else -> "تشغيل: ح ${nextUpEpisode.episodeNumber} · م ${nextUpEpisode.seasonNumber}"
+    }
+
+    val progress = (nextUpEpisode?.playbackPositionPercentage ?: 0f) / 100f
+
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = JellyfinPrimitives.Ivory50,
+            contentColor = JellyfinPrimitives.Obsidian950
+        ),
+        shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .shadow(
+                elevation = JellyfinDimens.ElevationHigh,
+                shape = RoundedCornerShape(JellyfinDimens.RadiusMedium),
+                ambientColor = Color.White.copy(alpha = 0.1f),
+                spotColor = Color.White.copy(alpha = 0.2f)
+            )
+            .semantics {
+                role = Role.Button
+                contentDescription = buttonText
+            }
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = JellyfinPrimitives.Obsidian950,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = buttonText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = JellyfinPrimitives.Obsidian950
+                )
+            }
+
+            if (isResume && progress > 0f) {
+                Spacer(modifier = Modifier.height(3.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    color = JellyfinPrimitives.CrimsonMuted,
+                    trackColor = JellyfinPrimitives.Slate700,
+                    modifier = Modifier
+                        .fillMaxWidth(0.50f)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Secondary Action Duo (48dp): Save in lists (50%) + External player (50%).
+ */
+@Composable
+private fun SeriesSecondaryActionDuo(
+    isSaved: Boolean,
+    onSaveClick: () -> Unit,
+    onExternalPlayerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall)
     ) {
+        // 1. Save in Lists button (50%)
         OutlinedButton(
-            onClick = onPlayFromStart,
+            onClick = onSaveClick,
+            shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = JellyfinPrimitives.Graphite800.copy(alpha = 0.6f)
+            ),
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                brush = Brush.horizontalGradient(
+                    listOf(JellyfinColors.BorderGlass, JellyfinColors.BorderGlass)
+                )
+            ),
             modifier = Modifier
                 .weight(1f)
-                .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
+                .height(48.dp)
         ) {
             Icon(
-                imageVector = Icons.Outlined.Replay,
+                imageVector = if (isSaved) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkAdd,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp)
+                tint = if (isSaved) JellyfinColors.RatingGold else JellyfinColors.TextSecondary,
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "من البداية", style = MaterialTheme.typography.labelSmall)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "حفظ في القوائم",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (isSaved) JellyfinColors.RatingGold else JellyfinColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
         }
 
+        // 2. External Player button (50%)
         OutlinedButton(
-            onClick = onPlayExternal,
+            onClick = onExternalPlayerClick,
+            shape = RoundedCornerShape(JellyfinDimens.RadiusSmall),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = JellyfinPrimitives.Graphite800.copy(alpha = 0.6f)
+            ),
+            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                brush = Brush.horizontalGradient(
+                    listOf(JellyfinColors.BorderGlass, JellyfinColors.BorderGlass)
+                )
+            ),
             modifier = Modifier
                 .weight(1f)
-                .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
+                .height(48.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                 contentDescription = null,
                 tint = JellyfinColors.AccentAmber,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "مشغل خارجي", style = MaterialTheme.typography.labelSmall)
-        }
-
-        OutlinedButton(
-            onClick = onToggleWatched,
-            modifier = Modifier
-                .weight(1f)
-                .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
-        ) {
-            Icon(
-                imageVector = if (isWatched) Icons.Rounded.Check else Icons.Outlined.Check,
-                contentDescription = null,
-                tint = if (isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = if (isWatched) "تمت المشاهدة" else "تحديد كمشاهد",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isWatched) JellyfinColors.SuccessEmerald else JellyfinColors.TextSecondary
+                text = "مشغل خارجي",
+                style = MaterialTheme.typography.labelMedium,
+                color = JellyfinColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold
             )
-        }
-
-        OutlinedButton(
-            onClick = onShare,
-            modifier = Modifier
-                .weight(1f)
-                .defaultMinSize(minHeight = JellyfinDimens.MinTouchTarget)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Share,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "مشاركة", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -1101,14 +1198,17 @@ private fun SeriesEpisodeRowItem(
 }
 
 /**
- * Floating transparent Top App Bar with back, favorite, and share actions.
+ * Minimalist Top App Bar with back button and overflow menu.
  */
 @Composable
 private fun SeriesTopBar(
-    isFavorite: Boolean,
     onBackClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
+    onPlaybackOptionsClick: () -> Unit,
     onShareClick: () -> Unit,
+    isWatched: Boolean,
+    onToggleWatchedClick: () -> Unit,
+    hasTrailer: Boolean,
+    onTrailerClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -1123,7 +1223,7 @@ private fun SeriesTopBar(
             modifier = Modifier
                 .size(JellyfinDimens.MinTouchTarget)
                 .glassmorphism(
-                    backgroundColor = JellyfinColors.SurfaceDark.copy(alpha = 0.7f),
+                    backgroundColor = JellyfinPrimitives.Graphite900.copy(alpha = 0.75f),
                     borderColor = JellyfinColors.BorderGlass,
                     cornerRadius = JellyfinDimens.RadiusPill
                 )
@@ -1139,53 +1239,14 @@ private fun SeriesTopBar(
             )
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(JellyfinDimens.SpaceSmall),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onShareClick,
-                modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
-                    .glassmorphism(
-                        backgroundColor = JellyfinColors.SurfaceDark.copy(alpha = 0.7f),
-                        borderColor = JellyfinColors.BorderGlass,
-                        cornerRadius = JellyfinDimens.RadiusPill
-                    )
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "مشاركة المسلسل"
-                    }
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Share,
-                    contentDescription = null,
-                    tint = JellyfinColors.TextPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .size(JellyfinDimens.MinTouchTarget)
-                    .glassmorphism(
-                        backgroundColor = JellyfinColors.SurfaceDark.copy(alpha = 0.7f),
-                        borderColor = JellyfinColors.BorderGlass,
-                        cornerRadius = JellyfinDimens.RadiusPill
-                    )
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = if (isFavorite) "إزالة من المفضلة" else "إضافة للمفضلة"
-                    }
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
-                    contentDescription = null,
-                    tint = if (isFavorite) JellyfinColors.RatingGold else JellyfinColors.TextPrimary
-                )
-            }
-        }
+        TopActionsDropdownMenu(
+            onPlaybackOptionsClick = onPlaybackOptionsClick,
+            onShareClick = onShareClick,
+            isWatched = isWatched,
+            onToggleWatchedClick = onToggleWatchedClick,
+            hasTrailer = hasTrailer,
+            onTrailerClick = onTrailerClick
+        )
     }
 }
 

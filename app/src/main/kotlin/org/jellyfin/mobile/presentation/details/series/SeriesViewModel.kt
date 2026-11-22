@@ -85,6 +85,21 @@ class SeriesViewModel(
             is SeriesIntent.ToggleSeriesFavorite -> {
                 toggleSeriesFavorite()
             }
+            is SeriesIntent.ToggleSeriesWatchlist -> {
+                toggleSeriesWatchlist()
+            }
+            is SeriesIntent.OpenSaveModal -> {
+                val current = _uiState.value
+                if (current is SeriesUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = true)
+                }
+            }
+            is SeriesIntent.DismissSaveModal -> {
+                val current = _uiState.value
+                if (current is SeriesUiState.Success) {
+                    _uiState.value = current.copy(isSaveModalVisible = false)
+                }
+            }
             is SeriesIntent.ToggleSeriesWatched -> {
                 toggleSeriesWatched()
             }
@@ -331,6 +346,17 @@ class SeriesViewModel(
                 mediaDetailsRepository.toggleFavorite(seriesId, targetFavorite)
             }
             val msg = if (targetFavorite) "تمت إضافة المسلسل إلى المفضلة" else "تمت إزالة المسلسل من المفضلة"
+            _effects.send(SeriesEffect.ShowToast(msg))
+        }
+    }
+
+    private fun toggleSeriesWatchlist() {
+        val current = _uiState.value
+        if (current !is SeriesUiState.Success) return
+        val targetWatchlist = !current.isWatchlist
+        _uiState.value = current.copy(isWatchlist = targetWatchlist)
+        viewModelScope.launch {
+            val msg = if (targetWatchlist) "تمت إضافة المسلسل إلى قائمتك" else "تمت إزالة المسلسل من قائمتك"
             _effects.send(SeriesEffect.ShowToast(msg))
         }
     }
