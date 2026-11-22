@@ -44,10 +44,10 @@ else
     echo "      (Cloud CI/CD runner will execute complete test suite and build on GitHub Actions)."
 fi
 
-# 2. Update app/build.gradle.kts
-echo "[2/5] Updating version in app/build.gradle.kts..."
+# 2. Update app/build.gradle.kts and AppConfig.kt
+echo "[2/5] Updating version in app/build.gradle.kts and AppConfig.kt..."
 python3 -c "
-import re
+import os, re
 path = 'app/build.gradle.kts'
 with open(path, 'r') as f:
     content = f.read()
@@ -64,6 +64,14 @@ if current_version != '$TARGET_VERSION':
 
 with open(path, 'w') as f:
     f.write(content)
+
+app_config_path = 'app/src/main/kotlin/org/jellyfin/mobile/AppConfig.kt'
+if os.path.exists(app_config_path):
+    with open(app_config_path, 'r') as f:
+        cfg = f.read()
+    cfg = re.sub(r'APP_VERSION\s*=\s*\"[^\"]+\"', f'APP_VERSION = \"$TARGET_VERSION\"', cfg)
+    with open(app_config_path, 'w') as f:
+        f.write(cfg)
 "
 
 # 3. Flush docs/UNRELEASED.md into CHANGELOG.md if not already present
@@ -82,10 +90,18 @@ if f'## [{target_version}]' not in changelog:
     with open('docs/UNRELEASED.md', 'r') as f:
         unreleased = f.read()
     
-    # Strip headers from UNRELEASED
-    body = re.sub(r'^# [^\n]*\n', '', unreleased)
-    body = re.sub(r'^# [^\n]*\n', '', body)
-    body = re.sub(r'^> [^\n]*\n', '', body).strip()
+    first_h2 = unreleased.find('\n## ')
+    if first_h2 != -1:
+        body = unreleased[first_h2+1:].strip()
+    else:
+        body = unreleased.strip()
+
+    body = re.sub(r'(?m)^## ', '### ', body)
+    body = re.sub(r'(?m)^\s*---\s*$', '', body)
+    body = re.sub(r'\n{3,}', '\n\n', body)
+    body = body.replace('### الميزات الجديدة قيد الإعداد (Added)', '### الميزات المضافة (Added)')
+    body = body.replace('### التغييرات المعمارية أو المحذوفة (Deprecated / Removed)', '### التغييرات المعمارية والمحذوفة (Deprecated / Removed)')
+    body = body.strip()
     
     new_entry = f'## [{target_version}] - {today}\n\n' + body + '\n\n---\n\n'
     
@@ -125,7 +141,7 @@ if f'## [{target_version}]' not in changelog:
 
 # 4. Git Stage and Commit
 echo "[4/5] Preparing git state..."
-git add app/build.gradle.kts CHANGELOG.md docs/UNRELEASED.md docs/ tools/release.sh
+git add app/build.gradle.kts app/src/main/kotlin/org/jellyfin/mobile/AppConfig.kt CHANGELOG.md docs/UNRELEASED.md docs/ tools/release.sh
 if ! git diff --cached --quiet; then
     git commit -m "chore(release): prepare release ${TAG_NAME}"
 fi

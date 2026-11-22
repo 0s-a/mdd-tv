@@ -10,7 +10,7 @@ object AppConfig {
     // 1. هوية التطبيق (App Identity)
     const val APP_NAME = "مدد TV"
     const val APP_NAME_EN = "mdd TV"
-    const val APP_VERSION = "1.1.0"
+    const val APP_VERSION = "1.2.0"
 
     // 2. نقطة الاتصال بالسيرفر والمستخدم المعتمد فقط (Server & User Endpoint)
     const val SERVER_URL = "http://192.168.200.200:80"
