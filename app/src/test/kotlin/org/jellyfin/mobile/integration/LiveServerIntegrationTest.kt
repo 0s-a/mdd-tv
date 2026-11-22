@@ -55,7 +55,7 @@ class LiveServerIntegrationTest {
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(180, TimeUnit.SECONDS)
             .build()
 
         val json = Json {

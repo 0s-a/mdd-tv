@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyfin.mobile.core.network.SessionManager
 import org.jellyfin.mobile.data.mapper.toDomain
 import org.jellyfin.mobile.data.mapper.toMediaItemSummary
@@ -86,8 +87,10 @@ class HomeRepositoryImpl(
                 val librariesDeferred = async { apiService.getUserViews(userId).toDomain() }
                 val spotlightDeferred = async {
                     try {
-                        apiService.getSpotlightItems(userId = userId, limit = 5)
-                            .items?.map { it.toMediaItemSummary() } ?: emptyList()
+                        withTimeoutOrNull(8_000L) {
+                            apiService.getSpotlightItems(userId = userId, limit = 5)
+                                .items?.map { it.toMediaItemSummary() }
+                        } ?: emptyList()
                     } catch (e: Exception) {
                         emptyList()
                     }
@@ -97,8 +100,10 @@ class HomeRepositoryImpl(
                 }
                 val nextUpDeferred = async {
                     try {
-                        apiService.getNextUpEpisodes(userId = userId, limit = 16)
-                            .items?.map { it.toMediaItemSummary() } ?: emptyList()
+                        withTimeoutOrNull(10_000L) {
+                            apiService.getNextUpEpisodes(userId = userId, limit = 16)
+                                .items?.map { it.toMediaItemSummary() }
+                        } ?: emptyList()
                     } catch (e: Exception) {
                         emptyList()
                     }
