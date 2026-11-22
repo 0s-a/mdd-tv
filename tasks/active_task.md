@@ -1,62 +1,49 @@
-# خطة العمل التنفيذية: منظومة دعم المشغلات الخارجية ومزامنة التقدم محلياً
-# Active Sprint: External Player Integration & Local-First Progress Synchronization
+# خطة العمل التنفيذية النشطة: حزمة إعادة تصميم شاشات تفاصيل الوسائط الموزعة
+# Active Sprint: Master Redesign Suite for Media Details Screens
 
-> **الهدف الاستراتيجي:** إتاحة خيار تشغيل الوسائط عبر مشغلات الفيديو الخارجية المتخصصة (مثل VLC, Just Player, MX Player, MPV) عبر نوايا أندرويد (Android Intents) مع الحفاظ الصارم على معمارية "المحلي أولاً" (Local-First) واسترداد وحفظ موضع التوقف داخل Room DB للبروفايل النشط دون تلويث حساب السيرفر المشترك وفق ميثاق ADR 0001.
-> **المرجع المعماري:** `docs/thinking/planning/07_external_player_integration.md` • `docs/adr/0001_local_room_profiles_isolation.md`
+> **الهدف الاستراتيجي:** إعادة بناء وتطوير شاشات تفاصيل الوسائط الموزعة (الأفلام، المسلسلات، السلاسل، والألبومات) وفق معمارية القالب الموحد الموروث، وتثبيت غلاف الـ 50% السينمائي، والشريط العلوي المقتضب، وزر التشغيل المنفرد العريض، والصف الثنائي المتناظر (حفظ في القوائم + مشغل خارجي)، مع عزل البيانات محلياً في Room DB وفق ميثاق ADR 0001.
+> **المرجع المعماري:** `docs/current/screens/media_details/00_general_layout_architecture.md` • `docs/current/screens/media_details/`
 > **ميثاق الجودة:** حظر تام وشامل للإيموجيات • صفر كود مهجور • تغطية اختبارات كاملة • التزام صارم بمعمارية MVI.
 
 ---
 
-## 1. توزيع فرق العمل المتوازية ونطاق المسؤولية (Squad Assignments)
+## 1. توزيع فرق العمل التخصصية ونطاق المسؤولية (Specialized Squad)
 
 ```mermaid
 flowchart TD
-    Coordinator["المنسق العام للمشروع (Coordinator)"] --> Worker1["وكيل نواة المشغل الخارجي (External Core Specialist)"]
-    Coordinator --> Worker2["وكيل تكامل المشغل والتحويل اللحظي (In-Player Handoff Specialist)"]
-    Coordinator --> Worker3["وكيل تكامل شاشات التفاصيل (Details Integration Specialist)"]
-    Coordinator --> Worker4["وكيل التدقيق وضمان الجودة (QA & Verification Auditor)"]
+    Coordinator["المنسق العام للمشروع (Coordinator)"] --> W0["وكيل المكونات الهيكلية المشتركة (Shared Foundation Specialist)"]
+    Coordinator --> W1["وكيل شاشة الأفلام السينمائية (Movie Details Specialist)"]
+    Coordinator --> W2["وكيل شاشة المسلسلات والمواسم (Series Details Specialist)"]
+    Coordinator --> W3["وكيل شاشة السلاسل والألبومات (BoxSet & Music Specialist)"]
+    Coordinator --> W4["وكيل التدقيق وضمان الجودة (QA & Build Auditor)"]
 
-    Worker1 --> F1["ExternalPlayerContract.kt + ExternalPlayerIntentBuilder.kt + ExternalPlayerResultParser.kt + ExternalPlayerManager.kt"]
-    Worker2 --> F2["PlayerContract.kt + PlayerViewModel.kt + PlayerActionsModal.kt + AdvancedPlayerScreen.kt"]
-    Worker3 --> F3["MovieDetailsContract.kt + MovieViewModel.kt + MovieDetailsScreen.kt + SeriesDetailsContract.kt + SeriesViewModel.kt + SeriesDetailsScreen.kt"]
-    Worker4 --> F4["Unit Tests + Gradle Build Verification + Zero Emoji Audit"]
+    W0 --> F0["SaveModalBottomSheet.kt + TopActionsDropdownMenu.kt"]
+    W1 --> F1["MovieDetailsScreen.kt + MovieDetailsContract.kt + MovieViewModel.kt"]
+    W2 --> F2["SeriesDetailsScreen.kt + SeriesDetailsContract.kt + SeriesViewModel.kt"]
+    W3 --> F3["BoxSetDetailsScreen.kt + MusicAlbumDetailsScreen.kt"]
+    W4 --> F4["Unit Tests + Gradle Build Verification + Zero Emoji Audit"]
 ```
-
-### مصفوفة التوزيع وحظر التداخل (Isolation Matrix):
-* **وكيل نواة المشغل الخارجي (`worker-external-core`):**
-  * النطاق الحصري: حزمة `core/player/external/` و `di/AppModule.kt`.
-  * المسؤولية: بناء نماذج البيانات، صانع النوايا `ExternalPlayerIntentBuilder`، محلل النتائج `ExternalPlayerResultParser`، وتطبيق `ExternalPlayerManager` وحفظ التقدم في Room DB.
-* **وكيل تكامل المشغل والتحويل اللحظي (`worker-player-handoff`):**
-  * النطاق الحصري: `presentation/player/PlayerContract.kt`, `PlayerViewModel.kt`, `PlayerActionsModal.kt`, `AdvancedPlayerScreen.kt`.
-  * المسؤولية: دعم التحويل اللحظي للمشغل الخارجي وإيقاف التشغيل الداخلي واستقبال موضع التوقف عند العودة وتحديث المشغل أو إغلاقه.
-* **وكيل تكامل شاشات التفاصيل (`worker-details-integrator`):**
-  * النطاق الحصري: `presentation/details/movie/` و `presentation/details/series/`.
-  * المسؤولية: إضافة زر الإطلاق الخارجي واستقبال النتائج وتحديث حالة المشاهدة محلياً.
-* **وكيل التدقيق وضمان الجودة (`worker-qa-auditor`):**
-  * النطاق الحصري: اختبارات الوحدة، فحص بناء Gradle، وتدقيق خلو الكود من الإيموجيات بنسبة 100%.
 
 ---
 
-## 2. مراحل العمل والتسليم التدريجي (Phased Execution)
+## 2. جدول تسليم المهام التنفيذية (Phased Deliverables)
 
-### المرحلة 1: بناء وتأسيس نواة المشغل الخارجي في طبقة النواة
-- [x] إنشاء واجهة ونماذج بيانات `core/player/external/ExternalPlayerContract.kt`.
-- [x] إنشاء `core/player/external/ExternalPlayerIntentBuilder.kt` لدعم نوايا أندرويد وتوافقية MX Player / Just Player / VLC.
-- [x] إنشاء `core/player/external/ExternalPlayerResultParser.kt` لاستخراج الموضع وحساب التقدير التكيفي.
-- [x] إنشاء وتسجيل `ExternalPlayerManager` في Koin (`di/AppModule.kt`).
+### المرحلة 0: المكونات الأساسية المشتركة
+- [ ] إنشاء مكوّن نافذة الحفظ الموحدة المنبثقة `presentation/details/components/SaveModalBottomSheet.kt`.
+- [ ] إنشاء مكوّن القائمة المنسدلة العلوية `presentation/details/components/TopActionsDropdownMenu.kt`.
 
-### المرحلة 2: دمج التحويل اللحظي من المشغل المدمج (In-Player Handoff)
-- [x] إضافة النوايا والتأثيرات في `PlayerContract.kt`.
-- [x] معالجة النية وحفظ النتائج في `PlayerViewModel.kt`.
-- [x] إضافة زر التحويل للمشغل الخارجي في `PlayerActionsModal.kt`.
-- [x] ربط `ActivityResultLauncher` في `AdvancedPlayerScreen.kt`.
+### المرحلة 1: شاشة تفاصيل الأفلام السينمائية
+- [ ] تطبيق المخطط الهيكلي المعتمد في `MovieDetailsScreen.kt` (زر التشغيل المنفرد 54dp + ثنائي الحفظ والمشغل الخارجي).
+- [ ] ربط نافذة الحفظ والقائمة المنسدلة في `MovieDetailsContract.kt` و `MovieViewModel.kt`.
 
-### المرحلة 3: دمج زر المشغل الخارجي في شاشات التفاصيل
-- [x] تحديث `MovieDetailsContract.kt` و `MovieViewModel.kt` و `MovieDetailsScreen.kt`.
-- [x] تحديث `SeriesDetailsContract.kt` و `SeriesViewModel.kt` و `SeriesDetailsScreen.kt`.
+### المرحلة 2: شاشة تفاصيل المسلسلات والمواسم
+- [ ] تحديث `SeriesDetailsScreen.kt` بزر الاستئناف الذكي المنفرد "استئناف: ح X · م Y".
+- [ ] صقل محدد المواسم الهجين وقائمة الحلقات الرأسية مع زر تمييز المشاهدة الفردي.
 
-### المرحلة 4: التحقق، التدقيق العتادي، واختبارات الوحدة
-- [x] كتابة اختبارات وحدة `ExternalPlayerManagerTest` للتأكد من بناء النوايا، تحليل النتائج، والتقدير البديل.
-- [x] تشغيل اختبارات الوحدة `testDebugUnitTest` والتأكد من نجاحها بالكامل.
-- [x] فحص بناء الحزمة `assembleDebug`.
-- [x] تدقيق خلو الكود بالكامل من الإيموجيات وتحديث `UNRELEASED.md`.
+### المرحلة 3: شاشة السلاسل والألبومات الموسيقية
+- [ ] تحديث `BoxSetDetailsScreen.kt` بإحصائيات السلسلة التراكمية وزر المتابعة الذكي.
+- [ ] تحديث `MusicAlbumDetailsScreen.kt` بالغلاف المربع 1:1 وزر الخلط والمشغل المصغر.
+
+### المرحلة 4: التدقيق، وضمان الجودة، وبناء Gradle
+- [ ] فحص خلو الكود بالكامل من الإيموجيات.
+- [ ] تشغيل اختبارات الوحدة `./gradlew testDebugUnitTest` بنجاح 100%.
