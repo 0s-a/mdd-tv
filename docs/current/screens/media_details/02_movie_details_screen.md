@@ -5,7 +5,7 @@
 > **المنصة المستهدفة:** هاتف أندرويد الذكي (Android Mobile Phone) • تفاعل لمسي رأسي (Portrait-First Touch UI).  
 > **المرجع المعماري الأساسي:** [00_general_layout_architecture.md](./00_general_layout_architecture.md)  
 > **مكتبة المكونات المشتركة:** [01_shared_components_and_philosophy.md](./01_shared_components_and_philosophy.md)  
-> **القرارات المعمارية الحاكمة:** [ADR 0004: نظام OLED True Black](../../adr/0004_oled_true_black_design_system.md) • [ADR 0005: تأجيل واستئصال التنزيلات](../../adr/0005_deferring_offline_downloads.md)
+> **القرارات المعمارية الحاكمة:** [ADR 0004: نظام OLED True Black](../../../adr/0004_oled_true_black_design_system.md) • [ADR 0005: تأجيل واستئصال التنزيلات](../../../adr/0005_deferring_offline_downloads.md)
 
 ---
 
