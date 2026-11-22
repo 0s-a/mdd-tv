@@ -29,21 +29,21 @@ flowchart TD
 ## 2. جدول تسليم المهام التنفيذية (Phased Deliverables)
 
 ### المرحلة 0: المكونات الأساسية المشتركة
-- [ ] إنشاء مكوّن نافذة الحفظ الموحدة المنبثقة `presentation/details/components/SaveModalBottomSheet.kt`.
-- [ ] إنشاء مكوّن القائمة المنسدلة العلوية `presentation/details/components/TopActionsDropdownMenu.kt`.
+- [x] إنشاء مكوّن نافذة الحفظ الموحدة المنبثقة `presentation/details/components/SaveModalBottomSheet.kt`.
+- [x] إنشاء مكوّن القائمة المنسدلة العلوية `presentation/details/components/TopActionsDropdownMenu.kt`.
 
 ### المرحلة 1: شاشة تفاصيل الأفلام السينمائية
-- [ ] تطبيق المخطط الهيكلي المعتمد في `MovieDetailsScreen.kt` (زر التشغيل المنفرد 54dp + ثنائي الحفظ والمشغل الخارجي).
-- [ ] ربط نافذة الحفظ والقائمة المنسدلة في `MovieDetailsContract.kt` و `MovieViewModel.kt`.
+- [x] تطبيق المخطط الهيكلي المعتمد في `MovieDetailsScreen.kt` (زر التشغيل المنفرد 54dp + ثنائي الحفظ والمشغل الخارجي).
+- [x] ربط نافذة الحفظ والقائمة المنسدلة في `MovieDetailsContract.kt` و `MovieViewModel.kt`.
 
 ### المرحلة 2: شاشة تفاصيل المسلسلات والمواسم
-- [ ] تحديث `SeriesDetailsScreen.kt` بزر الاستئناف الذكي المنفرد "استئناف: ح X · م Y".
-- [ ] صقل محدد المواسم الهجين وقائمة الحلقات الرأسية مع زر تمييز المشاهدة الفردي.
+- [x] تحديث `SeriesDetailsScreen.kt` بزر الاستئناف الذكي المنفرد "استئناف: ح X · م Y".
+- [x] صقل محدد المواسم الهجين وقائمة الحلقات الرأسية مع زر تمييز المشاهدة الفردي.
 
 ### المرحلة 3: شاشة السلاسل والألبومات الموسيقية
-- [ ] تحديث `BoxSetDetailsScreen.kt` بإحصائيات السلسلة التراكمية وزر المتابعة الذكي.
-- [ ] تحديث `MusicAlbumDetailsScreen.kt` بالغلاف المربع 1:1 وزر الخلط والمشغل المصغر.
+- [x] تحديث `BoxSetDetailsScreen.kt` بإحصائيات السلسلة التراكمية وزر المتابعة الذكي.
+- [x] تحديث `MusicAlbumDetailsScreen.kt` بالغلاف المربع 1:1 وزر الخلط والمشغل المصغر.
 
 ### المرحلة 4: التدقيق، وضمان الجودة، وبناء Gradle
-- [ ] فحص خلو الكود بالكامل من الإيموجيات.
-- [ ] تشغيل اختبارات الوحدة `./gradlew testDebugUnitTest` بنجاح 100%.
+- [x] فحص خلو الكود بالكامل من الإيموجيات.
+- [x] تشغيل اختبارات الوحدة `./gradlew testDebugUnitTest` بنجاح 100%.
